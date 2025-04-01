@@ -1,3 +1,41 @@
-<h1>Witaj w Dashboardzie!</h1>
-<p>Jesteś zalogowany.</p>
-<button (click)="logout()">Wyloguj</button>
+<div class="dashboard-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <h2>ERP Dashboard</h2>
+    <ul>
+      <li><a href="#">📊 Statystyki</a></li>
+      <li><a href="#">📦 Magazyn</a></li>
+      <li><a href="#">📄 Faktury</a></li>
+      <li><a href="#">👤 Klienci</a></li>
+      <li><a href="#">⚙️ Ustawienia</a></li>
+      <li><button (click)="logout()">🚪 Wyloguj</button></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header>
+      <h1>Witaj w systemie ERP</h1>
+      <p>Zarządzaj danymi w jednym miejscu</p>
+    </header>
+
+    <section class="cards">
+      <div class="card">
+        <h3>📦 Produkty</h3>
+        <p>Aktywnych: <strong>1,254</strong></p>
+      </div>
+      <div class="card">
+        <h3>📄 Faktury</h3>
+        <p>Wystawione: <strong>342</strong></p>
+      </div>
+      <div class="card">
+        <h3>👤 Klienci</h3>
+        <p>Łącznie: <strong>768</strong></p>
+      </div>
+      <div class="card">
+        <h3>💰 Dochód</h3>
+        <p>Miesięczny: <strong>24,560 PLN</strong></p>
+      </div>
+    </section>
+  </main>
+</div>
