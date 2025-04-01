@@ -4,12 +4,24 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Dodaj us³ugê CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("https://localhost:55733")  // Dodaj adres, na którym dzia³a frontend
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+// Dodaj us³ugê bazy danych
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Dodaj konfiguracjê autentykacji JWT
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -31,27 +43,29 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Dodaj inne us³ugi
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// U¿ywaj CORS z utworzon¹ polityk¹
+app.UseCors("AllowFrontend");
+
+// Skonfiguruj pipeline HTTP
 app.UseDefaultFiles();
 app.MapStaticAssets();
 
-// Configure the HTTP request pipeline.
+// U¿yj OpenAPI w œrodowisku deweloperskim
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+app.UseHttpsRedirection();  // Zapewnienie HTTPS
+app.UseAuthorization();  // Autoryzacja
+app.MapControllers();  // Mapowanie kontrolerów
 
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.MapFallbackToFile("/index.html");
+app.MapFallbackToFile("/index.html");  // Fallback do SPA (Single Page Application)
 
 app.Run();
