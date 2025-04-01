@@ -1,14 +1,14 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { LoginComponent } from './components/login/login.component'; // Poprawna ścieżka
+import { LoginComponent } from './components/login/login.component';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
+  { path: 'dashboard', component: DashboardComponent },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
-  // Możesz dodać inne trasy, np. { path: 'dashboard', component: DashboardComponent }
+  { path: '**', redirectTo: '/login' }
 ];
-
-export { routes };
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],

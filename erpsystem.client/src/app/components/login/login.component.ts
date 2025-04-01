@@ -1,13 +1,13 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common'; // Dla *ngIf
-import { FormsModule } from '@angular/forms';   // Dla [(ngModel)]
-import { AuthService } from '../../services/auth.service'; // Popraw ścieżkę, jeśli jest inna
+import { CommonModule } from '@angular/common'; 
+import { FormsModule } from '@angular/forms';   ]
+import { AuthService } from '../../services/auth.service'; 
 import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule], // Niezbędne moduły
+  imports: [CommonModule, FormsModule], 
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })

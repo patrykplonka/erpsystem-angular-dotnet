@@ -1,88 +1,84 @@
-﻿using erpsystem.Server.Models;
-using erpsystem.Server.Data;
-using erpsystem.Server.Models.DTOs;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
+using erpsystem.Server.Models;
 
-namespace ERPSystem.API.Controllers
+namespace ERPSystem.API.Controllers // Popraw namespace, jeśli jest inny
 {
     [Route("api/auth")]
     [ApiController]
     public class AuthController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<Role> _roleManager;
-        private readonly IConfiguration _configuration;
+        private readonly IConfiguration _config;
 
-        public AuthController(UserManager<ApplicationUser> userManager, RoleManager<Role> roleManager, IConfiguration configuration)
+        public AuthController(UserManager<ApplicationUser> userManager, IConfiguration config)
         {
             _userManager = userManager;
-            _roleManager = roleManager;
-            _configuration = configuration;
-        }
-
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto model)
-        {
-            var userExists = await _userManager.FindByEmailAsync(model.Email);
-            if (userExists != null)
-                return BadRequest(new { message = "User already exists!" });
-
-            var user = new ApplicationUser
-            {
-                UserName = model.Email,
-                Email = model.Email,
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                RoleId = model.RoleId,
-                CreatedAt = DateTime.UtcNow,
-                Status = UserStatus.Active
-            };
-
-            var result = await _userManager.CreateAsync(user, model.Password);
-            if (!result.Succeeded)
-                return BadRequest(new { message = "User creation failed!", errors = result.Errors });
-
-            return Ok(new { message = "User created successfully!" });
+            _config = config;
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto model)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
-                return Unauthorized(new { message = "Invalid credentials" });
-
-            var authClaims = new[]
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user != null && await _userManager.CheckPasswordAsync(user, request.Password))
             {
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role.Name),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
+                var token = GenerateJwtToken(user);
+                return Ok(new { token });
+            }
+            return Unauthorized("Invalid credentials");
+        }
 
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterDto request)
+        {
+            var user = new ApplicationUser
+            {
+                UserName = request.Email,
+                Email = request.Email,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                RoleId = request.RoleId, // Użyj RoleId
+                CreatedAt = DateTime.UtcNow, // Ustaw CreatedAt
+                Status = UserStatus.Active // Domyślny status
+            };
+            var result = await _userManager.CreateAsync(user, request.Password);
+            if (result.Succeeded)
+            {
+                return Ok("User registered");
+            }
+            return BadRequest(result.Errors);
+        }
+        private string GenerateJwtToken(ApplicationUser user)
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Secret"] ?? throw new InvalidOperationException("JWT:Secret is missing")));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+        new Claim(JwtRegisteredClaimNames.Sub, user.Email ?? string.Empty),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        new Claim("roleId", user.RoleId.ToString())
+    };
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["JWT:ValidIssuer"],
-                audience: _configuration["JWT:ValidAudience"],
-                expires: DateTime.UtcNow.AddHours(3),
-                claims: authClaims,
-                signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
-            );
+                issuer: _config["JWT:ValidIssuer"],
+                audience: _config["JWT:ValidAudience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(30),
+                signingCredentials: credentials);
 
-            return Ok(new
-            {
-                token = new JwtSecurityTokenHandler().WriteToken(token),
-                expiration = token.ValidTo
-            });
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
+    }
+
+    public class LoginRequest
+    {
+        public required string Email { get; set; }
+        public required string Password { get; set; }
     }
 }

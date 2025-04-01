@@ -1,13 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace erpsystem.Server.Models.DTOs
+﻿namespace erpsystem.Server.Models.DTOs
 {
     public class LoginDto
     {
-        [Required]
-        public string Email { get; set; }
-
-        [Required]
-        public string Password { get; set; }
+        public required string Email { get; set; }
+        public required string Password { get; set; }
     }
 }
