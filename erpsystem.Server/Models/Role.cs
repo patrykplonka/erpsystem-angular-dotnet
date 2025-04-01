@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace erpsystem.Models
+namespace erpsystem.Server.Models
 {
     public class Role
     {

@@ -1,9 +1,8 @@
-﻿using erpsystem.Models;
-using erpsystem.Models;
+﻿using erpsystem.Server.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace ERPSystem.API.Data
+namespace erpsystem.Server.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
@@ -12,7 +11,7 @@ namespace ERPSystem.API.Data
         }
 
         public DbSet<Role> Roles { get; set; }
-        public DbSet<ApplicationUser> Users { get; set; } // Zmieniona nazwa tabeli
+        public DbSet<ApplicationUser> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

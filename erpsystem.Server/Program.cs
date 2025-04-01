@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using erpsystem.Server.Data;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
