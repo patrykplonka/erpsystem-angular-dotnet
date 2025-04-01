@@ -1,6 +1,6 @@
 ﻿using erpsystem.Server.Models;
 using erpsystem.Server.Data;
-using erpsystem.Server.DTOs;
+using erpsystem.Server.Models.DTOs;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
