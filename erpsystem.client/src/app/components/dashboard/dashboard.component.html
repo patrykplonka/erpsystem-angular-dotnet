@@ -1,5 +1,5 @@
 <div class="dashboard-container">
-  <!-- Sidebar -->
+
   <aside class="sidebar">
     <h2>ERP Dashboard</h2>
     <ul>
@@ -12,11 +12,15 @@
     </ul>
   </aside>
 
-  <!-- Main Content -->
   <main class="main-content">
     <header>
-      <h1>Witaj w systemie ERP</h1>
-      <p>Zarządzaj danymi w jednym miejscu</p>
+      <div>
+        <h1>Witaj w systemie ERP</h1>
+        <p>Zarządzaj danymi w jednym miejscu</p>
+      </div>
+      <div class="user-info">
+        <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+      </div>
     </header>
 
     <section class="cards">

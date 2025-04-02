@@ -13,8 +13,8 @@ describe('LoginComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       declarations: [LoginComponent],
-      imports: [HttpClientTestingModule, FormsModule, ReactiveFormsModule],  // Dodajemy ReactiveFormsModule
-      providers: [AuthService]  // Zapewniamy serwis do testowania
+      imports: [HttpClientTestingModule, FormsModule, ReactiveFormsModule], 
+      providers: [AuthService] 
     }).compileComponents();
   });
 
@@ -22,8 +22,8 @@ describe('LoginComponent', () => {
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
     httpMock = TestBed.inject(HttpTestingController);
-    authService = TestBed.inject(AuthService);  // Inicjalizujemy serwis autentykacji
-    fixture.detectChanges();  // Wymuszamy detekcję zmian, aby zainicjować formularz
+    authService = TestBed.inject(AuthService); 
+    fixture.detectChanges();
   });
 
   afterEach(() => {
@@ -35,7 +35,7 @@ describe('LoginComponent', () => {
   });
 
   it('should log in successfully', () => {
-    const mockResponse = { token: 'mock_token' };  // Symulujemy odpowiedź serwera
+    const mockResponse = { token: 'mock_token' }; 
 
     const email = 'test@example.com';
     const password = 'password123';
@@ -43,14 +43,14 @@ describe('LoginComponent', () => {
     component.email = email;
     component.password = password;
 
-    component.login();  // Wywołujemy metodę login()
+    component.login();
 
     const req = httpMock.expectOne('https://localhost:5206/api/auth/login');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ email, password });
-    req.flush(mockResponse);  // Symulujemy odpowiedź serwera
+    req.flush(mockResponse);
 
-    expect(authService.getToken()).toBe('mock_token');  // Sprawdzamy, czy token jest zapisany
+    expect(authService.getToken()).toBe('mock_token');
   });
 
   it('should handle login error', () => {
@@ -61,13 +61,12 @@ describe('LoginComponent', () => {
     component.email = email;
     component.password = password;
 
-    component.login();  // Wywołujemy metodę login()
+    component.login(); 
 
     const req = httpMock.expectOne('https://localhost:5206/api/auth/login');
     expect(req.request.method).toBe('POST');
-    req.flush(errorMessage, { status: 401, statusText: 'Unauthorized' });  // Symulujemy błąd
+    req.flush(errorMessage, { status: 401, statusText: 'Unauthorized' });
 
-    // Sprawdzenie, czy token nie został zapisany
     expect(authService.getToken()).toBeNull();
   });
 });

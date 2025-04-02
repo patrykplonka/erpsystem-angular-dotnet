@@ -6,12 +6,12 @@ namespace erpsystem.Server.Models
     {
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
-        public int RoleId { get; set; } // Dodaj RoleId
-        public DateTime CreatedAt { get; set; } // Dodaj CreatedAt
-        public UserStatus Status { get; set; } // Dodaj Status
+        public int RoleId { get; set; } 
+        public DateTime CreatedAt { get; set; } 
+        public UserStatus Status { get; set; } 
     }
 
-    public enum UserStatus // Zdefiniuj enum UserStatus
+    public enum UserStatus 
     {
         Active,
         Inactive,

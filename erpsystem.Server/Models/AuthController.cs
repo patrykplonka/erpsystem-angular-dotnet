@@ -6,7 +6,7 @@ using System.Security.Claims;
 using System.Text;
 using erpsystem.Server.Models;
 
-namespace ERPSystem.API.Controllers // Popraw namespace, jeśli jest inny
+namespace erpsystem.Server.Controllers  
 {
     [Route("api/auth")]
     [ApiController]
@@ -42,9 +42,9 @@ namespace ERPSystem.API.Controllers // Popraw namespace, jeśli jest inny
                 Email = request.Email,
                 FirstName = request.FirstName,
                 LastName = request.LastName,
-                RoleId = request.RoleId, // Użyj RoleId
-                CreatedAt = DateTime.UtcNow, // Ustaw CreatedAt
-                Status = UserStatus.Active // Domyślny status
+                RoleId = request.RoleId, 
+                CreatedAt = DateTime.UtcNow, 
+                Status = UserStatus.Active 
             };
             var result = await _userManager.CreateAsync(user, request.Password);
             if (result.Succeeded)

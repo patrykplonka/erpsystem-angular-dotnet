@@ -6,6 +6,6 @@
         public required string LastName { get; set; }
         public required string Email { get; set; }
         public required string Password { get; set; }
-        public int RoleId { get; set; } // Dodaj RoleId
+        public int RoleId { get; set; } 
     }
 }

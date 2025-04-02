@@ -12,7 +12,7 @@ interface LoginResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'https://localhost:7224/api/auth'; // Zaktualizuj na poprawny adres
+  private apiUrl = 'https://localhost:7224/api/auth'; 
 
   constructor(private http: HttpClient, private router: Router) { }
 
@@ -26,7 +26,6 @@ export class AuthService {
     );
   }
 
-  // Reszta kodu bez zmian
   register(user: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/register`, user);
   }
