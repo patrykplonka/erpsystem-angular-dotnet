@@ -1,8 +1,14 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using erpsystem.Server.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-public class ApplicationDbContext : IdentityDbContext<IdentityUser>
+namespace erpsystem.Server.Data
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+        {
+        }
+
+    }
 }
