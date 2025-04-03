@@ -1,0 +1,23 @@
+<div class="login-container">
+  <div class="login-box">
+    <h2>Logowanie do systemu</h2>
+
+    <form (ngSubmit)="login()">
+      <div class="input-group">
+        <input [(ngModel)]="email" name="email" type="email" placeholder="Email" required />
+      </div>
+
+      <div class="input-group">
+        <input [(ngModel)]="password" name="password" type="password" placeholder="Hasło" required />
+      </div>
+
+      <button type="submit">Zaloguj</button>
+    </form>
+
+    <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
+
+    <div class="login-footer">
+      <a href="#">Nie pamiętasz hasła?</a>
+    </div>
+  </div>
+</div>
