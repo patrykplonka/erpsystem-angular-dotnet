@@ -1,0 +1,39 @@
+.warehouse-container {
+  padding: 20px;
+}
+
+.add-item-form {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 5px;
+}
+
+  .add-item-form input {
+    margin: 5px;
+    padding: 8px;
+  }
+
+  .add-item-form button {
+    padding: 8px 15px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+.items-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.items-list th, .items-list td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.items-list th {
+  background: #f5f5f5;
+}
