@@ -185,3 +185,20 @@ header {
   .items-list tbody tr:hover {
     background: #f2f2f2;
   }
+
+.action-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.delete-button {
+  background: #e74c3c; 
+  color: #fff;
+}
+
+  .delete-button:hover {
+    background: #c0392b;
+  }

@@ -5,7 +5,6 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
-
 interface WarehouseItemDto {
   id: number;
   name: string;
@@ -25,8 +24,8 @@ interface CreateWarehouseItemDto {
 
 @Component({
   selector: 'app-warehouse',
-  standalone: true, 
-  imports: [CommonModule, FormsModule], 
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   templateUrl: './warehouse.component.html',
   styleUrls: ['./warehouse.component.css']
 })
@@ -50,6 +49,7 @@ export class WarehouseComponent implements OnInit {
 
   ngOnInit() {
     this.loadItems();
+    this.currentUserEmail = this.authService.getCurrentUserEmail(); 
   }
 
   loadItems() {
@@ -70,18 +70,18 @@ export class WarehouseComponent implements OnInit {
   }
 
   deleteItem(id: number) {
-    this.http.delete('https://localhost:7224/api/warehouse').subscribe(
-      () => this.loadItems(), 
+    this.http.delete(`https://localhost:7224/api/warehouse/${id}`).subscribe(
+      () => this.loadItems(),
       error => console.error('Error deleting item', error.status, error.message)
     );
   }
 
   goToWarehouse() {
-    this.router.navigate(['/warehouse']); 
+    this.router.navigate(['/warehouse']);
   }
 
   logout() {
-    this.authService.logout(); 
-    this.router.navigate(['/login']); 
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }

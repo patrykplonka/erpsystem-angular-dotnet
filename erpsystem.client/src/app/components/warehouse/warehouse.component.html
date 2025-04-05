@@ -44,6 +44,7 @@
               <th>Ilość</th>
               <th>Cena</th>
               <th>Kategoria</th>
+              <th>Akcje</th>
             </tr>
           </thead>
           <tbody>
@@ -53,6 +54,9 @@
               <td>{{item.quantity}}</td>
               <td>{{item.price | currency:'PLN'}}</td>
               <td>{{item.category}}</td>
+              <td>
+                <button class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
+              </td>
             </tr>
           </tbody>
         </table>
