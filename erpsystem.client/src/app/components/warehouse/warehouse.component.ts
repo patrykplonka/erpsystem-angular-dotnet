@@ -51,7 +51,8 @@ export class WarehouseComponent implements OnInit {
   editItem: UpdateWarehouseItemDto | null = null;
   currentUserEmail: string | null = null;
   showDeleted: boolean = false;
-  filter: string = ''; // Nowe pole do filtrowania
+  filter: string = '';
+  showAddForm: boolean = false; 
 
   constructor(
     private http: HttpClient,
@@ -66,7 +67,7 @@ export class WarehouseComponent implements OnInit {
 
   get filteredItems(): WarehouseItemDto[] {
     const items = this.showDeleted ? this.deletedItems : this.warehouseItems;
-    if (!this.filter) return items; 
+    if (!this.filter) return items;
     return items.filter(item =>
       item.name.toLowerCase().includes(this.filter.toLowerCase()) ||
       item.code.toLowerCase().includes(this.filter.toLowerCase())
@@ -97,6 +98,7 @@ export class WarehouseComponent implements OnInit {
       () => {
         this.loadItems();
         this.newItem = { name: '', code: '', quantity: null, price: null, category: '' };
+        this.showAddForm = false; // Ukryj formularz po dodaniu
       },
       error => console.error('Error adding item', error.status, error.message)
     );
@@ -147,6 +149,10 @@ export class WarehouseComponent implements OnInit {
     if (this.showDeleted) {
       this.loadDeletedItems();
     }
+  }
+
+  toggleAddForm() { 
+    this.showAddForm = !this.showAddForm;
   }
 
   goToWarehouse() {
