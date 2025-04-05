@@ -24,7 +24,7 @@
 
     <section class="warehouse-section">
       <div class="add-item-form">
-        <!-- Formularz dodawania nowego produktu (gdy nie edytujemy) -->
+
         <div *ngIf="!editItem">
           <h3>Dodaj nowy produkt</h3>
           <form (ngSubmit)="addItem()">
@@ -37,7 +37,6 @@
           </form>
         </div>
 
-        <!-- Formularz edycji produktu (gdy edytujemy) -->
         <div *ngIf="editItem">
           <h3>Edytuj produkt</h3>
           <form (ngSubmit)="updateItem()">
