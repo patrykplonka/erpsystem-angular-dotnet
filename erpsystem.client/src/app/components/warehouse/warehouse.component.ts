@@ -69,6 +69,13 @@ export class WarehouseComponent implements OnInit {
     );
   }
 
+  deleteItem(id: number) {
+    this.http.delete('https://localhost:7224/api/warehouse').subscribe(
+      () => this.loadItems(), 
+      error => console.error('Error deleting item', error.status, error.message)
+    );
+  }
+
   goToWarehouse() {
     this.router.navigate(['/warehouse']); 
   }
