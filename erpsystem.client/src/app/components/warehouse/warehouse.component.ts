@@ -40,6 +40,8 @@ export class WarehouseComponent implements OnInit {
     category: ''
   };
 
+  currentUserEmail: string | null = null;
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
@@ -65,5 +67,14 @@ export class WarehouseComponent implements OnInit {
       },
       error => console.error('Error adding item', error.status, error.message)
     );
+  }
+
+  goToWarehouse() {
+    this.router.navigate(['/warehouse']); 
+  }
+
+  logout() {
+    this.authService.logout(); 
+    this.router.navigate(['/login']); 
   }
 }

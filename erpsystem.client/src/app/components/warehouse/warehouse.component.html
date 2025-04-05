@@ -1,38 +1,62 @@
 <div class="warehouse-container">
-  <h2>📦 Magazyn</h2>
+  <aside class="sidebar">
+    <h2>Dashboard</h2>
+    <ul>
+      <li><a href="#">📊 Statystyki</a></li>
+      <li><button (click)="goToWarehouse()">📦 Magazyn</button></li>
+      <li><a href="#">📄 Faktury</a></li>
+      <li><a href="#">👤 Klienci</a></li>
+      <li><a href="#">⚙️ Ustawienia</a></li>
+      <li><button (click)="logout()">🚪 Wyloguj</button></li>
+    </ul>
+  </aside>
 
-  <div class="add-item-form">
-    <h3>Dodaj nowy produkt</h3>
-    <form (ngSubmit)="addItem()">
-      <input [(ngModel)]="newItem.name" name="name" placeholder="Nazwa" required>
-      <input [(ngModel)]="newItem.code" name="code" placeholder="Kod" required>
-      <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
-      <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
-      <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
-      <button type="submit">Dodaj</button>
-    </form>
-  </div>
+  <main class="main-content">
+    <header>
+      <div>
+        <h1>📦 Magazyn</h1>
+        <p>Zarządzaj produktami w magazynie</p>
+      </div>
+      <div class="user-info">
+        <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+      </div>
+    </header>
 
-  <div class="items-list">
-    <table>
-      <thead>
-        <tr>
-          <th>Nazwa</th>
-          <th>Kod</th>
-          <th>Ilość</th>
-          <th>Cena</th>
-          <th>Kategoria</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let item of warehouseItems">
-          <td>{{item.name}}</td>
-          <td>{{item.code}}</td>
-          <td>{{item.quantity}}</td>
-          <td>{{item.price | currency:'PLN'}}</td>
-          <td>{{item.category}}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <section class="warehouse-section">
+      <div class="add-item-form">
+        <h3>Dodaj nowy produkt</h3>
+        <form (ngSubmit)="addItem()">
+          <input [(ngModel)]="newItem.name" name="name" placeholder="Nazwa" required>
+          <input [(ngModel)]="newItem.code" name="code" placeholder="Kod" required>
+          <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
+          <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
+          <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
+          <button type="submit">Dodaj</button>
+        </form>
+      </div>
+
+      <div class="items-list">
+        <table>
+          <thead>
+            <tr>
+              <th>Nazwa</th>
+              <th>Kod</th>
+              <th>Ilość</th>
+              <th>Cena</th>
+              <th>Kategoria</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of warehouseItems">
+              <td>{{item.name}}</td>
+              <td>{{item.code}}</td>
+              <td>{{item.quantity}}</td>
+              <td>{{item.price | currency:'PLN'}}</td>
+              <td>{{item.category}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 </div>
