@@ -2,8 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
-import { CommonModule } from '@angular/common'; // Dodaj
-import { FormsModule } from '@angular/forms';   // Dodaj
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
 
 interface WarehouseItemDto {
   id: number;
@@ -24,8 +25,8 @@ interface CreateWarehouseItemDto {
 
 @Component({
   selector: 'app-warehouse',
-  standalone: true, // Jeśli jest standalone
-  imports: [CommonModule, FormsModule], // Dodaj importy tutaj
+  standalone: true, 
+  imports: [CommonModule, FormsModule], 
   templateUrl: './warehouse.component.html',
   styleUrls: ['./warehouse.component.css']
 })
@@ -50,19 +51,19 @@ export class WarehouseComponent implements OnInit {
   }
 
   loadItems() {
-    this.http.get<WarehouseItemDto[]>('api/warehouse').subscribe(
+    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse').subscribe(
       data => this.warehouseItems = data,
-      error => console.error('Error loading warehouse items', error)
+      error => console.error('Error loading warehouse items', error.status, error.message)
     );
   }
 
   addItem() {
-    this.http.post<WarehouseItemDto>('api/warehouse', this.newItem).subscribe(
+    this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', this.newItem).subscribe(
       () => {
         this.loadItems();
         this.newItem = { name: '', code: '', quantity: 0, price: 0, category: '' };
       },
-      error => console.error('Error adding item', error)
+      error => console.error('Error adding item', error.status, error.message)
     );
   }
 }

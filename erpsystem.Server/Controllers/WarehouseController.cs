@@ -4,8 +4,8 @@ using erpsystem.Server.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-[Route("api/[controller]")]
 [ApiController]
+[Route("api/[controller]")]
 public class WarehouseController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -18,19 +18,25 @@ public class WarehouseController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetItems()
     {
-        var items = await _context.WarehouseItems.ToListAsync();
-
-        var itemDtos = items.Select(item => new WarehouseItemDto
+        try
         {
-            Id = item.Id,
-            Name = item.Name,
-            Code = item.Code,
-            Quantity = item.Quantity,
-            Price = item.Price,
-            Category = item.Category
-        }).ToList();
-
-        return Ok(itemDtos);
+            var items = await _context.WarehouseItems.ToListAsync();
+            var itemDtos = items.Select(item => new WarehouseItemDto
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Code = item.Code,
+                Quantity = item.Quantity,
+                Price = item.Price,
+                Category = item.Category
+            }).ToList();
+            return Ok(itemDtos);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in GetItems: {ex.Message}");
+            return StatusCode(500, "Internal server error");
+        }
     }
 
     [HttpPost]
