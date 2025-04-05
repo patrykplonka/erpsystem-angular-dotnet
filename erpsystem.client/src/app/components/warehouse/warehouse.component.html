@@ -1,0 +1,98 @@
+<div class="warehouse-container">
+  <aside class="sidebar">
+    <h2>Dashboard</h2>
+    <ul>
+      <li><a href="#">📊 Statystyki</a></li>
+      <li><button (click)="goToWarehouse()">📦 Magazyn</button></li>
+      <li><a href="#">📄 Faktury</a></li>
+      <li><a href="#">👤 Klienci</a></li>
+      <li><a href="#">⚙️ Ustawienia</a></li>
+      <li><button (click)="logout()">🚪 Wyloguj</button></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    <header>
+      <div>
+        <h1>📦 Magazyn</h1>
+        <p>Zarządzaj produktami w magazynie</p>
+      </div>
+      <div class="user-info">
+        <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+      </div>
+    </header>
+
+    <section class="warehouse-section">
+      <!-- Formularz dodawania -->
+      <div class="add-item-form" *ngIf="showAddForm && !editItem">
+        <h3>Dodaj nowy produkt</h3>
+        <form (ngSubmit)="addItem()">
+          <input [(ngModel)]="newItem.name" name="name" placeholder="Nazwa" required>
+          <input [(ngModel)]="newItem.code" name="code" placeholder="Kod" required>
+          <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
+          <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
+          <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
+          <button type="submit">Dodaj</button>
+          <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
+        </form>
+      </div>
+
+      <div class="add-item-form" *ngIf="editItem">
+        <h3>Edytuj produkt</h3>
+        <form (ngSubmit)="updateItem()">
+          <input [(ngModel)]="editItem.name" name="name" placeholder="Nazwa" required>
+          <input [(ngModel)]="editItem.code" name="code" placeholder="Kod" required>
+          <input [(ngModel)]="editItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
+          <input [(ngModel)]="editItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
+          <input [(ngModel)]="editItem.category" name="category" placeholder="Kategoria" required>
+          <button type="submit">Zapisz</button>
+          <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
+        </form>
+      </div>
+
+      <div class="items-list">
+        <button class="add-button" (click)="toggleAddForm()" *ngIf="!showAddForm && !editItem">
+          Dodaj nowy produkt
+        </button>
+
+        <div class="filters">
+          <input [(ngModel)]="nameFilter" placeholder="Nazwa lub kod" class="filter-input">
+          <input [(ngModel)]="quantityFilter" type="number" placeholder="Ilość" class="filter-input">
+          <input [(ngModel)]="priceFilter" type="number" step="0.01" placeholder="Cena" class="filter-input">
+          <input [(ngModel)]="categoryFilter" placeholder="Kategoria" class="filter-input">
+        </div>
+
+        <button class="toggle-deleted" (click)="toggleDeletedView()">
+          {{ showDeleted ? 'Pokaż aktywne produkty' : 'Pokaż usunięte produkty' }}
+        </button>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Nazwa</th>
+              <th>Kod</th>
+              <th>Ilość</th>
+              <th>Cena</th>
+              <th>Kategoria</th>
+              <th>Akcje</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of filteredItems">
+              <td>{{ item.name }}</td>
+              <td>{{ item.code }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.price | currency:'PLN' }}</td>
+              <td>{{ item.category }}</td>
+              <td>
+                <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>
+                <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
+                <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreItem(item.id)">Przywróć</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>

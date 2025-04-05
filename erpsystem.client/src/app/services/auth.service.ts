@@ -12,7 +12,7 @@ interface LoginResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'https://localhost:7224/api/auth'; 
+  private apiUrl = 'https://localhost:7224/api/auth';
 
   constructor(private http: HttpClient, private router: Router) { }
 
@@ -34,17 +34,24 @@ export class AuthService {
     localStorage.setItem('token', token);
   }
 
-  getToken() {
+  getToken(): string | null {
     return localStorage.getItem('token');
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    const token = this.getToken();
+    console.log('Sprawdzam autoryzację:', token);
+    return !!token;
   }
+
 
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
     this.router.navigate(['/login']);
+  }
+
+  getCurrentUserEmail(): string | null {
+    return localStorage.getItem('userEmail');
   }
 }

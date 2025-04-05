@@ -8,12 +8,19 @@ import { Router } from '@angular/router';
   styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit {
-  currentUserEmail: string | null = null; 
+  currentUserEmail: string | null = null;
 
-  constructor(private authService: AuthService, private router: Router) { }
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) { }
 
   ngOnInit() {
     this.currentUserEmail = localStorage.getItem('userEmail');
+  }
+
+  goToWarehouse() {
+    this.router.navigate(['/warehouse']); // Dodaj metodę
   }
 
   logout() {
