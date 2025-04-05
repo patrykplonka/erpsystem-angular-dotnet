@@ -11,5 +11,6 @@ namespace erpsystem.Server.Data
         {
         }
         public DbSet<WarehouseItem> WarehouseItems { get; set; }
+        public DbSet<WarehouseMovements> StockMovements { get; set; }
     }
 }
