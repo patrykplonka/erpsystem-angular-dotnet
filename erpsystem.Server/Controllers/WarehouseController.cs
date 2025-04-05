@@ -84,6 +84,27 @@ public class WarehouseController : ControllerBase
 
         return NoContent(); 
     }
+
+    [HttpGet("deleted")]
+    public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetDeletedItems()
+    {
+        var deletedItems = await _context.WarehouseItems
+            .Where(i => i.IsDeleted) // Filter for deleted items
+            .ToListAsync();
+
+        var itemDtos = deletedItems.Select(item => new WarehouseItemDto
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Code = item.Code,
+            Quantity = item.Quantity,
+            Price = item.Price,
+            Category = item.Category
+        }).ToList();
+
+        return Ok(itemDtos);
+    }
+
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateItem(int id, [FromBody] CreateWarehouseItemDto updateDto)
     {
@@ -98,7 +119,6 @@ public class WarehouseController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        // Aktualizuj pola
         item.Name = updateDto.Name;
         item.Code = updateDto.Code;
         item.Quantity = updateDto.Quantity;
