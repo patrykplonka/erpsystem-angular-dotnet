@@ -24,18 +24,39 @@
 
     <section class="warehouse-section">
       <div class="add-item-form">
-        <h3>Dodaj nowy produkt</h3>
-        <form (ngSubmit)="addItem()">
-          <input [(ngModel)]="newItem.name" name="name" placeholder="Nazwa" required>
-          <input [(ngModel)]="newItem.code" name="code" placeholder="Kod" required>
-          <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
-          <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
-          <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
-          <button type="submit">Dodaj</button>
-        </form>
+        <!-- Formularz dodawania nowego produktu (gdy nie edytujemy) -->
+        <div *ngIf="!editItem">
+          <h3>Dodaj nowy produkt</h3>
+          <form (ngSubmit)="addItem()">
+            <input [(ngModel)]="newItem.name" name="name" placeholder="Nazwa" required>
+            <input [(ngModel)]="newItem.code" name="code" placeholder="Kod" required>
+            <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
+            <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
+            <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
+            <button type="submit">Dodaj</button>
+          </form>
+        </div>
+
+        <!-- Formularz edycji produktu (gdy edytujemy) -->
+        <div *ngIf="editItem">
+          <h3>Edytuj produkt</h3>
+          <form (ngSubmit)="updateItem()">
+            <input [(ngModel)]="editItem.name" name="name" placeholder="Nazwa" required>
+            <input [(ngModel)]="editItem.code" name="code" placeholder="Kod" required>
+            <input [(ngModel)]="editItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
+            <input [(ngModel)]="editItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
+            <input [(ngModel)]="editItem.category" name="category" placeholder="Kategoria" required>
+            <button type="submit">Zapisz</button>
+            <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
+          </form>
+        </div>
       </div>
 
       <div class="items-list">
+        <button class="toggle-deleted" (click)="toggleDeletedView()">
+          {{ showDeleted ? 'Pokaż aktywne produkty' : 'Pokaż usunięte produkty' }}
+        </button>
+
         <table>
           <thead>
             <tr>
@@ -48,14 +69,16 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let item of warehouseItems">
-              <td>{{item.name}}</td>
-              <td>{{item.code}}</td>
-              <td>{{item.quantity}}</td>
-              <td>{{item.price | currency:'PLN'}}</td>
-              <td>{{item.category}}</td>
+            <tr *ngFor="let item of showDeleted ? deletedItems : warehouseItems">
+              <td>{{ item.name }}</td>
+              <td>{{ item.code }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.price | currency:'PLN' }}</td>
+              <td>{{ item.category }}</td>
               <td>
-                <button class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
+                <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>
+                <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
+                <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreItem(item.id)">Przywróć</button>
               </td>
             </tr>
           </tbody>
