@@ -18,25 +18,21 @@ public class WarehouseController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetItems()
     {
-        try
+        var items = await _context.WarehouseItems
+            .Where(i => !i.IsDeleted) 
+            .ToListAsync();
+
+        var itemDtos = items.Select(item => new WarehouseItemDto
         {
-            var items = await _context.WarehouseItems.ToListAsync();
-            var itemDtos = items.Select(item => new WarehouseItemDto
-            {
-                Id = item.Id,
-                Name = item.Name,
-                Code = item.Code,
-                Quantity = item.Quantity,
-                Price = item.Price,
-                Category = item.Category
-            }).ToList();
-            return Ok(itemDtos);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error in GetItems: {ex.Message}");
-            return StatusCode(500, "Internal server error");
-        }
+            Id = item.Id,
+            Name = item.Name,
+            Code = item.Code,
+            Quantity = item.Quantity,
+            Price = item.Price,
+            Category = item.Category
+        }).ToList();
+
+        return Ok(itemDtos);
     }
 
     [HttpPost]
@@ -83,9 +79,9 @@ public class WarehouseController : ControllerBase
             return NotFound();
         }
 
-        item.IsDeleted = true;
-
+        item.IsDeleted = true; 
         await _context.SaveChangesAsync();
+
         return NoContent(); 
     }
 }
