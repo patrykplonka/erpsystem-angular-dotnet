@@ -1,5 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { AuthService } from '../../services/auth.service';
+import { Router } from '@angular/router';
+import { CommonModule } from '@angular/common'; // Dodaj
+import { FormsModule } from '@angular/forms';   // Dodaj
 
 interface WarehouseItemDto {
   id: number;
@@ -20,6 +24,8 @@ interface CreateWarehouseItemDto {
 
 @Component({
   selector: 'app-warehouse',
+  standalone: true, // Jeśli jest standalone
+  imports: [CommonModule, FormsModule], // Dodaj importy tutaj
   templateUrl: './warehouse.component.html',
   styleUrls: ['./warehouse.component.css']
 })
@@ -33,7 +39,11 @@ export class WarehouseComponent implements OnInit {
     category: ''
   };
 
-  constructor(private http: HttpClient) { }
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService,
+    private router: Router
+  ) { }
 
   ngOnInit() {
     this.loadItems();
