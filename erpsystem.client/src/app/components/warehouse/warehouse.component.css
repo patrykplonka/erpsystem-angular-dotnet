@@ -113,10 +113,11 @@ header {
 }
 
 .add-item-form {
-  background: #ecf0f1;
-  padding: 15px;
+  background: #f9f9f9;
+  padding: 20px;
   border-radius: 8px;
   box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
 }
 
   .add-item-form h3 {
@@ -176,7 +177,8 @@ header {
     color: #fff;
   }
 
-  .items-list th, .items-list td {
+  .items-list th,
+  .items-list td {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #ddd;
@@ -192,43 +194,11 @@ header {
   border-radius: 5px;
   cursor: pointer;
   transition: background 0.3s;
-}
-
-.delete-button {
-  background: #e74c3c; 
-  color: #fff;
-}
-
-  .delete-button:hover {
-    background: #c0392b;
-  }
-
-.toggle-deleted {
-  background: #95a5a6;
-  color: #fff;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-bottom: 10px;
-  transition: background 0.3s;
-}
-
-  .toggle-deleted:hover {
-    background: #7f8c8d;
-  }
-
-.action-button {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background 0.3s;
-  margin-right: 5px; 
+  margin-right: 5px;
 }
 
 .edit-button {
-  background: #f1c40f; 
+  background: #f1c40f;
   color: #fff;
 }
 
@@ -254,28 +224,35 @@ header {
     background: #27ae60;
   }
 
-.cancel-button {
+.toggle-deleted {
   background: #95a5a6;
   color: #fff;
   border: none;
   padding: 8px 12px;
   border-radius: 5px;
   cursor: pointer;
-  margin-top: 5px;
+  margin-bottom: 10px;
+  transition: background 0.3s;
+}
+
+  .toggle-deleted:hover {
+    background: #7f8c8d;
+  }
+
+.cancel-button {
+  background: #f44336;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px;
   transition: background 0.3s;
 }
 
   .cancel-button:hover {
-    background: #7f8c8d;
+    background: #da190b;
   }
-
-.search-input {
-  width: 200px;
-  padding: 8px;
-  margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
 
 .search-input {
   width: 200px;
@@ -288,7 +265,7 @@ header {
 .add-button {
   padding: 8px 16px;
   margin-bottom: 10px;
-  background-color: #4CAF50; 
+  background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 4px;
@@ -299,23 +276,15 @@ header {
     background-color: #45a049;
   }
 
-.add-item-form {
-  background-color: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.cancel-button {
-  background-color: #f44336; 
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  margin-left: 10px;
+.filter-input {
+  padding: 8px;
+  border: 1px solid #ccc;
   border-radius: 4px;
-  cursor: pointer;
+  width: 150px;
 }
-
-  .cancel-button:hover {
-    background-color: #da190b;
-  }

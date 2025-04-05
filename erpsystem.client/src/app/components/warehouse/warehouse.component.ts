@@ -51,8 +51,11 @@ export class WarehouseComponent implements OnInit {
   editItem: UpdateWarehouseItemDto | null = null;
   currentUserEmail: string | null = null;
   showDeleted: boolean = false;
-  filter: string = '';
-  showAddForm: boolean = false; 
+  showAddForm: boolean = false;
+  nameFilter: string = '';
+  quantityFilter: number | null = null;
+  priceFilter: number | null = null;
+  categoryFilter: string = '';
 
   constructor(
     private http: HttpClient,
@@ -67,11 +70,20 @@ export class WarehouseComponent implements OnInit {
 
   get filteredItems(): WarehouseItemDto[] {
     const items = this.showDeleted ? this.deletedItems : this.warehouseItems;
-    if (!this.filter) return items;
-    return items.filter(item =>
-      item.name.toLowerCase().includes(this.filter.toLowerCase()) ||
-      item.code.toLowerCase().includes(this.filter.toLowerCase())
-    );
+    return items.filter(item => {
+      const matchesNameOrCode = !this.nameFilter ||
+        item.name.toLowerCase().includes(this.nameFilter.toLowerCase()) ||
+        item.code.toLowerCase().includes(this.nameFilter.toLowerCase());
+
+      const matchesQuantity = this.quantityFilter === null || item.quantity === this.quantityFilter;
+
+      const matchesPrice = this.priceFilter === null || item.price === this.priceFilter;
+
+      const matchesCategory = !this.categoryFilter ||
+        item.category.toLowerCase().includes(this.categoryFilter.toLowerCase());
+
+      return matchesNameOrCode && matchesQuantity && matchesPrice && matchesCategory;
+    });
   }
 
   loadItems() {
@@ -98,7 +110,7 @@ export class WarehouseComponent implements OnInit {
       () => {
         this.loadItems();
         this.newItem = { name: '', code: '', quantity: null, price: null, category: '' };
-        this.showAddForm = false; // Ukryj formularz po dodaniu
+        this.showAddForm = false;
       },
       error => console.error('Error adding item', error.status, error.message)
     );
@@ -151,7 +163,7 @@ export class WarehouseComponent implements OnInit {
     }
   }
 
-  toggleAddForm() { 
+  toggleAddForm() {
     this.showAddForm = !this.showAddForm;
   }
 
