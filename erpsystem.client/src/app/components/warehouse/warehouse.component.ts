@@ -73,7 +73,7 @@ export class WarehouseComponent implements OnInit {
   loadDeletedItems() {
     this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse/deleted').subscribe(
       data => this.deletedItems = data,
-      error => console.error('Error loading deleted items', error.status, error.message)
+      error => console.error('Error loading deleted items', error.status, error.message, error)
     );
   }
 
