@@ -17,8 +17,8 @@ interface WarehouseItemDto {
 interface CreateWarehouseItemDto {
   name: string;
   code: string;
-  quantity: number;
-  price: number;
+  quantity: number | null ;
+  price: number | null;
   category: string;
 }
 
@@ -44,8 +44,8 @@ export class WarehouseComponent implements OnInit {
   newItem: CreateWarehouseItemDto = {
     name: '',
     code: '',
-    quantity: 0,
-    price: 0,
+    quantity: null,
+    price: null,
     category: ''
   };
   editItem: UpdateWarehouseItemDto | null = null;
@@ -78,10 +78,15 @@ export class WarehouseComponent implements OnInit {
   }
 
   addItem() {
-    this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', this.newItem).subscribe(
+    const itemToSend = {
+      ...this.newItem,
+      quantity: this.newItem.quantity ?? 0, // Jeśli null, to 0
+      price: this.newItem.price ?? 0        // Jeśli null, to 0
+    };
+    this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
       () => {
         this.loadItems();
-        this.newItem = { name: '', code: '', quantity: 0, price: 0, category: '' };
+        this.newItem = { name: '', code: '', quantity: null, price: null, category: '' };
       },
       error => console.error('Error adding item', error.status, error.message)
     );
