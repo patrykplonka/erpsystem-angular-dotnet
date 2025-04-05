@@ -73,4 +73,19 @@ public class WarehouseController : ControllerBase
 
         return CreatedAtAction(nameof(GetItems), new { id = item.Id }, resultDto);
     }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteItem(int id)
+    {
+        var item = await _context.WarehouseItems.FindAsync(id);
+        if (item == null)
+        {
+            return NotFound();
+        }
+
+        item.IsDeleted = true;
+
+        await _context.SaveChangesAsync();
+        return NoContent(); 
+    }
 }
