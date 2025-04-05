@@ -51,6 +51,7 @@
       </div>
 
       <div class="items-list">
+        <input [(ngModel)]="filter" placeholder="Szukaj po nazwie lub kodzie" class="search-input">
         <button class="toggle-deleted" (click)="toggleDeletedView()">
           {{ showDeleted ? 'Pokaż aktywne produkty' : 'Pokaż usunięte produkty' }}
         </button>
@@ -67,7 +68,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let item of showDeleted ? deletedItems : warehouseItems">
+            <tr *ngFor="let item of filteredItems">
               <td>{{ item.name }}</td>
               <td>{{ item.code }}</td>
               <td>{{ item.quantity }}</td>

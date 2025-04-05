@@ -17,7 +17,7 @@ interface WarehouseItemDto {
 interface CreateWarehouseItemDto {
   name: string;
   code: string;
-  quantity: number | null ;
+  quantity: number | null;
   price: number | null;
   category: string;
 }
@@ -51,6 +51,7 @@ export class WarehouseComponent implements OnInit {
   editItem: UpdateWarehouseItemDto | null = null;
   currentUserEmail: string | null = null;
   showDeleted: boolean = false;
+  filter: string = ''; // Nowe pole do filtrowania
 
   constructor(
     private http: HttpClient,
@@ -61,6 +62,15 @@ export class WarehouseComponent implements OnInit {
   ngOnInit() {
     this.loadItems();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
+  }
+
+  get filteredItems(): WarehouseItemDto[] {
+    const items = this.showDeleted ? this.deletedItems : this.warehouseItems;
+    if (!this.filter) return items; 
+    return items.filter(item =>
+      item.name.toLowerCase().includes(this.filter.toLowerCase()) ||
+      item.code.toLowerCase().includes(this.filter.toLowerCase())
+    );
   }
 
   loadItems() {
@@ -80,8 +90,8 @@ export class WarehouseComponent implements OnInit {
   addItem() {
     const itemToSend = {
       ...this.newItem,
-      quantity: this.newItem.quantity ?? 0, // Jeśli null, to 0
-      price: this.newItem.price ?? 0        // Jeśli null, to 0
+      quantity: this.newItem.quantity ?? 0,
+      price: this.newItem.price ?? 0
     };
     this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
       () => {
@@ -113,7 +123,7 @@ export class WarehouseComponent implements OnInit {
   }
 
   startEdit(item: WarehouseItemDto) {
-    this.editItem = { ...item }; 
+    this.editItem = { ...item };
   }
 
   updateItem() {
@@ -129,7 +139,7 @@ export class WarehouseComponent implements OnInit {
   }
 
   cancelEdit() {
-    this.editItem = null; 
+    this.editItem = null;
   }
 
   toggleDeletedView() {
