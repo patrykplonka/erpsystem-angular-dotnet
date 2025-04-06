@@ -5,7 +5,8 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WarehouseMovementsService } from '../../services/warehouse-movements.service';
-import * as jsPDF from 'jspdf';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 interface WarehouseItemDto {

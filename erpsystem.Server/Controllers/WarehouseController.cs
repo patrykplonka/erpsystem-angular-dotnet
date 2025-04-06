@@ -30,7 +30,7 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location // Dodano lokalizację
+            Location = item.Location
         }).ToList();
 
         return Ok(itemDtos);
@@ -51,12 +51,25 @@ public class WarehouseController : ControllerBase
             Quantity = createDto.Quantity,
             Price = createDto.Price,
             Category = createDto.Category,
-            Location = createDto.Location, 
+            Location = createDto.Location,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = User?.Identity?.Name ?? "System"
         };
 
         _context.WarehouseItems.Add(item);
+
+        // Logowanie operacji dodania
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Dodanie",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Dodano produkt: {item.Name}, ilość: {item.Quantity}, lokalizacja: {item.Location}"
+        };
+        _context.OperationLogs.Add(log);
+
         await _context.SaveChangesAsync();
 
         var resultDto = new WarehouseItemDto
@@ -67,7 +80,7 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location 
+            Location = item.Location
         };
 
         return CreatedAtAction(nameof(GetItems), new { id = item.Id }, resultDto);
@@ -83,6 +96,19 @@ public class WarehouseController : ControllerBase
         }
 
         item.IsDeleted = true;
+
+        // Logowanie operacji usunięcia
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Usunięcie",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Usunięto produkt: {item.Name}"
+        };
+        _context.OperationLogs.Add(log);
+
         await _context.SaveChangesAsync();
 
         return NoContent();
@@ -103,7 +129,7 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location 
+            Location = item.Location
         }).ToList();
 
         return Ok(itemDtos);
@@ -123,12 +149,25 @@ public class WarehouseController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        // Logowanie zmian przed aktualizacją
+        var changes = GetChangeDetails(item, updateDto);
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Edycja",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Edytowano produkt: {item.Name}. Zmiany: {changes}"
+        };
+        _context.OperationLogs.Add(log);
+
         item.Name = updateDto.Name;
         item.Code = updateDto.Code;
         item.Quantity = updateDto.Quantity;
         item.Price = updateDto.Price;
         item.Category = updateDto.Category;
-        item.Location = updateDto.Location; 
+        item.Location = updateDto.Location;
 
         await _context.SaveChangesAsync();
 
@@ -140,7 +179,7 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location 
+            Location = item.Location
         };
 
         return Ok(resultDto);
@@ -160,6 +199,18 @@ public class WarehouseController : ControllerBase
             return BadRequest("Nowa lokalizacja nie może być pusta");
         }
 
+        // Logowanie operacji przeniesienia
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Przeniesienie",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Przeniesiono produkt: {item.Name} z {item.Location} do {request.NewLocation}"
+        };
+        _context.OperationLogs.Add(log);
+
         item.Location = request.NewLocation;
         await _context.SaveChangesAsync();
 
@@ -176,8 +227,41 @@ public class WarehouseController : ControllerBase
 
         return Ok(resultDto);
     }
-}
 
+    // Nowy endpoint do pobierania logów operacji
+    [HttpGet("operation-logs")]
+    public async Task<ActionResult<IEnumerable<OperationLogDto>>> GetOperationLogs()
+    {
+        var logs = await _context.OperationLogs
+            .OrderByDescending(l => l.Timestamp)
+            .Select(l => new OperationLogDto
+            {
+                Id = l.Id,
+                User = l.User,
+                Operation = l.Operation,
+                ItemId = l.ItemId,
+                ItemName = l.ItemName,
+                Timestamp = l.Timestamp.ToString("o"), // ISO 8601
+                Details = l.Details
+            })
+            .ToListAsync();
+
+        return Ok(logs);
+    }
+
+
+    private string GetChangeDetails(WarehouseItem existingItem, CreateWarehouseItemDto updateDto)
+    {
+        var changes = new List<string>();
+        if (existingItem.Name != updateDto.Name) changes.Add($"Nazwa: {existingItem.Name} -> {updateDto.Name}");
+        if (existingItem.Code != updateDto.Code) changes.Add($"Kod: {existingItem.Code} -> {updateDto.Code}");
+        if (existingItem.Quantity != updateDto.Quantity) changes.Add($"Ilość: {existingItem.Quantity} -> {updateDto.Quantity}");
+        if (existingItem.Price != updateDto.Price) changes.Add($"Cena: {existingItem.Price} -> {updateDto.Price}");
+        if (existingItem.Category != updateDto.Category) changes.Add($"Kategoria: {existingItem.Category} -> {updateDto.Category}");
+        if (existingItem.Location != updateDto.Location) changes.Add($"Lokalizacja: {existingItem.Location} -> {updateDto.Location}");
+        return changes.Count > 0 ? string.Join(", ", changes) : "Brak zmian";
+    }
+}
 public class MoveItemRequest
 {
     public string NewLocation { get; set; }
