@@ -11,5 +11,6 @@
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public string CreatedBy { get; set; }
         public bool IsDeleted { get; set; } = false;
+        public string Location { get; set; }
     }
 }
