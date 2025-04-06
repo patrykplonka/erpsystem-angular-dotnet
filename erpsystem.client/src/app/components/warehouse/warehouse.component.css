@@ -288,3 +288,25 @@ header {
   border-radius: 4px;
   width: 150px;
 }
+
+
+.add-item-form form select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.add-item-form form > * {
+  margin-right: 10px;
+}
+
+.add-item-form table {
+  margin-top: 15px;
+  width: 100%;
+}
+
+.add-item-form th,
+.add-item-form td {
+  padding: 10px;
+}

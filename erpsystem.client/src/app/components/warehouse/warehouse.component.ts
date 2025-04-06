@@ -4,6 +4,7 @@ import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { WarehouseMovementsService } from '../../services/warehouse-movements.service';
 
 interface WarehouseItemDto {
   id: number;
@@ -57,10 +58,21 @@ export class WarehouseComponent implements OnInit {
   priceFilter: number | null = null;
   categoryFilter: string = '';
 
+  selectedItemId: number | null = null;
+  movements: any[] = [];
+  newMovement: any = {
+    warehouseItemId: 0,
+    movementType: 'Receipt',
+    quantity: 0,
+    description: ''
+  };
+  showMovements: boolean = false;
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private movementService: WarehouseMovementsService
   ) { }
 
   ngOnInit() {
@@ -96,7 +108,7 @@ export class WarehouseComponent implements OnInit {
   loadDeletedItems() {
     this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse/deleted').subscribe(
       data => this.deletedItems = data,
-      error => console.error('Error loading deleted items', error.status, error.message, error)
+      error => console.error('Error loading deleted items', error.status, error.message)
     );
   }
 
@@ -147,7 +159,7 @@ export class WarehouseComponent implements OnInit {
           this.loadItems();
           this.editItem = null;
         },
-        error => console.error('Error updating item', error.status, error.message, error)
+        error => console.error('Error updating item', error.status, error.message)
       );
     }
   }
@@ -174,5 +186,36 @@ export class WarehouseComponent implements OnInit {
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  toggleMovements(itemId: number) {
+    if (this.selectedItemId === itemId && this.showMovements) {
+      this.showMovements = false;
+      this.selectedItemId = null;
+    } else {
+      this.selectedItemId = itemId;
+      this.showMovements = true;
+      this.loadMovements(itemId);
+      this.newMovement.warehouseItemId = itemId;
+    }
+  }
+
+  loadMovements(itemId: number) {
+    this.movementService.getMovementsByItem(itemId).subscribe(
+      data => this.movements = data,
+      error => console.error('Error loading movements', error)
+    );
+  }
+
+  addMovement() {
+    this.movementService.createMovement(this.newMovement).subscribe(
+      () => {
+        this.loadMovements(this.newMovement.warehouseItemId);
+        this.loadItems(); // Odśwież stan magazynu
+        this.newMovement.quantity = 0;
+        this.newMovement.description = '';
+      },
+      error => console.error('Error adding movement', error)
+    );
   }
 }
