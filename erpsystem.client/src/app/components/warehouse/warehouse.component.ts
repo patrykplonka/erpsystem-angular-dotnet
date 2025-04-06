@@ -35,6 +35,11 @@ interface UpdateWarehouseItemDto {
   location: string;
 }
 
+interface Location {
+  id: number;
+  name: string; 
+}
+
 @Component({
   selector: 'app-warehouse',
   standalone: true,
@@ -75,6 +80,12 @@ export class WarehouseComponent implements OnInit {
   };
   showMovements: boolean = false;
 
+
+  availableLocations: Location[] = []; 
+  selectedLocation: string = '';
+  showMoveForm: boolean = false;
+  itemToMoveId: number | null = null;
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
@@ -84,12 +95,21 @@ export class WarehouseComponent implements OnInit {
 
   ngOnInit() {
     this.loadItems();
+    this.loadLocations(); 
     this.currentUserEmail = this.authService.getCurrentUserEmail();
     this.currentUserFullName = this.authService.getCurrentUserFullName();
     this.newMovement.createdBy = this.currentUserFullName;
     console.log('ngOnInit - currentUserEmail:', this.currentUserEmail);
     console.log('ngOnInit - currentUserFullName:', this.currentUserFullName);
     console.log('ngOnInit - newMovement:', this.newMovement);
+  }
+
+
+  loadLocations() {
+    this.http.get<Location[]>('https://localhost:7224/api/locations').subscribe(
+      data => this.availableLocations = data,
+      error => console.error('Error loading locations', error.status, error.message)
+    );
   }
 
   get filteredItems(): WarehouseItemDto[] {
@@ -182,19 +202,35 @@ export class WarehouseComponent implements OnInit {
 
   moveItem(id: number, newLocation: string) {
     if (!newLocation) {
-      alert('Proszę podać nową lokalizację.');
+      alert('Proszę wybrać nową lokalizację.');
       return;
     }
     this.http.post(`https://localhost:7224/api/warehouse/move/${id}`, { newLocation }).subscribe(
-      () => this.loadItems(),
+      () => {
+        this.loadItems();
+        this.showMoveForm = false;
+        this.itemToMoveId = null;
+        this.selectedLocation = '';
+      },
       error => console.error('Error moving item', error.status, error.message)
     );
   }
 
-  moveItemPrompt(id: number) {
-    const newLocation = prompt('Nowa lokalizacja:');
-    if (newLocation !== null) {
-      this.moveItem(id, newLocation);
+  startMove(id: number) {
+    this.itemToMoveId = id;
+    this.showMoveForm = true;
+    this.selectedLocation = '';
+  }
+
+  cancelMove() {
+    this.showMoveForm = false;
+    this.itemToMoveId = null;
+    this.selectedLocation = '';
+  }
+
+  submitMove() {
+    if (this.itemToMoveId !== null) {
+      this.moveItem(this.itemToMoveId, this.selectedLocation);
     }
   }
 

@@ -31,7 +31,10 @@
           <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
           <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
           <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
-          <input [(ngModel)]="newItem.location" name="location" placeholder="Lokalizacja">
+          <select [(ngModel)]="newItem.location" name="location" required>
+            <option value="" disabled selected>Wybierz lokalizację</option>
+            <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+          </select>
           <button type="submit">Dodaj</button>
           <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
         </form>
@@ -45,14 +48,29 @@
           <input [(ngModel)]="editItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
           <input [(ngModel)]="editItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
           <input [(ngModel)]="editItem.category" name="category" placeholder="Kategoria" required>
-          <input [(ngModel)]="editItem.location" name="location" placeholder="Lokalizacja">
+          <select [(ngModel)]="editItem.location" name="location" required>
+            <option value="" disabled>Wybierz lokalizację</option>
+            <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+          </select>
           <button type="submit">Zapisz</button>
           <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
         </form>
       </div>
 
+      <div class="add-item-form" *ngIf="showMoveForm && itemToMoveId">
+        <h3>Przenieś produkt</h3>
+        <form (ngSubmit)="submitMove()">
+          <select [(ngModel)]="selectedLocation" name="selectedLocation" required>
+            <option value="" disabled selected>Wybierz nową lokalizację</option>
+            <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+          </select>
+          <button type="submit">Przenieś</button>
+          <button type="button" class="cancel-button" (click)="cancelMove()">Anuluj</button>
+        </form>
+      </div>
+
       <div class="items-list">
-        <button class="add-button" (click)="toggleAddForm()" *ngIf="!showAddForm && !editItem">
+        <button class="add-button" (click)="toggleAddForm()" *ngIf="!showAddForm && !editItem && !showMoveForm">
           Dodaj nowy produkt
         </button>
 
@@ -93,7 +111,7 @@
                 <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
                 <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreItem(item.id)">Przywróć</button>
                 <button *ngIf="!showDeleted" class="action-button" (click)="toggleMovements(item.id)">Ruchy</button>
-                <button *ngIf="!showDeleted" class="action-button move-button" (click)="moveItemPrompt(item.id)">Przenieś</button>
+                <button *ngIf="!showDeleted" class="action-button move-button" (click)="startMove(item.id)">Przenieś</button>
               </td>
             </tr>
 
