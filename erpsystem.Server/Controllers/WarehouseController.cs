@@ -288,7 +288,19 @@ public class WarehouseController : ControllerBase
 
         if (movementDto.MovementType == "Issue" && item.Quantity < movementDto.Quantity)
         {
-            return BadRequest($"Za mało towaru na stanie. Dostępna ilość: {item.Quantity}, żądana: {movementDto.Quantity}.");
+            var errorMessage = $"Za mało towaru na stanie. Dostępna ilość: {item.Quantity}, żądana: {movementDto.Quantity}.";
+            var errorLog = new OperationLog
+            {
+                User = User?.Identity?.Name ?? "System",
+                Operation = "Błąd krytyczny",
+                ItemId = item.Id,
+                ItemName = item.Name,
+                Timestamp = DateTime.UtcNow,
+                Details = errorMessage
+            };
+            _context.OperationLogs.Add(errorLog);
+            await _context.SaveChangesAsync();
+            return BadRequest(errorMessage);
         }
 
         var movement = new WarehouseMovements
@@ -382,6 +394,27 @@ public class WarehouseController : ControllerBase
           })
           .ToList();
         return Ok(logs);
+    }
+
+    [HttpGet("low-stock")]
+    public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetLowStockItems()
+    {
+        int lowStockThreshold = 5;
+        var lowStockItems = await _context.WarehouseItems
+            .Where(i => !i.IsDeleted && i.Quantity <= lowStockThreshold)
+            .Select(item => new WarehouseItemDto
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Code = item.Code,
+                Quantity = item.Quantity,
+                Price = item.Price,
+                Category = item.Category,
+                Location = item.Location
+            })
+            .ToListAsync();
+
+        return Ok(lowStockItems);
     }
 
     private string GetChangeDetails(WarehouseItem existingItem, CreateWarehouseItemDto updateDto)

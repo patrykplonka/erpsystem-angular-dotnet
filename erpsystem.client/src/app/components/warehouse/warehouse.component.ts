@@ -61,14 +61,7 @@ interface OperationLog {
 export class WarehouseComponent implements OnInit {
   warehouseItems: WarehouseItemDto[] = [];
   deletedItems: WarehouseItemDto[] = [];
-  newItem: CreateWarehouseItemDto = {
-    name: '',
-    code: '',
-    quantity: null,
-    price: null,
-    category: '',
-    location: ''
-  };
+  newItem: CreateWarehouseItemDto = { name: '', code: '', quantity: null, price: null, category: '', location: '' };
   editItem: UpdateWarehouseItemDto | null = null;
   currentUserEmail: string | null = null;
   currentUserFullName: string = 'Unknown';
@@ -81,28 +74,21 @@ export class WarehouseComponent implements OnInit {
   locationFilter: string = '';
   errorMessage: string | null = null;
   successMessage: string | null = null;
-
   selectedItemId: number | null = null;
   movements: any[] = [];
-  newMovement: any = {
-    warehouseItemId: 0,
-    movementType: 'Receipt',
-    quantity: 0,
-    description: '',
-    createdBy: ''
-  };
+  newMovement: any = { warehouseItemId: 0, movementType: 'Receipt', quantity: 0, description: '', createdBy: '' };
   showMovements: boolean = false;
-
   availableLocations: Location[] = [];
   selectedLocation: string = '';
   showMoveForm: boolean = false;
   itemToMoveId: number | null = null;
-
   operationLogs: OperationLog[] = [];
   showHistory: boolean = false;
   historyUserFilter: string = '';
   historyDateFilter: string = '';
   historyItemFilter: string = '';
+  lowStockThreshold: number = 5;
+  notifications: string[] = []; 
 
   constructor(
     private http: HttpClient,
@@ -115,6 +101,7 @@ export class WarehouseComponent implements OnInit {
     this.loadItems();
     this.loadLocations();
     this.loadOperationLogs();
+    this.loadLowStockItems();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
     this.currentUserFullName = this.authService.getCurrentUserFullName();
     this.newMovement.createdBy = this.currentUserFullName;
@@ -134,23 +121,36 @@ export class WarehouseComponent implements OnInit {
     );
   }
 
+  loadLowStockItems() {
+    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse/low-stock').subscribe(
+      data => {
+        this.notifications = data.map(item => `Niski stan magazynowy: ${item.name} (Ilość: ${item.quantity})`);
+      },
+      error => this.errorMessage = `Błąd ładowania niskich stanów: ${error.status} ${error.message}`
+    );
+  }
+
+  checkLowStock() {
+    this.notifications = [];
+    this.warehouseItems.forEach(item => {
+      if (item.quantity <= this.lowStockThreshold) {
+        this.notifications.push(`Niski stan magazynowy: ${item.name} (Ilość: ${item.quantity})`);
+      }
+    });
+  }
+
   get filteredItems(): WarehouseItemDto[] {
     const items = this.showDeleted ? this.deletedItems : this.warehouseItems;
     return items.filter(item => {
       const matchesNameOrCode = !this.nameFilter ||
         item.name.toLowerCase().includes(this.nameFilter.toLowerCase()) ||
         item.code.toLowerCase().includes(this.nameFilter.toLowerCase());
-
       const matchesQuantity = this.quantityFilter === null || item.quantity === this.quantityFilter;
-
       const matchesPrice = this.priceFilter === null || item.price === this.priceFilter;
-
       const matchesCategory = !this.categoryFilter ||
         item.category.toLowerCase().includes(this.categoryFilter.toLowerCase());
-
       const matchesLocation = !this.locationFilter ||
         item.location.toLowerCase().includes(this.locationFilter.toLowerCase());
-
       return matchesNameOrCode && matchesQuantity && matchesPrice && matchesCategory && matchesLocation;
     });
   }
@@ -164,14 +164,16 @@ export class WarehouseComponent implements OnInit {
       const matchesItem = !this.historyItemFilter ||
         log.itemName.toLowerCase().includes(this.historyItemFilter.toLowerCase()) ||
         log.itemId.toString().includes(this.historyItemFilter);
-
       return matchesUser && matchesDate && matchesItem;
     });
   }
 
   loadItems() {
     this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse').subscribe(
-      data => this.warehouseItems = data,
+      data => {
+        this.warehouseItems = data;
+        this.checkLowStock();
+      },
       error => this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}`
     );
   }
@@ -192,12 +194,7 @@ export class WarehouseComponent implements OnInit {
       this.errorMessage = 'Ilość i cena nie mogą być ujemne.';
       return;
     }
-    const itemToSend = {
-      ...this.newItem,
-      quantity: this.newItem.quantity ?? 0,
-      price: this.newItem.price ?? 0,
-      location: this.newItem.location || 'Brak'
-    };
+    const itemToSend = { ...this.newItem, quantity: this.newItem.quantity ?? 0, price: this.newItem.price ?? 0, location: this.newItem.location || 'Brak' };
     this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
       response => {
         this.successMessage = `Dodano produkt: ${response.name}`;
@@ -261,10 +258,7 @@ export class WarehouseComponent implements OnInit {
       this.errorMessage = 'Proszę wybrać nową lokalizację.';
       return;
     }
-    const payload = {
-      newLocation,
-      createdBy: this.currentUserFullName
-    };
+    const payload = { newLocation, createdBy: this.currentUserFullName };
     this.http.post(`https://localhost:7224/api/warehouse/move/${id}`, payload).subscribe(
       () => {
         this.successMessage = 'Produkt został przeniesiony.';
@@ -351,10 +345,6 @@ export class WarehouseComponent implements OnInit {
   }
 
   addMovement() {
-    if (this.newMovement.warehouseItemId <= 0) {
-      this.errorMessage = 'Proszę wybrać poprawny element magazynu.';
-      return;
-    }
     if (this.newMovement.quantity <= 0) {
       this.errorMessage = 'Ilość musi być większa niż 0.';
       return;
@@ -363,11 +353,6 @@ export class WarehouseComponent implements OnInit {
       this.errorMessage = 'Typ ruchu jest wymagany.';
       return;
     }
-    if (!this.newMovement.createdBy || this.newMovement.createdBy === 'Unknown') {
-      this.errorMessage = 'Nie udało się pobrać danych użytkownika. Zaloguj się ponownie.';
-      return;
-    }
-
     this.movementService.createMovement(this.newMovement).subscribe(
       () => {
         this.successMessage = 'Ruch magazynowy dodany.';
@@ -383,7 +368,13 @@ export class WarehouseComponent implements OnInit {
           createdBy: this.currentUserFullName
         };
       },
-      error => this.errorMessage = error.error || `Błąd dodawania ruchu: ${error.status} ${error.message}`
+      error => {
+        if (error.status === 400 && error.error.includes('Za mało towaru')) {
+          this.errorMessage = error.error;
+        } else {
+          this.errorMessage = error.error || `Błąd dodawania ruchu: ${error.status} ${error.message}`;
+        }
+      }
     );
   }
 

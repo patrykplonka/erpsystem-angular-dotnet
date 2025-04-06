@@ -629,3 +629,11 @@ header {
         margin: 2px 0;
       }
 }
+.alert-warning {
+  background-color: #fff3cd;
+  border-color: #ffeeba;
+  color: #856404;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}

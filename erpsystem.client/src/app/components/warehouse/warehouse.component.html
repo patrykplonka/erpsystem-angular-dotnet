@@ -26,6 +26,12 @@
       <div class="messages">
         <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>
         <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+        <div *ngIf="notifications.length > 0" class="alert alert-warning">
+          <h4>Powiadomienia:</h4>
+          <ul>
+            <li *ngFor="let notification of notifications">{{ notification }}</li>
+          </ul>
+        </div>
       </div>
 
       <div class="forms-container">
