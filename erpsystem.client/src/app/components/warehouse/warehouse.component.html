@@ -13,7 +13,7 @@
 
   <main class="main-content">
     <header>
-      <div>
+      <div class="header-title">
         <h1>📦 Magazyn</h1>
         <p>Zarządzaj produktami w magazynie</p>
       </div>
@@ -23,69 +23,73 @@
     </header>
 
     <section class="warehouse-section">
-      <div class="add-item-form" *ngIf="showAddForm && !editItem">
-        <h3>Dodaj nowy produkt</h3>
-        <form (ngSubmit)="addItem()">
-          <input [(ngModel)]="newItem.name" name="name" placeholder="Nazwa" required>
-          <input [(ngModel)]="newItem.code" name="code" placeholder="Kod" required>
-          <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
-          <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
-          <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
-          <select [(ngModel)]="newItem.location" name="location" required>
-            <option value="" disabled selected>Wybierz lokalizację</option>
-            <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
-          </select>
-          <button type="submit">Dodaj</button>
-          <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
-        </form>
-      </div>
+      <div class="forms-container">
+        <div class="add-item-form" *ngIf="showAddForm && !editItem">
+          <h3>Dodaj nowy produkt</h3>
+          <form (ngSubmit)="addItem()">
+            <input [(ngModel)]="newItem.name" name="name" placeholder="Nazwa" required>
+            <input [(ngModel)]="newItem.code" name="code" placeholder="Kod" required>
+            <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
+            <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
+            <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
+            <select [(ngModel)]="newItem.location" name="location" required>
+              <option value="" disabled selected>Wybierz lokalizację</option>
+              <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+            </select>
+            <div class="form-buttons">
+              <button type="submit">Dodaj</button>
+              <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
+            </div>
+          </form>
+        </div>
 
-      <div class="add-item-form" *ngIf="editItem">
-        <h3>Edytuj produkt</h3>
-        <form (ngSubmit)="updateItem()">
-          <input [(ngModel)]="editItem.name" name="name" placeholder="Nazwa" required>
-          <input [(ngModel)]="editItem.code" name="code" placeholder="Kod" required>
-          <input [(ngModel)]="editItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
-          <input [(ngModel)]="editItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
-          <input [(ngModel)]="editItem.category" name="category" placeholder="Kategoria" required>
-          <select [(ngModel)]="editItem.location" name="location" required>
-            <option value="" disabled>Wybierz lokalizację</option>
-            <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
-          </select>
-          <button type="submit">Zapisz</button>
-          <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
-        </form>
-      </div>
+        <div class="add-item-form" *ngIf="editItem">
+          <h3>Edytuj produkt</h3>
+          <form (ngSubmit)="updateItem()">
+            <input [(ngModel)]="editItem.name" name="name" placeholder="Nazwa" required>
+            <input [(ngModel)]="editItem.code" name="code" placeholder="Kod" required>
+            <input [(ngModel)]="editItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
+            <input [(ngModel)]="editItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
+            <input [(ngModel)]="editItem.category" name="category" placeholder="Kategoria" required>
+            <select [(ngModel)]="editItem.location" name="location" required>
+              <option value="" disabled>Wybierz lokalizację</option>
+              <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+            </select>
+            <div class="form-buttons">
+              <button type="submit">Zapisz</button>
+              <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
+            </div>
+          </form>
+        </div>
 
-      <div class="add-item-form" *ngIf="showMoveForm && itemToMoveId">
-        <h3>Przenieś produkt</h3>
-        <form (ngSubmit)="submitMove()">
-          <select [(ngModel)]="selectedLocation" name="selectedLocation" required>
-            <option value="" disabled selected>Wybierz nową lokalizację</option>
-            <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
-          </select>
-          <button type="submit">Przenieś</button>
-          <button type="button" class="cancel-button" (click)="cancelMove()">Anuluj</button>
-        </form>
+        <div class="add-item-form" *ngIf="showMoveForm && itemToMoveId">
+          <h3>Przenieś produkt</h3>
+          <form (ngSubmit)="submitMove()">
+            <select [(ngModel)]="selectedLocation" name="selectedLocation" required>
+              <option value="" disabled selected>Wybierz nową lokalizację</option>
+              <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+            </select>
+            <div class="form-buttons">
+              <button type="submit">Przenieś</button>
+              <button type="button" class="cancel-button" (click)="cancelMove()">Anuluj</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <div class="items-list">
-        <button class="add-button" (click)="toggleAddForm()" *ngIf="!showAddForm && !editItem && !showMoveForm && !showHistory">
-          Dodaj nowy produkt
-        </button>
-        <button class="toggle-deleted" (click)="toggleDeletedView()">
-          {{ showDeleted ? 'Pokaż aktywne produkty' : 'Pokaż usunięte produkty' }}
-        </button>
-        <button class="toggle-history" (click)="toggleHistoryView()">
-          {{ showHistory ? 'Ukryj historię' : 'Pokaż historię' }}
-        </button>
+        <div class="list-controls">
+          <button class="add-button" (click)="toggleAddForm()" *ngIf="!showAddForm && !editItem && !showMoveForm && !showHistory">Dodaj nowy produkt</button>
+          <button class="toggle-deleted" (click)="toggleDeletedView()">{{ showDeleted ? 'Pokaż aktywne produkty' : 'Pokaż usunięte produkty' }}</button>
+          <button class="toggle-history" (click)="toggleHistoryView()">{{ showHistory ? 'Ukryj historię' : 'Pokaż historię' }}</button>
+        </div>
 
         <div class="filters">
-          <input [(ngModel)]="nameFilter" placeholder="Nazwa lub kod" class="filter-input">
-          <input [(ngModel)]="quantityFilter" type="number" placeholder="Ilość" class="filter-input">
-          <input [(ngModel)]="priceFilter" type="number" step="0.01" placeholder="Cena" class="filter-input">
-          <input [(ngModel)]="categoryFilter" placeholder="Kategoria" class="filter-input">
-          <input [(ngModel)]="locationFilter" placeholder="Lokalizacja" class="filter-input">
+          <input [(ngModel)]="nameFilter" placeholder="Nazwa lub kod">
+          <input [(ngModel)]="quantityFilter" type="number" placeholder="Ilość">
+          <input [(ngModel)]="priceFilter" type="number" step="0.01" placeholder="Cena">
+          <input [(ngModel)]="categoryFilter" placeholder="Kategoria">
+          <input [(ngModel)]="locationFilter" placeholder="Lokalizacja">
         </div>
 
         <table>
@@ -105,21 +109,20 @@
               <td>{{ item.name }}</td>
               <td>{{ item.code }}</td>
               <td>{{ item.quantity }}</td>
-              <td>{{ item.price | currency:'PLN' }}</td>
+              <td>{{ item.price | number:'1.2-2' }} PLN</td>
               <td>{{ item.category }}</td>
               <td>{{ item.location || 'Brak' }}</td>
-              <td>
+              <td class="actions">
                 <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>
                 <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
                 <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreItem(item.id)">Przywróć</button>
-                <button *ngIf="!showDeleted" class="action-button" (click)="toggleMovements(item.id)">Ruchy</button>
                 <button *ngIf="!showDeleted" class="action-button move-button" (click)="startMove(item.id)">Przenieś</button>
+                <button *ngIf="!showDeleted" class="action-button" (click)="toggleMovements(item.id)">Ruchy</button>
               </td>
             </tr>
-
             <tr *ngIf="showMovements && selectedItemId">
               <td colspan="7">
-                <div class="add-item-form">
+                <div class="movements-container">
                   <h3>Ruchy magazynowe</h3>
                   <form (ngSubmit)="addMovement()">
                     <select [(ngModel)]="newMovement.movementType" name="movementType">
@@ -127,10 +130,9 @@
                       <option value="Issue">Wydanie</option>
                     </select>
                     <input type="number" [(ngModel)]="newMovement.quantity" name="quantity" placeholder="Ilość" min="1" required>
-                    <input type="text" [(ngModel)]="newMovement.description" name="description" placeholder="Opis (opcjonalnie)">
+                    <textarea [(ngModel)]="newMovement.description" name="description" placeholder="Opis (opcjonalnie)" rows="4"></textarea>
                     <button type="submit">Zatwierdź</button>
                   </form>
-
                   <h4>Historia ruchów</h4>
                   <table>
                     <thead>
@@ -161,9 +163,9 @@
         <div class="history-section" *ngIf="showHistory">
           <h3>Historia operacji</h3>
           <div class="history-filters">
-            <input [(ngModel)]="historyUserFilter" placeholder="Filtruj po użytkowniku" class="filter-input">
-            <input [(ngModel)]="historyDateFilter" type="date" placeholder="Filtruj po dacie" class="filter-input">
-            <input [(ngModel)]="historyItemFilter" placeholder="Filtruj po produkcie" class="filter-input">
+            <input [(ngModel)]="historyUserFilter" placeholder="Filtruj po użytkowniku">
+            <input [(ngModel)]="historyDateFilter" type="date">
+            <input [(ngModel)]="historyItemFilter" placeholder="Filtruj po produkcie">
           </div>
           <div class="export-buttons">
             <button (click)="exportToExcel()">Eksportuj do Excel</button>
