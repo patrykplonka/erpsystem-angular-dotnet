@@ -23,14 +23,19 @@
     </header>
 
     <section class="warehouse-section">
+      <div class="messages">
+        <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>
+        <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+      </div>
+
       <div class="forms-container">
         <div class="add-item-form" *ngIf="showAddForm && !editItem">
           <h3>Dodaj nowy produkt</h3>
           <form (ngSubmit)="addItem()">
             <input [(ngModel)]="newItem.name" name="name" placeholder="Nazwa" required>
             <input [(ngModel)]="newItem.code" name="code" placeholder="Kod" required>
-            <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
-            <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
+            <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" min="0" required>
+            <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" min="0" required>
             <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
             <select [(ngModel)]="newItem.location" name="location" required>
               <option value="" disabled selected>Wybierz lokalizację</option>
@@ -48,8 +53,8 @@
           <form (ngSubmit)="updateItem()">
             <input [(ngModel)]="editItem.name" name="name" placeholder="Nazwa" required>
             <input [(ngModel)]="editItem.code" name="code" placeholder="Kod" required>
-            <input [(ngModel)]="editItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
-            <input [(ngModel)]="editItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
+            <input [(ngModel)]="editItem.quantity" name="quantity" type="number" placeholder="Ilość" min="0" required>
+            <input [(ngModel)]="editItem.price" name="price" type="number" step="0.01" placeholder="Cena" min="0" required>
             <input [(ngModel)]="editItem.category" name="category" placeholder="Kategoria" required>
             <select [(ngModel)]="editItem.location" name="location" required>
               <option value="" disabled>Wybierz lokalizację</option>
@@ -125,7 +130,7 @@
                 <div class="movements-container">
                   <h3>Ruchy magazynowe</h3>
                   <form (ngSubmit)="addMovement()">
-                    <select [(ngModel)]="newMovement.movementType" name="movementType">
+                    <select [(ngModel)]="newMovement.movementType" name="movementType" required>
                       <option value="Receipt">Przyjęcie</option>
                       <option value="Issue">Wydanie</option>
                     </select>

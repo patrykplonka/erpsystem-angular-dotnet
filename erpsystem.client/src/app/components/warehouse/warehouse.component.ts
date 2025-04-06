@@ -79,6 +79,8 @@ export class WarehouseComponent implements OnInit {
   priceFilter: number | null = null;
   categoryFilter: string = '';
   locationFilter: string = '';
+  errorMessage: string | null = null;
+  successMessage: string | null = null;
 
   selectedItemId: number | null = null;
   movements: any[] = [];
@@ -116,25 +118,19 @@ export class WarehouseComponent implements OnInit {
     this.currentUserEmail = this.authService.getCurrentUserEmail();
     this.currentUserFullName = this.authService.getCurrentUserFullName();
     this.newMovement.createdBy = this.currentUserFullName;
-    console.log('ngOnInit - currentUserEmail:', this.currentUserEmail);
-    console.log('ngOnInit - currentUserFullName:', this.currentUserFullName);
-    console.log('ngOnInit - newMovement:', this.newMovement);
   }
 
   loadLocations() {
     this.http.get<Location[]>('https://localhost:7224/api/locations').subscribe(
       data => this.availableLocations = data,
-      error => console.error('Error loading locations', error.status, error.message)
+      error => this.errorMessage = `Błąd ładowania lokalizacji: ${error.status} ${error.message}`
     );
   }
 
   loadOperationLogs() {
     this.http.get<OperationLog[]>('https://localhost:7224/api/warehouse/operation-logs').subscribe(
-      data => {
-        this.operationLogs = data;
-        console.log('Operation Logs (full details):', JSON.stringify(this.operationLogs, null, 2));
-      },
-      error => console.error('Error loading operation logs', error.status, error.message)
+      data => this.operationLogs = data,
+      error => this.errorMessage = `Błąd ładowania historii: ${error.status} ${error.message}`
     );
   }
 
@@ -176,18 +172,26 @@ export class WarehouseComponent implements OnInit {
   loadItems() {
     this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse').subscribe(
       data => this.warehouseItems = data,
-      error => console.error('Error loading warehouse items', error.status, error.message)
+      error => this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}`
     );
   }
 
   loadDeletedItems() {
     this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse/deleted').subscribe(
       data => this.deletedItems = data,
-      error => console.error('Error loading deleted items', error.status, error.message)
+      error => this.errorMessage = `Błąd ładowania usuniętych produktów: ${error.status} ${error.message}`
     );
   }
 
   addItem() {
+    if (!this.newItem.name || !this.newItem.code || this.newItem.quantity === null || this.newItem.price === null || !this.newItem.category || !this.newItem.location) {
+      this.errorMessage = 'Wszystkie pola są wymagane.';
+      return;
+    }
+    if (this.newItem.quantity < 0 || this.newItem.price < 0) {
+      this.errorMessage = 'Ilość i cena nie mogą być ujemne.';
+      return;
+    }
     const itemToSend = {
       ...this.newItem,
       quantity: this.newItem.quantity ?? 0,
@@ -195,13 +199,15 @@ export class WarehouseComponent implements OnInit {
       location: this.newItem.location || 'Brak'
     };
     this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
-      () => {
+      response => {
+        this.successMessage = `Dodano produkt: ${response.name}`;
+        this.errorMessage = null;
         this.loadItems();
         this.loadOperationLogs();
         this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '' };
         this.showAddForm = false;
       },
-      error => console.error('Error adding item', error.status, error.message)
+      error => this.errorMessage = error.error || `Błąd dodawania produktu: ${error.status} ${error.message}`
     );
   }
 
@@ -212,7 +218,7 @@ export class WarehouseComponent implements OnInit {
         this.loadOperationLogs();
         if (this.showDeleted) this.loadDeletedItems();
       },
-      error => console.error('Error deleting item', error.status, error.message)
+      error => this.errorMessage = `Błąd usuwania produktu: ${error.status} ${error.message}`
     );
   }
 
@@ -223,7 +229,7 @@ export class WarehouseComponent implements OnInit {
         this.loadOperationLogs();
         this.loadDeletedItems();
       },
-      error => console.error('Error restoring item', error.status, error.message)
+      error => this.errorMessage = `Błąd przywracania produktu: ${error.status} ${error.message}`
     );
   }
 
@@ -233,36 +239,43 @@ export class WarehouseComponent implements OnInit {
 
   updateItem() {
     if (this.editItem) {
+      if (!this.editItem.name || !this.editItem.code || !this.editItem.quantity || !this.editItem.price || !this.editItem.category || !this.editItem.location) {
+        this.errorMessage = 'Wszystkie pola są wymagane.';
+        return;
+      }
       this.http.put(`https://localhost:7224/api/warehouse/${this.editItem.id}`, this.editItem).subscribe(
         () => {
+          this.successMessage = `Zaktualizowano produkt: ${this.editItem!.name}`;
+          this.errorMessage = null;
           this.loadItems();
           this.loadOperationLogs();
           this.editItem = null;
         },
-        error => console.error('Error updating item', error.status, error.message)
+        error => this.errorMessage = error.error || `Błąd aktualizacji produktu: ${error.status} ${error.message}`
       );
     }
   }
 
   moveItem(id: number, newLocation: string) {
     if (!newLocation) {
-      alert('Proszę wybrać nową lokalizację.');
+      this.errorMessage = 'Proszę wybrać nową lokalizację.';
       return;
     }
     const payload = {
       newLocation,
       createdBy: this.currentUserFullName
     };
-    console.log('Sending payload to moveItem:', payload);
     this.http.post(`https://localhost:7224/api/warehouse/move/${id}`, payload).subscribe(
       () => {
+        this.successMessage = 'Produkt został przeniesiony.';
+        this.errorMessage = null;
         this.loadItems();
         this.loadOperationLogs();
         this.showMoveForm = false;
         this.itemToMoveId = null;
         this.selectedLocation = '';
       },
-      error => console.error('Error moving item', error.status, error.message)
+      error => this.errorMessage = error.error || `Błąd przenoszenia produktu: ${error.status} ${error.message}`
     );
   }
 
@@ -297,6 +310,8 @@ export class WarehouseComponent implements OnInit {
 
   toggleAddForm() {
     this.showAddForm = !this.showAddForm;
+    this.errorMessage = null;
+    this.successMessage = null;
   }
 
   toggleHistoryView() {
@@ -325,39 +340,38 @@ export class WarehouseComponent implements OnInit {
       this.loadMovements(itemId);
       this.newMovement.warehouseItemId = itemId;
       this.newMovement.createdBy = this.currentUserFullName;
-      console.log('toggleMovements - newMovement:', this.newMovement);
     }
   }
 
   loadMovements(itemId: number) {
     this.movementService.getMovementsByItem(itemId).subscribe(
       data => this.movements = data,
-      error => console.error('Error loading movements', error)
+      error => this.errorMessage = `Błąd ładowania ruchów: ${error.status} ${error.message}`
     );
   }
 
   addMovement() {
     if (this.newMovement.warehouseItemId <= 0) {
-      alert('Proszę wybrać poprawny element magazynu.');
+      this.errorMessage = 'Proszę wybrać poprawny element magazynu.';
       return;
     }
     if (this.newMovement.quantity <= 0) {
-      alert('Ilość musi być większa niż 0.');
+      this.errorMessage = 'Ilość musi być większa niż 0.';
       return;
     }
     if (!this.newMovement.movementType) {
-      alert('Typ ruchu jest wymagany.');
+      this.errorMessage = 'Typ ruchu jest wymagany.';
       return;
     }
     if (!this.newMovement.createdBy || this.newMovement.createdBy === 'Unknown') {
-      alert('Nie udało się pobrać danych użytkownika. Zaloguj się ponownie.');
+      this.errorMessage = 'Nie udało się pobrać danych użytkownika. Zaloguj się ponownie.';
       return;
     }
 
-    console.log('addMovement - Sending movement:', this.newMovement);
-
     this.movementService.createMovement(this.newMovement).subscribe(
       () => {
+        this.successMessage = 'Ruch magazynowy dodany.';
+        this.errorMessage = null;
         this.loadMovements(this.newMovement.warehouseItemId);
         this.loadItems();
         this.loadOperationLogs();
@@ -368,12 +382,8 @@ export class WarehouseComponent implements OnInit {
           description: '',
           createdBy: this.currentUserFullName
         };
-        console.log('addMovement - After reset, newMovement:', this.newMovement);
       },
-      error => {
-        console.error('Error adding movement:', error);
-        alert('Wystąpił błąd podczas dodawania ruchu. Sprawdź konsolę dla szczegółów.');
-      }
+      error => this.errorMessage = error.error || `Błąd dodawania ruchu: ${error.status} ${error.message}`
     );
   }
 
