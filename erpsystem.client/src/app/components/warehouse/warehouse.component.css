@@ -301,15 +301,7 @@ header {
   margin-right: 10px;
 }
 
-.add-item-form table {
-  margin-top: 15px;
-  width: 100%;
-}
 
-.add-item-form th,
-.add-item-form td {
-  padding: 10px;
-}
 .action-button {
   padding: 8px 12px;
   border: none;
@@ -333,4 +325,68 @@ header {
   border: 1px solid #ccc;
   border-radius: 4px;
   width: 150px; 
+}
+.history-section {
+  margin-top: 20px;
+}
+
+.history-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.export-buttons {
+  margin-bottom: 10px;
+}
+
+  .export-buttons button {
+    margin-right: 10px;
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+
+    .export-buttons button:hover {
+      background-color: #45a049;
+    }
+
+.toggle-history {
+  margin: 10px 0 10px 10px;
+  padding: 5px 10px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+  .toggle-history:hover {
+    background-color: #1976D2;
+  }
+
+.add-item-form {
+  margin-bottom: 20px;
+}
+
+.items-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.items-list th, .items-list td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.items-list th {
+  background-color: #f2f2f2;
+}
+
+.action-button {
+  margin-right: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
 }

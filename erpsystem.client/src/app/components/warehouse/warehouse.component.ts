@@ -5,6 +5,8 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WarehouseMovementsService } from '../../services/warehouse-movements.service';
+import * as jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
 
 interface WarehouseItemDto {
   id: number;
@@ -37,7 +39,17 @@ interface UpdateWarehouseItemDto {
 
 interface Location {
   id: number;
-  name: string; 
+  name: string;
+}
+
+interface OperationLog {
+  id: number;
+  user: string;
+  operation: string;
+  itemId: number;
+  itemName: string;
+  timestamp: string;
+  details: string;
 }
 
 @Component({
@@ -80,11 +92,17 @@ export class WarehouseComponent implements OnInit {
   };
   showMovements: boolean = false;
 
-
-  availableLocations: Location[] = []; 
+  availableLocations: Location[] = [];
   selectedLocation: string = '';
   showMoveForm: boolean = false;
   itemToMoveId: number | null = null;
+
+  
+  operationLogs: OperationLog[] = [];
+  showHistory: boolean = false;
+  historyUserFilter: string = '';
+  historyDateFilter: string = '';
+  historyItemFilter: string = '';
 
   constructor(
     private http: HttpClient,
@@ -95,7 +113,8 @@ export class WarehouseComponent implements OnInit {
 
   ngOnInit() {
     this.loadItems();
-    this.loadLocations(); 
+    this.loadLocations();
+    this.loadOperationLogs(); 
     this.currentUserEmail = this.authService.getCurrentUserEmail();
     this.currentUserFullName = this.authService.getCurrentUserFullName();
     this.newMovement.createdBy = this.currentUserFullName;
@@ -104,11 +123,17 @@ export class WarehouseComponent implements OnInit {
     console.log('ngOnInit - newMovement:', this.newMovement);
   }
 
-
   loadLocations() {
     this.http.get<Location[]>('https://localhost:7224/api/locations').subscribe(
       data => this.availableLocations = data,
       error => console.error('Error loading locations', error.status, error.message)
+    );
+  }
+
+  loadOperationLogs() {
+    this.http.get<OperationLog[]>('https://localhost:7224/api/warehouse/operation-logs').subscribe(
+      data => this.operationLogs = data,
+      error => console.error('Error loading operation logs', error.status, error.message)
     );
   }
 
@@ -130,6 +155,20 @@ export class WarehouseComponent implements OnInit {
         item.location.toLowerCase().includes(this.locationFilter.toLowerCase());
 
       return matchesNameOrCode && matchesQuantity && matchesPrice && matchesCategory && matchesLocation;
+    });
+  }
+
+  get filteredOperationLogs(): OperationLog[] {
+    return this.operationLogs.filter(log => {
+      const matchesUser = !this.historyUserFilter ||
+        log.user.toLowerCase().includes(this.historyUserFilter.toLowerCase());
+      const matchesDate = !this.historyDateFilter ||
+        new Date(log.timestamp).toISOString().slice(0, 10) === this.historyDateFilter;
+      const matchesItem = !this.historyItemFilter ||
+        log.itemName.toLowerCase().includes(this.historyItemFilter.toLowerCase()) ||
+        log.itemId.toString().includes(this.historyItemFilter);
+
+      return matchesUser && matchesDate && matchesItem;
     });
   }
 
@@ -157,6 +196,7 @@ export class WarehouseComponent implements OnInit {
     this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
       () => {
         this.loadItems();
+        this.loadOperationLogs(); 
         this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '' };
         this.showAddForm = false;
       },
@@ -168,6 +208,7 @@ export class WarehouseComponent implements OnInit {
     this.http.delete(`https://localhost:7224/api/warehouse/${id}`).subscribe(
       () => {
         this.loadItems();
+        this.loadOperationLogs(); 
         if (this.showDeleted) this.loadDeletedItems();
       },
       error => console.error('Error deleting item', error.status, error.message)
@@ -178,6 +219,7 @@ export class WarehouseComponent implements OnInit {
     this.http.post(`https://localhost:7224/api/warehouse/restore/${id}`, {}).subscribe(
       () => {
         this.loadItems();
+        this.loadOperationLogs(); 
         this.loadDeletedItems();
       },
       error => console.error('Error restoring item', error.status, error.message)
@@ -193,6 +235,7 @@ export class WarehouseComponent implements OnInit {
       this.http.put(`https://localhost:7224/api/warehouse/${this.editItem.id}`, this.editItem).subscribe(
         () => {
           this.loadItems();
+          this.loadOperationLogs(); 
           this.editItem = null;
         },
         error => console.error('Error updating item', error.status, error.message)
@@ -208,6 +251,7 @@ export class WarehouseComponent implements OnInit {
     this.http.post(`https://localhost:7224/api/warehouse/move/${id}`, { newLocation }).subscribe(
       () => {
         this.loadItems();
+        this.loadOperationLogs(); 
         this.showMoveForm = false;
         this.itemToMoveId = null;
         this.selectedLocation = '';
@@ -247,6 +291,13 @@ export class WarehouseComponent implements OnInit {
 
   toggleAddForm() {
     this.showAddForm = !this.showAddForm;
+  }
+
+  toggleHistoryView() {
+    this.showHistory = !this.showHistory;
+    if (this.showHistory) {
+      this.loadOperationLogs(); 
+    }
   }
 
   goToWarehouse() {
@@ -303,6 +354,7 @@ export class WarehouseComponent implements OnInit {
       () => {
         this.loadMovements(this.newMovement.warehouseItemId);
         this.loadItems();
+        this.loadOperationLogs(); 
         this.newMovement = {
           warehouseItemId: this.newMovement.warehouseItemId,
           movementType: 'Receipt',
@@ -317,5 +369,39 @@ export class WarehouseComponent implements OnInit {
         alert('Wystąpił błąd podczas dodawania ruchu. Sprawdź konsolę dla szczegółów.');
       }
     );
+  }
+
+  exportToPDF() {
+    const doc = new jsPDF();
+    const headers = ['ID', 'Użytkownik', 'Operacja', 'Produkt', 'Data', 'Szczegóły'];
+    const data = this.filteredOperationLogs.map(log => [
+      log.id,
+      log.user,
+      log.operation,
+      `${log.itemName} (ID: ${log.itemId})`,
+      new Date(log.timestamp).toLocaleString(),
+      log.details
+    ]);
+
+    (doc as any).autoTable({
+      head: [headers],
+      body: data
+    });
+    doc.save('warehouse_operation_logs.pdf');
+  }
+
+  exportToExcel() {
+    const worksheet = XLSX.utils.json_to_sheet(this.filteredOperationLogs.map(log => ({
+      ID: log.id,
+      Użytkownik: log.user,
+      Operacja: log.operation,
+      Produkt: log.itemName,
+      'ID Produktu': log.itemId,
+      Data: new Date(log.timestamp).toLocaleString(),
+      Szczegóły: log.details
+    })));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Operation Logs');
+    XLSX.writeFile(workbook, 'warehouse_operation_logs.xlsx');
   }
 }

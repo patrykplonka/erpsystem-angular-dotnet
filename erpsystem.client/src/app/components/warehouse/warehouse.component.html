@@ -70,8 +70,14 @@
       </div>
 
       <div class="items-list">
-        <button class="add-button" (click)="toggleAddForm()" *ngIf="!showAddForm && !editItem && !showMoveForm">
+        <button class="add-button" (click)="toggleAddForm()" *ngIf="!showAddForm && !editItem && !showMoveForm && !showHistory">
           Dodaj nowy produkt
+        </button>
+        <button class="toggle-deleted" (click)="toggleDeletedView()">
+          {{ showDeleted ? 'Pokaż aktywne produkty' : 'Pokaż usunięte produkty' }}
+        </button>
+        <button class="toggle-history" (click)="toggleHistoryView()">
+          {{ showHistory ? 'Ukryj historię' : 'Pokaż historię' }}
         </button>
 
         <div class="filters">
@@ -81,10 +87,6 @@
           <input [(ngModel)]="categoryFilter" placeholder="Kategoria" class="filter-input">
           <input [(ngModel)]="locationFilter" placeholder="Lokalizacja" class="filter-input">
         </div>
-
-        <button class="toggle-deleted" (click)="toggleDeletedView()">
-          {{ showDeleted ? 'Pokaż aktywne produkty' : 'Pokaż usunięte produkty' }}
-        </button>
 
         <table>
           <thead>
@@ -155,6 +157,41 @@
             </tr>
           </tbody>
         </table>
+
+        <div class="history-section" *ngIf="showHistory">
+          <h3>Historia operacji</h3>
+          <div class="history-filters">
+            <input [(ngModel)]="historyUserFilter" placeholder="Filtruj po użytkowniku" class="filter-input">
+            <input [(ngModel)]="historyDateFilter" type="date" placeholder="Filtruj po dacie" class="filter-input">
+            <input [(ngModel)]="historyItemFilter" placeholder="Filtruj po produkcie" class="filter-input">
+          </div>
+          <div class="export-buttons">
+            <button (click)="exportToPDF()">Eksportuj do PDF</button>
+            <button (click)="exportToExcel()">Eksportuj do Excel</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Użytkownik</th>
+                <th>Operacja</th>
+                <th>Produkt</th>
+                <th>Data</th>
+                <th>Szczegóły</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let log of filteredOperationLogs">
+                <td>{{ log.id }}</td>
+                <td>{{ log.user }}</td>
+                <td>{{ log.operation }}</td>
+                <td>{{ log.itemName }} (ID: {{ log.itemId }})</td>
+                <td>{{ log.timestamp | date:'yyyy-MM-dd HH:mm' }}</td>
+                <td>{{ log.details }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>
