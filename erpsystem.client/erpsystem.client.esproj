@@ -8,6 +8,7 @@
     <BuildOutputFolder>$(MSBuildProjectDirectory)\dist\erpsystem.client\browser\</BuildOutputFolder>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include="assets\" />
     <Folder Include="src\assets\" />
   </ItemGroup>
   <ItemGroup>
