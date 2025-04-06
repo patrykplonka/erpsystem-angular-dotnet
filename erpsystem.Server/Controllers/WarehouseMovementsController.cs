@@ -1,7 +1,8 @@
-﻿using erpsystem.Server.Data;
-using erpsystem.Server.Models;
+﻿using erpsystem.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using erpsystem.Server.Data;
+using erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
 {
@@ -17,34 +18,55 @@ namespace erpsystem.Server.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateMovement([FromBody] WarehouseMovements movement)
+        public async Task<IActionResult> CreateMovement([FromBody] WarehouseMovementsDTO movementDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var item = await _context.WarehouseItems.FindAsync(movement.WarehouseItemId);
+            var item = await _context.WarehouseItems.FindAsync(movementDto.WarehouseItemId);
             if (item == null || item.IsDeleted)
                 return NotFound("Produkt nie istnieje lub jest usunięty");
 
-            if (movement.MovementType == "Receipt")
+            if (movementDto.MovementType == "Receipt")
             {
-                item.Quantity += movement.Quantity;
+                item.Quantity += movementDto.Quantity;
             }
-            else if (movement.MovementType == "Issue")
+            else if (movementDto.MovementType == "Issue")
             {
-                if (item.Quantity < movement.Quantity)
+                if (item.Quantity < movementDto.Quantity)
                     return BadRequest("Niewystarczająca ilość na magazynie");
-                item.Quantity -= movement.Quantity;
+                item.Quantity -= movementDto.Quantity;
             }
             else
             {
                 return BadRequest("Nieprawidłowy typ ruchu");
             }
 
-            movement.CreatedBy = User.Identity?.Name ?? "System"; 
+            var movement = new WarehouseMovements
+            {
+                WarehouseItemId = movementDto.WarehouseItemId,
+                MovementType = movementDto.MovementType,
+                Quantity = movementDto.Quantity,
+                Date = DateTime.UtcNow, 
+                Description = movementDto.Description,
+                CreatedBy = User.Identity?.Name ?? "System"
+            };
+
             _context.WarehouseMovements.Add(movement);
             await _context.SaveChangesAsync();
-            return Ok(movement);
+
+            var responseDto = new WarehouseMovementsDTO
+            {
+                Id = movement.Id,
+                WarehouseItemId = movement.WarehouseItemId,
+                MovementType = movement.MovementType,
+                Quantity = movement.Quantity,
+                Date = movement.Date,
+                Description = movement.Description,
+                CreatedBy = movement.CreatedBy
+            };
+
+            return Ok(responseDto);
         }
 
         [HttpGet("item/{warehouseItemId}")]
@@ -53,7 +75,18 @@ namespace erpsystem.Server.Controllers
             var movements = await _context.WarehouseMovements
                 .Where(m => m.WarehouseItemId == warehouseItemId)
                 .OrderByDescending(m => m.Date)
+                .Select(m => new WarehouseMovementsDTO
+                {
+                    Id = m.Id,
+                    WarehouseItemId = m.WarehouseItemId,
+                    MovementType = m.MovementType,
+                    Quantity = m.Quantity,
+                    Date = m.Date,
+                    Description = m.Description,
+                    CreatedBy = m.CreatedBy
+                })
                 .ToListAsync();
+
             return Ok(movements);
         }
     }
