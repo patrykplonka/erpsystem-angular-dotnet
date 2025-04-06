@@ -58,7 +58,6 @@ public class WarehouseController : ControllerBase
 
         _context.WarehouseItems.Add(item);
 
-        // Logowanie operacji dodania
         var log = new OperationLog
         {
             User = User?.Identity?.Name ?? "System",
@@ -97,7 +96,6 @@ public class WarehouseController : ControllerBase
 
         item.IsDeleted = true;
 
-        // Logowanie operacji usunięcia
         var log = new OperationLog
         {
             User = User?.Identity?.Name ?? "System",
@@ -149,7 +147,6 @@ public class WarehouseController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        // Logowanie zmian przed aktualizacją
         var changes = GetChangeDetails(item, updateDto);
         var log = new OperationLog
         {
@@ -199,7 +196,6 @@ public class WarehouseController : ControllerBase
             return BadRequest("Nowa lokalizacja nie może być pusta");
         }
 
-        // Logowanie operacji przeniesienia
         var log = new OperationLog
         {
             User = User?.Identity?.Name ?? "System",
@@ -228,24 +224,22 @@ public class WarehouseController : ControllerBase
         return Ok(resultDto);
     }
 
-    // Nowy endpoint do pobierania logów operacji
-    [HttpGet("operation-logs")]
-    public async Task<ActionResult<IEnumerable<OperationLogDto>>> GetOperationLogs()
-    {
-        var logs = await _context.OperationLogs
-            .OrderByDescending(l => l.Timestamp)
-            .Select(l => new OperationLogDto
-            {
-                Id = l.Id,
-                User = l.User,
-                Operation = l.Operation,
-                ItemId = l.ItemId,
-                ItemName = l.ItemName,
-                Timestamp = l.Timestamp.ToString("o"), // ISO 8601
-                Details = l.Details
-            })
-            .ToListAsync();
 
+    [HttpGet("operation-logs")]
+    public ActionResult<IEnumerable<OperationLogDto>> GetOperationLogs()
+    {
+        var logs = _context.OperationLogs
+          .Select(l => new OperationLogDto
+          {
+              Id = l.Id,
+              User = l.User,
+              Operation = l.Operation,
+              ItemId = l.ItemId,
+              ItemName = l.ItemName,
+              Timestamp = l.Timestamp.ToString("o"), // ISO 8601
+              Details = l.Details
+          })
+          .ToList();
         return Ok(logs);
     }
 

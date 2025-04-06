@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WarehouseMovementsService } from '../../services/warehouse-movements.service';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 interface WarehouseItemDto {
@@ -98,7 +98,6 @@ export class WarehouseComponent implements OnInit {
   showMoveForm: boolean = false;
   itemToMoveId: number | null = null;
 
-  
   operationLogs: OperationLog[] = [];
   showHistory: boolean = false;
   historyUserFilter: string = '';
@@ -115,7 +114,7 @@ export class WarehouseComponent implements OnInit {
   ngOnInit() {
     this.loadItems();
     this.loadLocations();
-    this.loadOperationLogs(); 
+    this.loadOperationLogs();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
     this.currentUserFullName = this.authService.getCurrentUserFullName();
     this.newMovement.createdBy = this.currentUserFullName;
@@ -197,7 +196,7 @@ export class WarehouseComponent implements OnInit {
     this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
       () => {
         this.loadItems();
-        this.loadOperationLogs(); 
+        this.loadOperationLogs();
         this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '' };
         this.showAddForm = false;
       },
@@ -209,7 +208,7 @@ export class WarehouseComponent implements OnInit {
     this.http.delete(`https://localhost:7224/api/warehouse/${id}`).subscribe(
       () => {
         this.loadItems();
-        this.loadOperationLogs(); 
+        this.loadOperationLogs();
         if (this.showDeleted) this.loadDeletedItems();
       },
       error => console.error('Error deleting item', error.status, error.message)
@@ -220,7 +219,7 @@ export class WarehouseComponent implements OnInit {
     this.http.post(`https://localhost:7224/api/warehouse/restore/${id}`, {}).subscribe(
       () => {
         this.loadItems();
-        this.loadOperationLogs(); 
+        this.loadOperationLogs();
         this.loadDeletedItems();
       },
       error => console.error('Error restoring item', error.status, error.message)
@@ -236,7 +235,7 @@ export class WarehouseComponent implements OnInit {
       this.http.put(`https://localhost:7224/api/warehouse/${this.editItem.id}`, this.editItem).subscribe(
         () => {
           this.loadItems();
-          this.loadOperationLogs(); 
+          this.loadOperationLogs();
           this.editItem = null;
         },
         error => console.error('Error updating item', error.status, error.message)
@@ -252,7 +251,7 @@ export class WarehouseComponent implements OnInit {
     this.http.post(`https://localhost:7224/api/warehouse/move/${id}`, { newLocation }).subscribe(
       () => {
         this.loadItems();
-        this.loadOperationLogs(); 
+        this.loadOperationLogs();
         this.showMoveForm = false;
         this.itemToMoveId = null;
         this.selectedLocation = '';
@@ -297,7 +296,7 @@ export class WarehouseComponent implements OnInit {
   toggleHistoryView() {
     this.showHistory = !this.showHistory;
     if (this.showHistory) {
-      this.loadOperationLogs(); 
+      this.loadOperationLogs();
     }
   }
 
@@ -355,7 +354,7 @@ export class WarehouseComponent implements OnInit {
       () => {
         this.loadMovements(this.newMovement.warehouseItemId);
         this.loadItems();
-        this.loadOperationLogs(); 
+        this.loadOperationLogs();
         this.newMovement = {
           warehouseItemId: this.newMovement.warehouseItemId,
           movementType: 'Receipt',
@@ -373,7 +372,14 @@ export class WarehouseComponent implements OnInit {
   }
 
   exportToPDF() {
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    doc.setFont("times", "normal");
+
     const headers = ['ID', 'Użytkownik', 'Operacja', 'Produkt', 'Data', 'Szczegóły'];
     const data = this.filteredOperationLogs.map(log => [
       log.id,
@@ -384,10 +390,46 @@ export class WarehouseComponent implements OnInit {
       log.details
     ]);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       head: [headers],
-      body: data
+      body: data,
+      theme: 'striped',
+      headStyles: { fillColor: [22, 160, 133] },
+      margin: { top: 10 },
+      styles: {
+        font: 'times', // Użyj "times"
+        fontStyle: 'normal',
+        overflow: 'linebreak',
+        halign: 'left'
+      },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 40 },
+        4: { cellWidth: 30 },
+        5: { cellWidth: 50 }
+      },
+      // Dodaj hook do ręcznej korekty tekstu, jeśli potrzebne
+      didParseCell: (data) => {
+        // Możesz tutaj ręcznie poprawić tekst, jeśli znaki są niepoprawne
+        if (data.cell.text) {
+          data.cell.text = data.cell.text.map(text =>
+            text
+              .replace(/ł/g, 'ł') // Teoretycznie niepotrzebne, ale dla pewności
+              .replace(/ę/g, 'ę')
+              .replace(/ś/g, 'ś')
+              .replace(/ć/g, 'ć')
+              .replace(/ź/g, 'ź')
+              .replace(/ż/g, 'ż')
+              .replace(/ą/g, 'ą')
+              .replace(/ó/g, 'ó')
+              .replace(/ń/g, 'ń')
+          );
+        }
+      }
     });
+
     doc.save('warehouse_operation_logs.pdf');
   }
 
