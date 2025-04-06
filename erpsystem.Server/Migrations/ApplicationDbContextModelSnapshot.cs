@@ -307,7 +307,7 @@ namespace erpsystem.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("StockMovements");
+                    b.ToTable("WarehouseMovements");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

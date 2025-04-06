@@ -51,6 +51,7 @@ export class WarehouseComponent implements OnInit {
   };
   editItem: UpdateWarehouseItemDto | null = null;
   currentUserEmail: string | null = null;
+  currentUserFullName: string = 'Unknown'; 
   showDeleted: boolean = false;
   showAddForm: boolean = false;
   nameFilter: string = '';
@@ -64,7 +65,8 @@ export class WarehouseComponent implements OnInit {
     warehouseItemId: 0,
     movementType: 'Receipt',
     quantity: 0,
-    description: ''
+    description: '',
+    createdBy: ''
   };
   showMovements: boolean = false;
 
@@ -78,6 +80,11 @@ export class WarehouseComponent implements OnInit {
   ngOnInit() {
     this.loadItems();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
+    this.currentUserFullName = this.authService.getCurrentUserFullName();
+    this.newMovement.createdBy = this.currentUserFullName;
+    console.log('ngOnInit - currentUserEmail:', this.currentUserEmail);
+    console.log('ngOnInit - currentUserFullName:', this.currentUserFullName);
+    console.log('ngOnInit - newMovement:', this.newMovement);
   }
 
   get filteredItems(): WarehouseItemDto[] {
@@ -197,6 +204,8 @@ export class WarehouseComponent implements OnInit {
       this.showMovements = true;
       this.loadMovements(itemId);
       this.newMovement.warehouseItemId = itemId;
+      this.newMovement.createdBy = this.currentUserFullName;
+      console.log('toggleMovements - newMovement:', this.newMovement);
     }
   }
 
@@ -208,14 +217,42 @@ export class WarehouseComponent implements OnInit {
   }
 
   addMovement() {
+    if (this.newMovement.warehouseItemId <= 0) {
+      alert('Proszę wybrać poprawny element magazynu.');
+      return;
+    }
+    if (this.newMovement.quantity <= 0) {
+      alert('Ilość musi być większa niż 0.');
+      return;
+    }
+    if (!this.newMovement.movementType) {
+      alert('Typ ruchu jest wymagany.');
+      return;
+    }
+    if (!this.newMovement.createdBy || this.newMovement.createdBy === 'Unknown') {
+      alert('Nie udało się pobrać danych użytkownika. Zaloguj się ponownie.');
+      return;
+    }
+
+    console.log('addMovement - Sending movement:', this.newMovement);
+
     this.movementService.createMovement(this.newMovement).subscribe(
       () => {
         this.loadMovements(this.newMovement.warehouseItemId);
-        this.loadItems(); // Odśwież stan magazynu
-        this.newMovement.quantity = 0;
-        this.newMovement.description = '';
+        this.loadItems();
+        this.newMovement = {
+          warehouseItemId: this.newMovement.warehouseItemId,
+          movementType: 'Receipt',
+          quantity: 0,
+          description: '',
+          createdBy: this.currentUserFullName 
+        };
+        console.log('addMovement - After reset, newMovement:', this.newMovement);
       },
-      error => console.error('Error adding movement', error)
+      error => {
+        console.error('Error adding movement:', error);
+        alert('Wystąpił błąd podczas dodawania ruchu. Sprawdź konsolę dla szczegółów.');
+      }
     );
   }
 }
