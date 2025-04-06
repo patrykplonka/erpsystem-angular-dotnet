@@ -23,7 +23,6 @@
     </header>
 
     <section class="warehouse-section">
-      <!-- Formularz dodawania -->
       <div class="add-item-form" *ngIf="showAddForm && !editItem">
         <h3>Dodaj nowy produkt</h3>
         <form (ngSubmit)="addItem()">
@@ -32,6 +31,7 @@
           <input [(ngModel)]="newItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
           <input [(ngModel)]="newItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
           <input [(ngModel)]="newItem.category" name="category" placeholder="Kategoria" required>
+          <input [(ngModel)]="newItem.location" name="location" placeholder="Lokalizacja">
           <button type="submit">Dodaj</button>
           <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
         </form>
@@ -45,6 +45,7 @@
           <input [(ngModel)]="editItem.quantity" name="quantity" type="number" placeholder="Ilość" required>
           <input [(ngModel)]="editItem.price" name="price" type="number" step="0.01" placeholder="Cena" required>
           <input [(ngModel)]="editItem.category" name="category" placeholder="Kategoria" required>
+          <input [(ngModel)]="editItem.location" name="location" placeholder="Lokalizacja">
           <button type="submit">Zapisz</button>
           <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
         </form>
@@ -60,6 +61,7 @@
           <input [(ngModel)]="quantityFilter" type="number" placeholder="Ilość" class="filter-input">
           <input [(ngModel)]="priceFilter" type="number" step="0.01" placeholder="Cena" class="filter-input">
           <input [(ngModel)]="categoryFilter" placeholder="Kategoria" class="filter-input">
+          <input [(ngModel)]="locationFilter" placeholder="Lokalizacja" class="filter-input">
         </div>
 
         <button class="toggle-deleted" (click)="toggleDeletedView()">
@@ -74,6 +76,7 @@
               <th>Ilość</th>
               <th>Cena</th>
               <th>Kategoria</th>
+              <th>Lokalizacja</th>
               <th>Akcje</th>
             </tr>
           </thead>
@@ -84,16 +87,18 @@
               <td>{{ item.quantity }}</td>
               <td>{{ item.price | currency:'PLN' }}</td>
               <td>{{ item.category }}</td>
+              <td>{{ item.location || 'Brak' }}</td>
               <td>
                 <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>
                 <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
                 <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreItem(item.id)">Przywróć</button>
                 <button *ngIf="!showDeleted" class="action-button" (click)="toggleMovements(item.id)">Ruchy</button>
+                <button *ngIf="!showDeleted" class="action-button move-button" (click)="moveItemPrompt(item.id)">Przenieś</button>
               </td>
             </tr>
 
             <tr *ngIf="showMovements && selectedItemId">
-              <td colspan="6">
+              <td colspan="7">
                 <div class="add-item-form">
                   <h3>Ruchy magazynowe</h3>
                   <form (ngSubmit)="addMovement()">

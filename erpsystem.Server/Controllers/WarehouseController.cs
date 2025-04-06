@@ -19,7 +19,7 @@ public class WarehouseController : ControllerBase
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetItems()
     {
         var items = await _context.WarehouseItems
-            .Where(i => !i.IsDeleted) 
+            .Where(i => !i.IsDeleted)
             .ToListAsync();
 
         var itemDtos = items.Select(item => new WarehouseItemDto
@@ -29,7 +29,8 @@ public class WarehouseController : ControllerBase
             Code = item.Code,
             Quantity = item.Quantity,
             Price = item.Price,
-            Category = item.Category
+            Category = item.Category,
+            Location = item.Location // Dodano lokalizację
         }).ToList();
 
         return Ok(itemDtos);
@@ -50,6 +51,7 @@ public class WarehouseController : ControllerBase
             Quantity = createDto.Quantity,
             Price = createDto.Price,
             Category = createDto.Category,
+            Location = createDto.Location, 
             CreatedDate = DateTime.UtcNow,
             CreatedBy = User?.Identity?.Name ?? "System"
         };
@@ -64,7 +66,8 @@ public class WarehouseController : ControllerBase
             Code = item.Code,
             Quantity = item.Quantity,
             Price = item.Price,
-            Category = item.Category
+            Category = item.Category,
+            Location = item.Location 
         };
 
         return CreatedAtAction(nameof(GetItems), new { id = item.Id }, resultDto);
@@ -79,17 +82,17 @@ public class WarehouseController : ControllerBase
             return NotFound();
         }
 
-        item.IsDeleted = true; 
+        item.IsDeleted = true;
         await _context.SaveChangesAsync();
 
-        return NoContent(); 
+        return NoContent();
     }
 
     [HttpGet("deleted")]
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetDeletedItems()
     {
         var deletedItems = await _context.WarehouseItems
-            .Where(i => i.IsDeleted) // Filter for deleted items
+            .Where(i => i.IsDeleted)
             .ToListAsync();
 
         var itemDtos = deletedItems.Select(item => new WarehouseItemDto
@@ -99,7 +102,8 @@ public class WarehouseController : ControllerBase
             Code = item.Code,
             Quantity = item.Quantity,
             Price = item.Price,
-            Category = item.Category
+            Category = item.Category,
+            Location = item.Location 
         }).ToList();
 
         return Ok(itemDtos);
@@ -124,6 +128,7 @@ public class WarehouseController : ControllerBase
         item.Quantity = updateDto.Quantity;
         item.Price = updateDto.Price;
         item.Category = updateDto.Category;
+        item.Location = updateDto.Location; 
 
         await _context.SaveChangesAsync();
 
@@ -134,9 +139,46 @@ public class WarehouseController : ControllerBase
             Code = item.Code,
             Quantity = item.Quantity,
             Price = item.Price,
-            Category = item.Category
+            Category = item.Category,
+            Location = item.Location 
         };
 
         return Ok(resultDto);
     }
+
+    [HttpPost("move/{id}")]
+    public async Task<IActionResult> MoveItem(int id, [FromBody] MoveItemRequest request)
+    {
+        var item = await _context.WarehouseItems.FindAsync(id);
+        if (item == null || item.IsDeleted)
+        {
+            return NotFound("Produkt nie istnieje lub jest usunięty");
+        }
+
+        if (string.IsNullOrEmpty(request.NewLocation))
+        {
+            return BadRequest("Nowa lokalizacja nie może być pusta");
+        }
+
+        item.Location = request.NewLocation;
+        await _context.SaveChangesAsync();
+
+        var resultDto = new WarehouseItemDto
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Code = item.Code,
+            Quantity = item.Quantity,
+            Price = item.Price,
+            Category = item.Category,
+            Location = item.Location
+        };
+
+        return Ok(resultDto);
+    }
+}
+
+public class MoveItemRequest
+{
+    public string NewLocation { get; set; }
 }

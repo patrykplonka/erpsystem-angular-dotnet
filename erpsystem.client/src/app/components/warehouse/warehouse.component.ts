@@ -13,6 +13,7 @@ interface WarehouseItemDto {
   quantity: number;
   price: number;
   category: string;
+  location: string;
 }
 
 interface CreateWarehouseItemDto {
@@ -21,6 +22,7 @@ interface CreateWarehouseItemDto {
   quantity: number | null;
   price: number | null;
   category: string;
+  location: string;
 }
 
 interface UpdateWarehouseItemDto {
@@ -30,6 +32,7 @@ interface UpdateWarehouseItemDto {
   quantity: number;
   price: number;
   category: string;
+  location: string;
 }
 
 @Component({
@@ -47,17 +50,19 @@ export class WarehouseComponent implements OnInit {
     code: '',
     quantity: null,
     price: null,
-    category: ''
+    category: '',
+    location: ''
   };
   editItem: UpdateWarehouseItemDto | null = null;
   currentUserEmail: string | null = null;
-  currentUserFullName: string = 'Unknown'; 
+  currentUserFullName: string = 'Unknown';
   showDeleted: boolean = false;
   showAddForm: boolean = false;
   nameFilter: string = '';
   quantityFilter: number | null = null;
   priceFilter: number | null = null;
   categoryFilter: string = '';
+  locationFilter: string = '';
 
   selectedItemId: number | null = null;
   movements: any[] = [];
@@ -101,7 +106,10 @@ export class WarehouseComponent implements OnInit {
       const matchesCategory = !this.categoryFilter ||
         item.category.toLowerCase().includes(this.categoryFilter.toLowerCase());
 
-      return matchesNameOrCode && matchesQuantity && matchesPrice && matchesCategory;
+      const matchesLocation = !this.locationFilter ||
+        item.location.toLowerCase().includes(this.locationFilter.toLowerCase());
+
+      return matchesNameOrCode && matchesQuantity && matchesPrice && matchesCategory && matchesLocation;
     });
   }
 
@@ -123,12 +131,13 @@ export class WarehouseComponent implements OnInit {
     const itemToSend = {
       ...this.newItem,
       quantity: this.newItem.quantity ?? 0,
-      price: this.newItem.price ?? 0
+      price: this.newItem.price ?? 0,
+      location: this.newItem.location || 'Brak'
     };
     this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
       () => {
         this.loadItems();
-        this.newItem = { name: '', code: '', quantity: null, price: null, category: '' };
+        this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '' };
         this.showAddForm = false;
       },
       error => console.error('Error adding item', error.status, error.message)
@@ -168,6 +177,24 @@ export class WarehouseComponent implements OnInit {
         },
         error => console.error('Error updating item', error.status, error.message)
       );
+    }
+  }
+
+  moveItem(id: number, newLocation: string) {
+    if (!newLocation) {
+      alert('Proszę podać nową lokalizację.');
+      return;
+    }
+    this.http.post(`https://localhost:7224/api/warehouse/move/${id}`, { newLocation }).subscribe(
+      () => this.loadItems(),
+      error => console.error('Error moving item', error.status, error.message)
+    );
+  }
+
+  moveItemPrompt(id: number) {
+    const newLocation = prompt('Nowa lokalizacja:');
+    if (newLocation !== null) {
+      this.moveItem(id, newLocation);
     }
   }
 
@@ -245,7 +272,7 @@ export class WarehouseComponent implements OnInit {
           movementType: 'Receipt',
           quantity: 0,
           description: '',
-          createdBy: this.currentUserFullName 
+          createdBy: this.currentUserFullName
         };
         console.log('addMovement - After reset, newMovement:', this.newMovement);
       },

@@ -310,3 +310,27 @@ header {
 .add-item-form td {
   padding: 10px;
 }
+.action-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s;
+  margin-right: 5px;
+}
+
+.move-button {
+  background: #9b59b6; 
+  color: #fff;
+}
+
+  .move-button:hover {
+    background: #8e44ad;
+  }
+
+.filter-input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 150px; 
+}
