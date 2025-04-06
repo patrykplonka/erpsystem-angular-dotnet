@@ -12,8 +12,8 @@ using erpsystem.Server.Data;
 namespace erpsystem.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250404063650_AddWarehouse")]
-    partial class AddWarehouse
+    [Migration("20250406054016_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -261,6 +261,9 @@ namespace erpsystem.Server.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -274,6 +277,40 @@ namespace erpsystem.Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("WarehouseItems");
+                });
+
+            modelBuilder.Entity("erpsystem.Server.Models.WarehouseMovements", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MovementType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WarehouseItemId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WarehouseMovements");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

@@ -6,6 +6,9 @@ import { tap } from 'rxjs/operators';
 
 interface LoginResponse {
   token: string;
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 @Injectable({
@@ -20,7 +23,14 @@ export class AuthService {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
       tap((response: LoginResponse) => {
         this.saveToken(response.token);
-        localStorage.setItem('userEmail', email);
+        localStorage.setItem('userEmail', response.email);
+        localStorage.setItem('userFirstName', response.firstName || 'Unknown');
+        localStorage.setItem('userLastName', response.lastName || '');
+        console.log('Login - Saved to localStorage:', {
+          email: response.email,
+          firstName: response.firstName,
+          lastName: response.lastName
+        });
         this.router.navigate(['/dashboard']);
       })
     );
@@ -40,18 +50,26 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     const token = this.getToken();
-    console.log('Sprawdzam autoryzację:', token);
     return !!token;
   }
-
 
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('userFirstName');
+    localStorage.removeItem('userLastName');
     this.router.navigate(['/login']);
   }
 
   getCurrentUserEmail(): string | null {
     return localStorage.getItem('userEmail');
+  }
+
+  getCurrentUserFullName(): string {
+    const firstName = localStorage.getItem('userFirstName') || 'Unknown';
+    const lastName = localStorage.getItem('userLastName') || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    console.log('getCurrentUserFullName - Returning:', fullName);
+    return fullName;
   }
 }

@@ -88,6 +88,46 @@
                 <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>
                 <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
                 <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreItem(item.id)">Przywróć</button>
+                <button *ngIf="!showDeleted" class="action-button" (click)="toggleMovements(item.id)">Ruchy</button>
+              </td>
+            </tr>
+
+            <tr *ngIf="showMovements && selectedItemId">
+              <td colspan="6">
+                <div class="add-item-form">
+                  <h3>Ruchy magazynowe</h3>
+                  <form (ngSubmit)="addMovement()">
+                    <select [(ngModel)]="newMovement.movementType" name="movementType">
+                      <option value="Receipt">Przyjęcie</option>
+                      <option value="Issue">Wydanie</option>
+                    </select>
+                    <input type="number" [(ngModel)]="newMovement.quantity" name="quantity" placeholder="Ilość" min="1" required>
+                    <input type="text" [(ngModel)]="newMovement.description" name="description" placeholder="Opis (opcjonalnie)">
+                    <button type="submit">Zatwierdź</button>
+                  </form>
+
+                  <h4>Historia ruchów</h4>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Typ</th>
+                        <th>Ilość</th>
+                        <th>Data</th>
+                        <th>Opis</th>
+                        <th>Użytkownik</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let m of movements">
+                        <td>{{ m.movementType === 'Receipt' ? 'Przyjęcie' : 'Wydanie' }}</td>
+                        <td>{{ m.quantity }}</td>
+                        <td>{{ m.date | date:'yyyy-MM-dd HH:mm' }}</td>
+                        <td>{{ m.description || '-' }}</td>
+                        <td>{{ m.createdBy }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </td>
             </tr>
           </tbody>
