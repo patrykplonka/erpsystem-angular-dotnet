@@ -224,6 +224,48 @@ public class WarehouseController : ControllerBase
         return Ok(resultDto);
     }
 
+    [HttpPost("restore/{id}")]
+    public async Task<IActionResult> RestoreItem(int id)
+    {
+        var item = await _context.WarehouseItems.FindAsync(id);
+        if (item == null)
+        {
+            return NotFound("Produkt nie istnieje");
+        }
+
+        if (!item.IsDeleted)
+        {
+            return BadRequest("Produkt nie jest usunięty");
+        }
+
+        item.IsDeleted = false;
+
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Przywrócenie",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Przywrócono produkt: {item.Name}"
+        };
+        _context.OperationLogs.Add(log);
+
+        await _context.SaveChangesAsync();
+
+        var resultDto = new WarehouseItemDto
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Code = item.Code,
+            Quantity = item.Quantity,
+            Price = item.Price,
+            Category = item.Category,
+            Location = item.Location
+        };
+
+        return Ok(resultDto);
+    }
 
     [HttpGet("operation-logs")]
     public ActionResult<IEnumerable<OperationLogDto>> GetOperationLogs()
@@ -236,13 +278,12 @@ public class WarehouseController : ControllerBase
               Operation = l.Operation,
               ItemId = l.ItemId,
               ItemName = l.ItemName,
-              Timestamp = l.Timestamp.ToString("o"), // ISO 8601
+              Timestamp = l.Timestamp.ToString("o"),
               Details = l.Details
           })
           .ToList();
         return Ok(logs);
     }
-
 
     private string GetChangeDetails(WarehouseItem existingItem, CreateWarehouseItemDto updateDto)
     {
@@ -256,6 +297,7 @@ public class WarehouseController : ControllerBase
         return changes.Count > 0 ? string.Join(", ", changes) : "Brak zmian";
     }
 }
+
 public class MoveItemRequest
 {
     public string NewLocation { get; set; }
