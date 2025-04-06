@@ -47,10 +47,15 @@ namespace erpsystem.Server.Controllers
                 WarehouseItemId = movementDto.WarehouseItemId,
                 MovementType = movementDto.MovementType,
                 Quantity = movementDto.Quantity,
-                Date = DateTime.UtcNow, 
+                Date = DateTime.UtcNow,
                 Description = movementDto.Description,
-                CreatedBy = User.Identity?.Name ?? "System"
+                CreatedBy = movementDto.CreatedBy 
             };
+
+            if (string.IsNullOrEmpty(movement.CreatedBy))
+            {
+                movement.CreatedBy = "System"; 
+            }
 
             _context.WarehouseMovements.Add(movement);
             await _context.SaveChangesAsync();

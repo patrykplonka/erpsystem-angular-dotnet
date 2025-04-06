@@ -6,7 +6,7 @@ using System.Security.Claims;
 using System.Text;
 using erpsystem.Server.Models;
 
-namespace erpsystem.Server.Controllers  
+namespace erpsystem.Server.Controllers
 {
     [Route("api/auth")]
     [ApiController]
@@ -28,7 +28,13 @@ namespace erpsystem.Server.Controllers
             if (user != null && await _userManager.CheckPasswordAsync(user, request.Password))
             {
                 var token = GenerateJwtToken(user);
-                return Ok(new { token });
+                return Ok(new
+                {
+                    token,
+                    email = user.Email,
+                    firstName = user.FirstName,
+                    lastName = user.LastName
+                });
             }
             return Unauthorized("Invalid credentials");
         }
@@ -42,9 +48,9 @@ namespace erpsystem.Server.Controllers
                 Email = request.Email,
                 FirstName = request.FirstName,
                 LastName = request.LastName,
-                RoleId = request.RoleId, 
-                CreatedAt = DateTime.UtcNow, 
-                Status = UserStatus.Active 
+                RoleId = request.RoleId,
+                CreatedAt = DateTime.UtcNow,
+                Status = UserStatus.Active
             };
             var result = await _userManager.CreateAsync(user, request.Password);
             if (result.Succeeded)
@@ -53,6 +59,7 @@ namespace erpsystem.Server.Controllers
             }
             return BadRequest(result.Errors);
         }
+
         private string GenerateJwtToken(ApplicationUser user)
         {
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Secret"] ?? throw new InvalidOperationException("JWT:Secret is missing")));
@@ -60,10 +67,10 @@ namespace erpsystem.Server.Controllers
 
             var claims = new[]
             {
-        new Claim(JwtRegisteredClaimNames.Sub, user.Email ?? string.Empty),
-        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        new Claim("roleId", user.RoleId.ToString())
-    };
+                new Claim(JwtRegisteredClaimNames.Sub, user.Email ?? string.Empty),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("roleId", user.RoleId.ToString())
+            };
 
             var token = new JwtSecurityToken(
                 issuer: _config["JWT:ValidIssuer"],

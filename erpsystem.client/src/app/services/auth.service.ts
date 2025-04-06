@@ -7,8 +7,8 @@ import { tap } from 'rxjs/operators';
 interface LoginResponse {
   token: string;
   email: string;
-  firstName: string; 
-  lastName: string;  
+  firstName: string;
+  lastName: string;
 }
 
 @Injectable({
@@ -24,7 +24,7 @@ export class AuthService {
       tap((response: LoginResponse) => {
         this.saveToken(response.token);
         localStorage.setItem('userEmail', response.email);
-        localStorage.setItem('userFirstName', response.firstName || 'Unknown'); 
+        localStorage.setItem('userFirstName', response.firstName || 'Unknown');
         localStorage.setItem('userLastName', response.lastName || '');
         console.log('Login - Saved to localStorage:', {
           email: response.email,
