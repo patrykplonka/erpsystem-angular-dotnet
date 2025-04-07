@@ -7,62 +7,6 @@ import { FormsModule } from '@angular/forms';
 import { WarehouseMovementsService } from '../../services/warehouse-movements.service';
 import * as XLSX from 'xlsx';
 
-interface WarehouseItemDto {
-  id: number;
-  name: string;
-  code: string;
-  quantity: number;
-  price: number;
-  category: string;
-  location: string;
-  lastMovementDate?: string;
-  movementFrequency?: number;
-}
-
-interface CreateWarehouseItemDto {
-  name: string;
-  code: string;
-  quantity: number | null;
-  price: number | null;
-  category: string;
-  location: string;
-}
-
-interface UpdateWarehouseItemDto {
-  id: number;
-  name: string;
-  code: string;
-  quantity: number;
-  price: number;
-  category: string;
-  location: string;
-}
-
-interface Location {
-  id: number;
-  name: string;
-}
-
-interface OperationLog {
-  id: number;
-  user: string;
-  operation: string;
-  itemId: number;
-  itemName: string;
-  timestamp: string;
-  details: string;
-}
-
-interface WarehouseMovement {
-  id: number;
-  warehouseItemId: number;
-  movementType: string;
-  quantity: number;
-  description: string;
-  date: string;
-  createdBy: string;
-}
-
 @Component({
   selector: 'app-warehouse',
   standalone: true,
@@ -90,7 +34,7 @@ export class WarehouseComponent implements OnInit {
   successMessage: string | null = null;
   selectedItemId: number | null = null;
   movements: WarehouseMovement[] = [];
-  newMovement: any = { warehouseItemId: 0, movementType: 'Receipt', quantity: 0, description: '', createdBy: '' };
+  newMovement: any = { warehouseItemId: 0, movementType: 'Receipt', quantity: 0, description: '', status: 'Planned', comment: '' };
   showMovements: boolean = false;
   availableLocations: Location[] = [];
   selectedLocation: string = '';
@@ -104,12 +48,6 @@ export class WarehouseComponent implements OnInit {
   historyItemFilter: string = '';
   lowStockThreshold: number = 5;
   notifications: string[] = [];
-  movementTypeFilter: string = '';
-  movementMinQuantityFilter: number | null = null;
-  movementMaxQuantityFilter: number | null = null;
-  movementStartDateFilter: string = '';
-  movementEndDateFilter: string = '';
-  movementUserFilter: string = '';
   sortField: string = '';
   sortDirection: 'asc' | 'desc' = 'asc';
   movementSortField: string = '';
@@ -119,6 +57,13 @@ export class WarehouseComponent implements OnInit {
   lowStockFilter: boolean = false;
   maxQuantity: number = 0;
   uniqueCategories: string[] = [];
+  movementTypeFilter: string = '';
+  movementStatusFilter: string = '';
+  movementMinQuantityFilter: number | null = null;
+  movementMaxQuantityFilter: number | null = null;
+  movementStartDateFilter: string = '';
+  movementEndDateFilter: string = '';
+  movementUserFilter: string = '';
 
   constructor(
     private http: HttpClient,
@@ -134,7 +79,6 @@ export class WarehouseComponent implements OnInit {
     this.loadLowStockItems();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
     this.currentUserFullName = this.authService.getCurrentUserFullName();
-    this.newMovement.createdBy = this.currentUserFullName;
   }
 
   loadLocations() {
@@ -224,14 +168,12 @@ export class WarehouseComponent implements OnInit {
     return filtered;
   }
 
-  applyMovementFilters() {
-    this.sortMovements(this.movementSortField);
-  }
-
   get filteredMovements(): WarehouseMovement[] {
     let filtered = this.movements.filter(m => {
       const matchesType = !this.movementTypeFilter ||
         m.movementType.toLowerCase().includes(this.movementTypeFilter.toLowerCase());
+      const matchesStatus = !this.movementStatusFilter ||
+        m.status.toLowerCase().includes(this.movementStatusFilter.toLowerCase());
       const matchesMinQuantity = this.movementMinQuantityFilter === null || m.quantity >= this.movementMinQuantityFilter;
       const matchesMaxQuantity = this.movementMaxQuantityFilter === null || m.quantity <= this.movementMaxQuantityFilter;
       const matchesStartDate = !this.movementStartDateFilter ||
@@ -240,7 +182,7 @@ export class WarehouseComponent implements OnInit {
         new Date(m.date) <= new Date(this.movementEndDateFilter);
       const matchesUser = !this.movementUserFilter ||
         m.createdBy.toLowerCase().includes(this.movementUserFilter.toLowerCase());
-      return matchesType && matchesMinQuantity && matchesMaxQuantity && matchesStartDate && matchesEndDate && matchesUser;
+      return matchesType && matchesStatus && matchesMinQuantity && matchesMaxQuantity && matchesStartDate && matchesEndDate && matchesUser;
     });
 
     if (this.movementSortField) {
@@ -393,7 +335,7 @@ export class WarehouseComponent implements OnInit {
 
   moveItem(id: number, newLocation: string) {
     if (!newLocation) {
-      this.errorMessage = 'Proszę wybrać nową lokalizację.';
+      this.errorMessage = 'Proszę wybrać nueva lokalizację.';
       return;
     }
     const payload = { newLocation, createdBy: this.currentUserFullName };
@@ -481,7 +423,6 @@ export class WarehouseComponent implements OnInit {
     this.movementService.getMovementsByItem(itemId).subscribe(
       data => {
         this.movements = data;
-        this.applyMovementFilters();
       },
       error => this.errorMessage = `Błąd ładowania ruchów: ${error.status} ${error.message}`
     );
@@ -492,10 +433,12 @@ export class WarehouseComponent implements OnInit {
       this.errorMessage = 'Ilość musi być większa niż 0.';
       return;
     }
-    if (!this.newMovement.movementType) {
-      this.errorMessage = 'Typ ruchu jest wymagany.';
+    if (!this.newMovement.movementType || !this.newMovement.status) {
+      this.errorMessage = 'Typ ruchu i status są wymagane.';
       return;
     }
+    this.newMovement.date = new Date().toISOString();
+    this.newMovement.createdBy = this.currentUserFullName;
     this.movementService.createMovement(this.newMovement).subscribe(
       () => {
         this.successMessage = 'Ruch magazynowy dodany.';
@@ -508,7 +451,8 @@ export class WarehouseComponent implements OnInit {
           movementType: 'Receipt',
           quantity: 0,
           description: '',
-          createdBy: this.currentUserFullName
+          status: 'Planned',
+          comment: ''
         };
       },
       error => {
@@ -519,6 +463,64 @@ export class WarehouseComponent implements OnInit {
         }
       }
     );
+  }
+
+  onFileChange(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        const text = e.target.result as string;
+        const data = this.parseCSV(text);
+        this.processBulkMovements(data);
+      };
+      reader.readAsText(file);
+    }
+  }
+
+  parseCSV(csv: string): any[] {
+    const lines = csv.split('\n');
+    const result: any[] = [];
+    const headers = lines[0].split(',').map(h => h.trim());
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      if (values.length === headers.length) {
+        const obj: any = {};
+        headers.forEach((header, index) => {
+          obj[header] = values[index];
+        });
+        result.push(obj);
+      }
+    }
+    return result;
+  }
+
+  processBulkMovements(data: any[]) {
+    const movements = data.map(row => ({
+      warehouseItemId: parseInt(row.warehouseItemId, 10),
+      movementType: row.movementType,
+      quantity: parseInt(row.quantity, 10),
+      description: row.description || '',
+      createdBy: this.currentUserFullName,
+      status: row.status || 'Planned',
+      comment: row.comment || '',
+      date: new Date().toISOString()
+    }));
+
+    movements.forEach(movement => {
+      this.movementService.createMovement(movement).subscribe(
+        () => {
+          this.loadMovements(movement.warehouseItemId);
+          this.loadItems();
+          this.loadOperationLogs();
+        },
+        error => {
+          this.errorMessage = `Błąd podczas masowego dodawania: ${error.message}`;
+        }
+      );
+    });
+    this.successMessage = 'Masowe dodawanie ruchów zakończone.';
   }
 
   exportToExcel() {
@@ -553,7 +555,6 @@ export class WarehouseComponent implements OnInit {
       this.movementSortField = field;
       this.movementSortDirection = 'asc';
     }
-    this.applyMovementFilters();
   }
 
   sortHistory(field: string) {
@@ -565,4 +566,62 @@ export class WarehouseComponent implements OnInit {
     }
     this.applyHistoryFilters();
   }
+}
+
+interface WarehouseItemDto {
+  id: number;
+  name: string;
+  code: string;
+  quantity: number;
+  price: number;
+  category: string;
+  location: string;
+  lastMovementDate?: string;
+  movementFrequency?: number;
+}
+
+interface CreateWarehouseItemDto {
+  name: string;
+  code: string;
+  quantity: number | null;
+  price: number | null;
+  category: string;
+  location: string;
+}
+
+interface UpdateWarehouseItemDto {
+  id: number;
+  name: string;
+  code: string;
+  quantity: number;
+  price: number;
+  category: string;
+  location: string;
+}
+
+interface Location {
+  id: number;
+  name: string;
+}
+
+interface OperationLog {
+  id: number;
+  user: string;
+  operation: string;
+  itemId: number;
+  itemName: string;
+  timestamp: string;
+  details: string;
+}
+
+interface WarehouseMovement {
+  id: number;
+  warehouseItemId: number;
+  movementType: string;
+  quantity: number;
+  description: string;
+  date: string;
+  createdBy: string;
+  status: 'Planned' | 'InProgress' | 'Completed';
+  comment?: string;
 }

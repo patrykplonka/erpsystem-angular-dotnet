@@ -3,6 +3,7 @@ using erpsystem.Server.Models;
 using erpsystem.Server.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 [ApiController]
 [Route("api/[controller]")]

@@ -119,39 +119,45 @@
                 <option value="Receipt">Przyjęcie</option>
                 <option value="Issue">Wydanie</option>
               </select>
+              <select [(ngModel)]="newMovement.status" name="status" required>
+                <option value="Planned">Zaplanowane</option>
+                <option value="InProgress">W trakcie</option>
+                <option value="Completed">Zakończone</option>
+              </select>
               <input [(ngModel)]="newMovement.quantity" type="number" placeholder="Ilość" name="quantity" required min="1">
               <textarea [(ngModel)]="newMovement.description" placeholder="Opis" name="description"></textarea>
+              <textarea [(ngModel)]="newMovement.comment" placeholder="Komentarz" name="comment"></textarea>
               <button type="button" (click)="addMovement()">Dodaj ruch</button>
             </form>
-            <div class="movement-filters">
-              <input [(ngModel)]="movementTypeFilter" placeholder="Typ ruchu" (ngModelChange)="applyMovementFilters()">
-              <input [(ngModel)]="movementMinQuantityFilter" type="number" placeholder="Min. ilość" (ngModelChange)="applyMovementFilters()">
-              <input [(ngModel)]="movementMaxQuantityFilter" type="number" placeholder="Maks. ilość" (ngModelChange)="applyMovementFilters()">
-              <input [(ngModel)]="movementStartDateFilter" type="date" placeholder="Od daty" (ngModelChange)="applyMovementFilters()">
-              <input [(ngModel)]="movementEndDateFilter" type="date" placeholder="Do daty" (ngModelChange)="applyMovementFilters()">
-              <input [(ngModel)]="movementUserFilter" placeholder="Użytkownik" (ngModelChange)="applyMovementFilters()">
-            </div>
             <h4>Ruchy magazynowe</h4>
             <table>
               <thead>
                 <tr>
                   <th (click)="sortMovements('movementType')">Typ <span [ngClass]="{'sort-asc': movementSortField === 'movementType' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'movementType' && movementSortDirection === 'desc'}"></span></th>
+                  <th (click)="sortMovements('status')">Status <span [ngClass]="{'sort-asc': movementSortField === 'status' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'status' && movementSortDirection === 'desc'}"></span></th>
                   <th (click)="sortMovements('quantity')">Ilość <span [ngClass]="{'sort-asc': movementSortField === 'quantity' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'quantity' && movementSortDirection === 'desc'}"></span></th>
                   <th (click)="sortMovements('date')">Data <span [ngClass]="{'sort-asc': movementSortField === 'date' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'date' && movementSortDirection === 'desc'}"></span></th>
                   <th (click)="sortMovements('description')">Opis <span [ngClass]="{'sort-asc': movementSortField === 'description' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'description' && movementSortDirection === 'desc'}"></span></th>
+                  <th (click)="sortMovements('comment')">Komentarz <span [ngClass]="{'sort-asc': movementSortField === 'comment' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'comment' && movementSortDirection === 'desc'}"></span></th>
                   <th (click)="sortMovements('createdBy')">Użytkownik <span [ngClass]="{'sort-asc': movementSortField === 'createdBy' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'createdBy' && movementSortDirection === 'desc'}"></span></th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let m of filteredMovements">
                   <td data-label="Typ">{{ m.movementType }}</td>
+                  <td data-label="Status">{{ m.status }}</td>
                   <td data-label="Ilość">{{ m.quantity }}</td>
                   <td data-label="Data">{{ m.date }}</td>
                   <td data-label="Opis">{{ m.description }}</td>
+                  <td data-label="Komentarz">{{ m.comment }}</td>
                   <td data-label="Użytkownik">{{ m.createdBy }}</td>
                 </tr>
               </tbody>
             </table>
+            <div>
+              <h3>Masowe dodawanie ruchów z CSV</h3>
+              <input type="file" (change)="onFileChange($event)" accept=".csv">
+            </div>
           </div>
         </div>
         <div class="history-section" *ngIf="showHistory">
