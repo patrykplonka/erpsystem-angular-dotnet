@@ -81,6 +81,17 @@ export class WarehouseComponent implements OnInit {
     this.currentUserFullName = this.authService.getCurrentUserFullName();
   }
 
+  formatDate(date: string | Date): string {
+    const d = new Date(date);
+    return d.toLocaleString('pl-PL', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
   loadLocations() {
     this.http.get<Location[]>('https://localhost:7224/api/locations').subscribe(
       data => this.availableLocations = data,
@@ -121,7 +132,7 @@ export class WarehouseComponent implements OnInit {
     this.warehouseItems.forEach(item => {
       this.movementService.getMovementsByItem(item.id).subscribe(movements => {
         item.movementFrequency = movements.length;
-        item.lastMovementDate = movements.length > 0 ? movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : undefined;
+        item.lastMovementDate = movements.length > 0 ? this.formatDate(movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date) : undefined;
       });
     });
   }
@@ -177,9 +188,9 @@ export class WarehouseComponent implements OnInit {
       const matchesMinQuantity = this.movementMinQuantityFilter === null || m.quantity >= this.movementMinQuantityFilter;
       const matchesMaxQuantity = this.movementMaxQuantityFilter === null || m.quantity <= this.movementMaxQuantityFilter;
       const matchesStartDate = !this.movementStartDateFilter ||
-        new Date(m.date) >= new Date(this.movementStartDateFilter);
+        new Date(m.date).getTime() >= new Date(this.movementStartDateFilter).getTime();
       const matchesEndDate = !this.movementEndDateFilter ||
-        new Date(m.date) <= new Date(this.movementEndDateFilter);
+        new Date(m.date).getTime() <= new Date(this.movementEndDateFilter).getTime();
       const matchesUser = !this.movementUserFilter ||
         m.createdBy.toLowerCase().includes(this.movementUserFilter.toLowerCase());
       return matchesType && matchesStatus && matchesMinQuantity && matchesMaxQuantity && matchesStartDate && matchesEndDate && matchesUser;
@@ -214,9 +225,9 @@ export class WarehouseComponent implements OnInit {
       const matchesUser = !this.historyUserFilter ||
         log.user.toLowerCase().includes(this.historyUserFilter.toLowerCase());
       const matchesStartDate = !this.historyStartDateFilter ||
-        new Date(log.timestamp) >= new Date(this.historyStartDateFilter);
+        new Date(log.timestamp).getTime() >= new Date(this.historyStartDateFilter).getTime();
       const matchesEndDate = !this.historyEndDateFilter ||
-        new Date(log.timestamp) <= new Date(this.historyEndDateFilter);
+        new Date(log.timestamp).getTime() <= new Date(this.historyEndDateFilter).getTime();
       const matchesItem = !this.historyItemFilter ||
         log.itemName.toLowerCase().includes(this.historyItemFilter.toLowerCase()) ||
         log.itemId.toString().includes(this.historyItemFilter);
@@ -335,7 +346,7 @@ export class WarehouseComponent implements OnInit {
 
   moveItem(id: number, newLocation: string) {
     if (!newLocation) {
-      this.errorMessage = 'Proszę wybrać nueva lokalizację.';
+      this.errorMessage = 'Proszę wybrać nową lokalizację.';
       return;
     }
     const payload = { newLocation, createdBy: this.currentUserFullName };
@@ -422,7 +433,10 @@ export class WarehouseComponent implements OnInit {
   loadMovements(itemId: number) {
     this.movementService.getMovementsByItem(itemId).subscribe(
       data => {
-        this.movements = data;
+        this.movements = data.map(movement => ({
+          ...movement,
+          date: this.formatDate(movement.date)
+        }));
       },
       error => this.errorMessage = `Błąd ładowania ruchów: ${error.status} ${error.message}`
     );
@@ -437,7 +451,7 @@ export class WarehouseComponent implements OnInit {
       this.errorMessage = 'Typ ruchu i status są wymagane.';
       return;
     }
-    this.newMovement.date = new Date().toISOString();
+    this.newMovement.date = this.formatDate(new Date());
     this.newMovement.createdBy = this.currentUserFullName;
     this.movementService.createMovement(this.newMovement).subscribe(
       () => {
@@ -505,7 +519,7 @@ export class WarehouseComponent implements OnInit {
       createdBy: this.currentUserFullName,
       status: row.status || 'Planned',
       comment: row.comment || '',
-      date: new Date().toISOString()
+      date: this.formatDate(new Date())
     }));
 
     movements.forEach(movement => {
@@ -530,7 +544,7 @@ export class WarehouseComponent implements OnInit {
       Operacja: log.operation,
       Produkt: log.itemName,
       'ID Produktu': log.itemId,
-      Data: new Date(log.timestamp).toLocaleString(),
+      Data: this.formatDate(log.timestamp),
       Szczegóły: log.details
     })));
     const workbook = XLSX.utils.book_new();
