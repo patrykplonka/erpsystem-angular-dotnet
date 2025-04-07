@@ -21,5 +21,8 @@ namespace erpsystem.Server.Models.DTOs
         [Required(ErrorMessage = "Kategoria jest wymagana")]
         [StringLength(50, ErrorMessage = "Kategoria nie może przekraczać 50 znaków")]
         public string Category { get; set; }
+
+        [StringLength(50, ErrorMessage = "Lokalizacja nie może przekraczać 50 znaków")]
+        public string Location { get; set; } 
     }
 }

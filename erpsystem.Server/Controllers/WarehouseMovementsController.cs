@@ -20,6 +20,9 @@ namespace erpsystem.Server.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateMovement([FromBody] WarehouseMovementsDTO movementDto)
         {
+            // Logowanie otrzymanych danych dla debugowania
+            Console.WriteLine($"Received movementDto: {System.Text.Json.JsonSerializer.Serialize(movementDto)}");
+
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
@@ -49,12 +52,13 @@ namespace erpsystem.Server.Controllers
                 Quantity = movementDto.Quantity,
                 Date = DateTime.UtcNow,
                 Description = movementDto.Description,
-                CreatedBy = movementDto.CreatedBy 
+                CreatedBy = movementDto.CreatedBy // Zachowaj wartość przesłaną z frontendu
             };
 
+            // Jeśli CreatedBy jest null lub pusty, ustaw "Unknown" zamiast "System"
             if (string.IsNullOrEmpty(movement.CreatedBy))
             {
-                movement.CreatedBy = "System"; 
+                movement.CreatedBy = "Unknown"; // Domyślna wartość, jeśli brak danych
             }
 
             _context.WarehouseMovements.Add(movement);
@@ -70,6 +74,9 @@ namespace erpsystem.Server.Controllers
                 Description = movement.Description,
                 CreatedBy = movement.CreatedBy
             };
+
+            // Logowanie zapisanego ruchu
+            Console.WriteLine($"Saved movement: {System.Text.Json.JsonSerializer.Serialize(responseDto)}");
 
             return Ok(responseDto);
         }
@@ -91,6 +98,9 @@ namespace erpsystem.Server.Controllers
                     CreatedBy = m.CreatedBy
                 })
                 .ToListAsync();
+
+            // Logowanie zwróconych danych
+            Console.WriteLine($"Returning movements for item {warehouseItemId}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
 
             return Ok(movements);
         }

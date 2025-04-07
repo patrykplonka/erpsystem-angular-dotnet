@@ -8,6 +8,13 @@
     <BuildOutputFolder>$(MSBuildProjectDirectory)\dist\erpsystem.client\browser\</BuildOutputFolder>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include="assets\" />
     <Folder Include="src\assets\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\jsPDF-master\jsPDF-master\.github\pull_request_template.md" />
+    <None Include="src\jsPDF-master\jsPDF-master\.github\workflows\continuous-integration.yml" />
+    <None Include="src\jsPDF-master\jsPDF-master\.github\workflows\npm-publish.yml" />
+    <None Include="src\jsPDF-master\jsPDF-master\.github\workflows\stale.yml" />
   </ItemGroup>
 </Project>

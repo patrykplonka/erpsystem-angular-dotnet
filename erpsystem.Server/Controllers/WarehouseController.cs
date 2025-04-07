@@ -3,6 +3,7 @@ using erpsystem.Server.Models;
 using erpsystem.Server.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -19,7 +20,7 @@ public class WarehouseController : ControllerBase
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetItems()
     {
         var items = await _context.WarehouseItems
-            .Where(i => !i.IsDeleted) 
+            .Where(i => !i.IsDeleted)
             .ToListAsync();
 
         var itemDtos = items.Select(item => new WarehouseItemDto
@@ -29,7 +30,8 @@ public class WarehouseController : ControllerBase
             Code = item.Code,
             Quantity = item.Quantity,
             Price = item.Price,
-            Category = item.Category
+            Category = item.Category,
+            Location = item.Location
         }).ToList();
 
         return Ok(itemDtos);
@@ -43,6 +45,11 @@ public class WarehouseController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        if (await _context.WarehouseItems.AnyAsync(i => i.Code == createDto.Code && !i.IsDeleted))
+        {
+            return BadRequest("Produkt o podanym kodzie już istnieje.");
+        }
+
         var item = new WarehouseItem
         {
             Name = createDto.Name,
@@ -50,11 +57,24 @@ public class WarehouseController : ControllerBase
             Quantity = createDto.Quantity,
             Price = createDto.Price,
             Category = createDto.Category,
+            Location = createDto.Location,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = User?.Identity?.Name ?? "System"
         };
 
         _context.WarehouseItems.Add(item);
+
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Dodanie",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Dodano produkt: {item.Name}, ilość: {item.Quantity}, lokalizacja: {item.Location}"
+        };
+        _context.OperationLogs.Add(log);
+
         await _context.SaveChangesAsync();
 
         var resultDto = new WarehouseItemDto
@@ -64,7 +84,8 @@ public class WarehouseController : ControllerBase
             Code = item.Code,
             Quantity = item.Quantity,
             Price = item.Price,
-            Category = item.Category
+            Category = item.Category,
+            Location = item.Location
         };
 
         return CreatedAtAction(nameof(GetItems), new { id = item.Id }, resultDto);
@@ -76,20 +97,32 @@ public class WarehouseController : ControllerBase
         var item = await _context.WarehouseItems.FindAsync(id);
         if (item == null)
         {
-            return NotFound();
+            return NotFound("Produkt nie istnieje.");
         }
 
-        item.IsDeleted = true; 
+        item.IsDeleted = true;
+
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Usunięcie",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Usunięto produkt: {item.Name}"
+        };
+        _context.OperationLogs.Add(log);
+
         await _context.SaveChangesAsync();
 
-        return NoContent(); 
+        return NoContent();
     }
 
     [HttpGet("deleted")]
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetDeletedItems()
     {
         var deletedItems = await _context.WarehouseItems
-            .Where(i => i.IsDeleted) // Filter for deleted items
+            .Where(i => i.IsDeleted)
             .ToListAsync();
 
         var itemDtos = deletedItems.Select(item => new WarehouseItemDto
@@ -99,7 +132,8 @@ public class WarehouseController : ControllerBase
             Code = item.Code,
             Quantity = item.Quantity,
             Price = item.Price,
-            Category = item.Category
+            Category = item.Category,
+            Location = item.Location
         }).ToList();
 
         return Ok(itemDtos);
@@ -111,7 +145,7 @@ public class WarehouseController : ControllerBase
         var item = await _context.WarehouseItems.FindAsync(id);
         if (item == null || item.IsDeleted)
         {
-            return NotFound();
+            return NotFound("Produkt nie istnieje lub jest usunięty.");
         }
 
         if (!ModelState.IsValid)
@@ -119,11 +153,29 @@ public class WarehouseController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        if (item.Code != updateDto.Code && await _context.WarehouseItems.AnyAsync(i => i.Code == updateDto.Code && !i.IsDeleted))
+        {
+            return BadRequest("Produkt o podanym kodzie już istnieje.");
+        }
+
+        var changes = GetChangeDetails(item, updateDto);
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Edycja",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Edytowano produkt: {item.Name}. Zmiany: {changes}"
+        };
+        _context.OperationLogs.Add(log);
+
         item.Name = updateDto.Name;
         item.Code = updateDto.Code;
         item.Quantity = updateDto.Quantity;
         item.Price = updateDto.Price;
         item.Category = updateDto.Category;
+        item.Location = updateDto.Location;
 
         await _context.SaveChangesAsync();
 
@@ -134,9 +186,252 @@ public class WarehouseController : ControllerBase
             Code = item.Code,
             Quantity = item.Quantity,
             Price = item.Price,
-            Category = item.Category
+            Category = item.Category,
+            Location = item.Location
         };
 
         return Ok(resultDto);
     }
+
+    [HttpPost("move/{id}")]
+    public async Task<IActionResult> MoveItem(int id, [FromBody] MoveItemRequest request)
+    {
+        var item = await _context.WarehouseItems.FindAsync(id);
+        if (item == null || item.IsDeleted)
+        {
+            return NotFound("Produkt nie istnieje lub jest usunięty.");
+        }
+
+        if (string.IsNullOrEmpty(request.NewLocation))
+        {
+            return BadRequest("Nowa lokalizacja nie może być pusta.");
+        }
+
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Przeniesienie",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Przeniesiono produkt: {item.Name} z {item.Location} do {request.NewLocation}"
+        };
+        _context.OperationLogs.Add(log);
+
+        item.Location = request.NewLocation;
+        await _context.SaveChangesAsync();
+
+        var resultDto = new WarehouseItemDto
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Code = item.Code,
+            Quantity = item.Quantity,
+            Price = item.Price,
+            Category = item.Category,
+            Location = item.Location
+        };
+
+        return Ok(resultDto);
+    }
+
+    [HttpPost("restore/{id}")]
+    public async Task<IActionResult> RestoreItem(int id)
+    {
+        var item = await _context.WarehouseItems.FindAsync(id);
+        if (item == null)
+        {
+            return NotFound("Produkt nie istnieje.");
+        }
+
+        if (!item.IsDeleted)
+        {
+            return BadRequest("Produkt nie jest usunięty.");
+        }
+
+        item.IsDeleted = false;
+
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = "Przywrócenie",
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"Przywrócono produkt: {item.Name}"
+        };
+        _context.OperationLogs.Add(log);
+
+        await _context.SaveChangesAsync();
+
+        var resultDto = new WarehouseItemDto
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Code = item.Code,
+            Quantity = item.Quantity,
+            Price = item.Price,
+            Category = item.Category,
+            Location = item.Location
+        };
+
+        return Ok(resultDto);
+    }
+
+    [HttpPost("movement/{id}")]
+    public async Task<IActionResult> AddMovement(int id, [FromBody] WarehouseMovementsDTO movementDto)
+    {
+        var item = await _context.WarehouseItems.FindAsync(id);
+        if (item == null || item.IsDeleted)
+        {
+            return NotFound("Produkt nie istnieje lub jest usunięty.");
+        }
+
+        if (movementDto.MovementType == "Issue" && item.Quantity < movementDto.Quantity)
+        {
+            var errorMessage = $"Za mało towaru na stanie. Dostępna ilość: {item.Quantity}, żądana: {movementDto.Quantity}.";
+            var errorLog = new OperationLog
+            {
+                User = User?.Identity?.Name ?? "System",
+                Operation = "Błąd krytyczny",
+                ItemId = item.Id,
+                ItemName = item.Name,
+                Timestamp = DateTime.UtcNow,
+                Details = errorMessage
+            };
+            _context.OperationLogs.Add(errorLog);
+            await _context.SaveChangesAsync();
+            return BadRequest(errorMessage);
+        }
+
+        var movement = new WarehouseMovements
+        {
+            WarehouseItemId = id,
+            MovementType = movementDto.MovementType,
+            Quantity = movementDto.Quantity,
+            Description = movementDto.Description,
+            Date = DateTime.UtcNow,
+            CreatedBy = User?.Identity?.Name ?? "System"
+        };
+
+        if (movementDto.MovementType == "Receipt")
+        {
+            item.Quantity += movementDto.Quantity;
+        }
+        else if (movementDto.MovementType == "Issue")
+        {
+            item.Quantity -= movementDto.Quantity;
+        }
+
+        _context.WarehouseMovements.Add(movement);
+
+        var operationType = movementDto.MovementType == "Receipt" ? "Przyjęcie" : "Wydanie";
+        var log = new OperationLog
+        {
+            User = User?.Identity?.Name ?? "System",
+            Operation = operationType,
+            ItemId = item.Id,
+            ItemName = item.Name,
+            Timestamp = DateTime.UtcNow,
+            Details = $"{operationType} produktu: {item.Name}, ilość: {movementDto.Quantity}, opis: {(string.IsNullOrEmpty(movementDto.Description) ? "-" : movementDto.Description)}"
+        };
+        _context.OperationLogs.Add(log);
+
+        await _context.SaveChangesAsync();
+
+        var resultDto = new WarehouseItemDto
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Code = item.Code,
+            Quantity = item.Quantity,
+            Price = item.Price,
+            Category = item.Category,
+            Location = item.Location
+        };
+
+        return Ok(resultDto);
+    }
+
+    [HttpGet("movements/{id}")]
+    public async Task<ActionResult<IEnumerable<WarehouseMovementsDTO>>> GetMovements(int id)
+    {
+        var item = await _context.WarehouseItems.FindAsync(id);
+        if (item == null)
+        {
+            return NotFound("Produkt nie istnieje.");
+        }
+
+        var movements = await _context.WarehouseMovements
+            .Where(m => m.WarehouseItemId == id)
+            .Select(m => new WarehouseMovementsDTO
+            {
+                Id = m.Id,
+                WarehouseItemId = m.WarehouseItemId,
+                MovementType = m.MovementType,
+                Quantity = m.Quantity,
+                Description = m.Description,
+                Date = m.Date,
+                CreatedBy = m.CreatedBy
+            })
+            .ToListAsync();
+
+        return Ok(movements);
+    }
+
+    [HttpGet("operation-logs")]
+    public ActionResult<IEnumerable<OperationLogDto>> GetOperationLogs()
+    {
+        var logs = _context.OperationLogs
+          .Select(l => new OperationLogDto
+          {
+              Id = l.Id,
+              User = l.User,
+              Operation = l.Operation,
+              ItemId = l.ItemId,
+              ItemName = l.ItemName,
+              Timestamp = l.Timestamp.ToString("o"),
+              Details = l.Details
+          })
+          .ToList();
+        return Ok(logs);
+    }
+
+    [HttpGet("low-stock")]
+    public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetLowStockItems()
+    {
+        int lowStockThreshold = 5;
+        var lowStockItems = await _context.WarehouseItems
+            .Where(i => !i.IsDeleted && i.Quantity <= lowStockThreshold)
+            .Select(item => new WarehouseItemDto
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Code = item.Code,
+                Quantity = item.Quantity,
+                Price = item.Price,
+                Category = item.Category,
+                Location = item.Location
+            })
+            .ToListAsync();
+
+        return Ok(lowStockItems);
+    }
+
+    private string GetChangeDetails(WarehouseItem existingItem, CreateWarehouseItemDto updateDto)
+    {
+        var changes = new List<string>();
+        if (existingItem.Name != updateDto.Name) changes.Add($"Nazwa: {existingItem.Name} -> {updateDto.Name}");
+        if (existingItem.Code != updateDto.Code) changes.Add($"Kod: {existingItem.Code} -> {updateDto.Code}");
+        if (existingItem.Quantity != updateDto.Quantity) changes.Add($"Ilość: {existingItem.Quantity} -> {updateDto.Quantity}");
+        if (existingItem.Price != updateDto.Price) changes.Add($"Cena: {existingItem.Price} -> {updateDto.Price}");
+        if (existingItem.Category != updateDto.Category) changes.Add($"Kategoria: {existingItem.Category} -> {updateDto.Category}");
+        if (existingItem.Location != updateDto.Location) changes.Add($"Lokalizacja: {existingItem.Location} -> {updateDto.Location}");
+        return changes.Count > 0 ? string.Join(", ", changes) : "Brak zmian";
+    }
+}
+
+public class MoveItemRequest
+{
+    public string NewLocation { get; set; }
 }
