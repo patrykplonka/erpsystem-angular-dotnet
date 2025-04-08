@@ -1,0 +1,150 @@
+<div class="warehouse-container">
+  <div class="dashboard-container">
+    <aside class="sidebar">
+      <h2>Dashboard</h2>
+      <ul>
+        <li>
+          <button (click)="toggleWarehouseMenu()" [class.active]="isWarehouseOpen">
+            📦 Magazyn
+            <span class="arrow" [class.open]="isWarehouseOpen">▼</span>
+          </button>
+          <ul *ngIf="isWarehouseOpen" class="submenu">
+            <li><button (click)="goToProducts()">Produkty</button></li>
+            <li><button (click)="goToMovements()">Ruchy magazynowe</button></li>
+            <li><button (click)="goToReports()">Raporty</button></li>
+          </ul>
+        </li>
+        <li><button (click)="logout()">🚪 Wyloguj</button></li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <header>
+        <div>
+          <h1>Witaj w systemie ERP</h1>
+          <p>Zarządzaj produktami w jednym miejscu</p>
+        </div>
+        <div class="user-info">
+          <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+        </div>
+      </header>
+      <section class="warehouse-section">
+        <div class="messages">
+          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+          <div class="alert low-stock-alert" *ngFor="let notification of notifications">{{ notification }}</div>
+        </div>
+        <div class="forms-container" *ngIf="showAddForm">
+          <div class="add-item-form">
+            <h3>Dodaj nowy produkt</h3>
+            <form>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="name">Nazwa</label>
+                  <input [(ngModel)]="newItem.name" id="name" placeholder="Nazwa" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="code">Kod</label>
+                  <input [(ngModel)]="newItem.code" id="code" placeholder="Kod" name="code" required>
+                </div>
+                <div class="form-group">
+                  <label for="quantity">Ilość</label>
+                  <input [(ngModel)]="newItem.quantity" id="quantity" type="number" placeholder="Ilość" name="quantity" required min="0">
+                </div>
+                <div class="form-group">
+                  <label for="price">Cena</label>
+                  <input [(ngModel)]="newItem.price" id="price" type="number" placeholder="Cena" name="price" required min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                  <label for="category">Kategoria</label>
+                  <input [(ngModel)]="newItem.category" id="category" placeholder="Kategoria" name="category" required>
+                </div>
+                <div class="form-group">
+                  <label for="location">Lokalizacja</label>
+                  <select [(ngModel)]="newItem.location" id="location" name="location" required>
+                    <option value="" disabled>Wybierz lokalizację</option>
+                    <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-buttons">
+                <button type="button" (click)="addItem()">Dodaj produkt</button>
+                <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="forms-container" *ngIf="editItem">
+          <div class="edit-item-form">
+            <h3>Edytuj produkt</h3>
+            <form>
+              <input [(ngModel)]="editItem.name" placeholder="Nazwa" name="name" required>
+              <input [(ngModel)]="editItem.code" placeholder="Kod" name="code" required>
+              <input [(ngModel)]="editItem.quantity" type="number" placeholder="Ilość" name="quantity" required>
+              <input [(ngModel)]="editItem.price" type="number" placeholder="Cena" name="price" required>
+              <input [(ngModel)]="editItem.category" placeholder="Kategoria" name="category" required>
+              <select [(ngModel)]="editItem.location" name="location" required>
+                <option value="" disabled>Wybierz lokalizację</option>
+                <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+              </select>
+              <div class="form-buttons">
+                <button type="button" (click)="updateItem()">Zapisz</button>
+                <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="items-list">
+          <div class="list-controls">
+            <button class="add-button" (click)="toggleAddForm()">Dodaj produkt</button>
+            <button class="toggle-deleted" (click)="toggleDeletedView()">
+              {{ showDeleted ? "Pokaż aktywne" : "Pokaż usunięte" }}
+            </button>
+          </div>
+          <div class="advanced-filters">
+            <input [(ngModel)]="nameFilter" placeholder="Szukaj po nazwie lub kodzie" (ngModelChange)="applyFilters()">
+            <select [(ngModel)]="categoryFilter" (ngModelChange)="applyFilters()">
+              <option value="">Wszystkie kategorie</option>
+              <option *ngFor="let category of uniqueCategories" [value]="category">{{ category }}</option>
+            </select>
+            <select [(ngModel)]="locationFilter" (ngModelChange)="applyFilters()">
+              <option value="">Wszystkie lokalizacje</option>
+              <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+            </select>
+            <label>Ilość: {{ minQuantityFilter || 0 }} - {{ maxQuantityFilter || maxQuantity }}</label>
+            <input type="range" [(ngModel)]="minQuantityFilter" [min]="0" [max]="maxQuantity" (ngModelChange)="applyFilters()">
+            <input type="range" [(ngModel)]="maxQuantityFilter" [min]="0" [max]="maxQuantity" (ngModelChange)="applyFilters()">
+            <label><input type="checkbox" [(ngModel)]="lowStockFilter" (ngModelChange)="applyFilters()"> Tylko niski stan</label>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th (click)="sortItems('name')">Nazwa <span [ngClass]="{'sort-asc': sortField === 'name' && sortDirection === 'asc', 'sort-desc': sortField === 'name' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('code')">Kod <span [ngClass]="{'sort-asc': sortField === 'code' && sortDirection === 'asc', 'sort-desc': sortField === 'code' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('quantity')">Ilość <span [ngClass]="{'sort-asc': sortField === 'quantity' && sortDirection === 'asc', 'sort-desc': sortField === 'quantity' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('price')">Cena <span [ngClass]="{'sort-asc': sortField === 'price' && sortDirection === 'asc', 'sort-desc': sortField === 'price' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('category')">Kategoria <span [ngClass]="{'sort-asc': sortField === 'category' && sortDirection === 'asc', 'sort-desc': sortField === 'category' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('location')">Lokalizacja <span [ngClass]="{'sort-asc': sortField === 'location' && sortDirection === 'asc', 'sort-desc': sortField === 'location' && sortDirection === 'desc'}"></span></th>
+                <th>Akcje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of filteredItems">
+                <td data-label="Nazwa">{{ item.name }}</td>
+                <td data-label="Kod">{{ item.code }}</td>
+                <td data-label="Ilość">{{ item.quantity }}</td>
+                <td data-label="Cena">{{ item.price }}</td>
+                <td data-label="Kategoria">{{ item.category }}</td>
+                <td data-label="Lokalizacja">{{ item.location }}</td>
+                <td data-label="Akcje" class="actions">
+                  <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>
+                  <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
+                  <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreItem(item.id)">Przywróć</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

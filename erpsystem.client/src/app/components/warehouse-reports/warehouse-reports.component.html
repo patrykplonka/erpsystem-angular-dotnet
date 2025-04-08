@@ -1,0 +1,113 @@
+<div class="warehouse-container">
+  <div class="dashboard-container">
+    <aside class="sidebar">
+      <h2>Dashboard</h2>
+      <ul>
+        <li>
+          <button (click)="toggleWarehouseMenu()" [class.active]="isWarehouseOpen">
+            📦 Magazyn
+            <span class="arrow" [class.open]="isWarehouseOpen">▼</span>
+          </button>
+          <ul *ngIf="isWarehouseOpen" class="submenu">
+            <li><button (click)="goToProducts()">Produkty</button></li>
+            <li><button (click)="goToMovements()">Ruchy magazynowe</button></li>
+            <li><button (click)="goToReports()">Raporty</button></li>
+          </ul>
+        </li>
+        <li><button (click)="logout()">🚪 Wyloguj</button></li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <header>
+        <h1>Raporty Magazynowe</h1>
+        <div class="user-info">
+          <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+        </div>
+      </header>
+      <section class="warehouse-section">
+        <div class="reports-section">
+          <h2>Wybierz raport</h2>
+          <div class="report-tabs">
+            <button (click)="setReport('stock')" [class.active]="currentReport === 'stock'">Stan magazynowy</button>
+            <button (click)="setReport('movements')" [class.active]="currentReport === 'movements'">Ruchy w okresie</button>
+            <button (click)="setReport('popular')" [class.active]="currentReport === 'popular'">Najpopularniejsze produkty</button>
+          </div>
+          <div *ngIf="currentReport === 'stock'" class="report-content">
+            <h3>Stan magazynowy</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Nazwa</th>
+                  <th>Kod</th>
+                  <th>Ilość</th>
+                  <th>Kategoria</th>
+                  <th>Lokalizacja</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of warehouseItems">
+                  <td>{{ item.name }}</td>
+                  <td>{{ item.code }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>{{ item.category }}</td>
+                  <td>{{ item.location }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div *ngIf="currentReport === 'movements'" class="report-content">
+            <h3>Ruchy w okresie</h3>
+            <form (ngSubmit)="loadMovementsInPeriod()" class="movement-filters">
+              <div class="form-group">
+                <label for="movementStartDate">Od</label>
+                <input type="date" id="movementStartDate" [(ngModel)]="movementStartDate" name="startDate" required>
+              </div>
+              <div class="form-group">
+                <label for="movementEndDate">Do</label>
+                <input type="date" id="movementEndDate" [(ngModel)]="movementEndDate" name="endDate" required>
+              </div>
+              <button type="submit" class="add-button">Pokaż ruchy</button>
+            </form>
+            <table *ngIf="movementsInPeriod.length > 0">
+              <thead>
+                <tr>
+                  <th>Typ</th>
+                  <th>Produkt</th>
+                  <th>Ilość</th>
+                  <th>Data</th>
+                  <th>Użytkownik</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let movement of movementsInPeriod">
+                  <td>{{ movement.movementType }}</td>
+                  <td>{{ movement.warehouseItemName }}</td>
+                  <td>{{ movement.quantity }}</td>
+                  <td>{{ formatDate(movement.date) }}</td>
+                  <td>{{ movement.createdBy }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div *ngIf="currentReport === 'popular'" class="report-content">
+            <h3>Najpopularniejsze produkty</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Nazwa</th>
+                  <th>Liczba wydań</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let product of popularProducts">
+                  <td>{{ product.name }}</td>
+                  <td>{{ product.issueCount }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

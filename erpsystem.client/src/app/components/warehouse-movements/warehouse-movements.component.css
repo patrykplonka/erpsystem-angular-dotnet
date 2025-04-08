@@ -1,0 +1,379 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Arial", sans-serif;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  background: #f4f5f7;
+  color: #333;
+}
+
+.warehouse-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 250px;
+  background: #2c3e50;
+  padding: 20px;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+  .sidebar h2 {
+    text-align: center;
+    color: #ecf0f1;
+    margin-bottom: 20px;
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  .sidebar ul {
+    list-style: none;
+    padding: 0;
+  }
+
+    .sidebar ul li {
+      margin: 10px 0;
+    }
+
+      .sidebar ul li a,
+      .sidebar ul li button {
+        display: block;
+        padding: 10px 15px;
+        text-decoration: none;
+        color: #ecf0f1;
+        background: transparent;
+        border: none;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        border-radius: 5px;
+        font-size: 14px;
+        transition: background 0.3s;
+      }
+
+        .sidebar ul li a:hover,
+        .sidebar ul li button:hover {
+          background: #34495e;
+        }
+
+.main-content {
+  flex-grow: 1;
+  padding: 20px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  padding: 10px 20px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+  header h1 {
+    font-size: 20px;
+    color: #333;
+  }
+
+.user-info {
+  text-align: right;
+}
+
+  .user-info p {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .user-info strong {
+    color: #2c3e50;
+  }
+
+.warehouse-section {
+  padding: 0 10px;
+}
+
+.messages {
+  margin-bottom: 15px;
+}
+
+.alert {
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.items-list {
+  width: 100%;
+}
+
+  .items-list table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .items-list thead {
+    background: #f1f5f9;
+  }
+
+  .items-list th,
+  .items-list td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .items-list th {
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .items-list td {
+    font-size: 13px;
+  }
+
+  .items-list tbody tr:hover {
+    background: #f9fafb;
+  }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.action-button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.2s;
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+  .action-button:hover {
+    background: #2563eb;
+  }
+
+.movements-container {
+  padding: 15px;
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+  .movements-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 15px;
+  }
+
+  .movements-container select,
+  .movements-container input,
+  .movements-container textarea {
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+    .movements-container select:focus,
+    .movements-container input:focus,
+    .movements-container textarea:focus {
+      border-color: #3b82f6;
+    }
+
+  .movements-container textarea {
+    width: 100%;
+    resize: vertical;
+  }
+
+  .movements-container input[type="number"] {
+    width: 100%;
+    max-width: 100px;
+  }
+
+  .movements-container button {
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+    .movements-container button:hover {
+      background: #2563eb;
+    }
+
+  .movements-container h4 {
+    margin: 15px 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .movements-container table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .movements-container thead {
+    background: #f1f5f9;
+  }
+
+  .movements-container th,
+  .movements-container td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .movements-container th {
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    position: relative;
+    padding-right: 20px;
+  }
+
+    .movements-container th .sort-asc::after {
+      content: '↑';
+      position: absolute;
+      right: 5px;
+    }
+
+    .movements-container th .sort-desc::after {
+      content: '↓';
+      position: absolute;
+      right: 5px;
+    }
+
+  .movements-container td {
+    font-size: 13px;
+  }
+
+  .movements-container tbody tr:hover {
+    background: #f9fafb;
+  }
+
+.advanced-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+  .advanced-filters input {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 100%;
+    max-width: 160px;
+    outline: none;
+    transition: border-color 0.2s;
+    flex: 1;
+    min-width: 120px;
+  }
+
+    .advanced-filters input:focus {
+      border-color: #3b82f6;
+    }
+
+@media (min-width: 768px) {
+  .warehouse-container {
+    flex-direction: row;
+  }
+
+  .sidebar {
+    width: 250px;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .main-content {
+    padding: 20px;
+  }
+
+  header {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 16px 24px;
+    margin-bottom: 24px;
+  }
+
+  .warehouse-section {
+    padding: 0 24px;
+  }
+
+  .items-list th,
+  .items-list td,
+  .movements-container th,
+  .movements-container td {
+    padding: 14px 16px;
+  }
+}
+.sidebar ul li button.active {
+  background: #34495e;
+}
+
+.submenu {
+  padding-left: 20px;
+}
+
+  .submenu li button {
+    padding: 8px 15px;
+  }
+
+.arrow {
+  font-size: 12px;
+  transition: transform 0.3s;
+}
+
+  .arrow.open {
+    transform: rotate(180deg);
+  }

@@ -45,7 +45,9 @@ html, body {
 
       .sidebar ul li a,
       .sidebar ul li button {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         padding: 10px 15px;
         text-decoration: none;
         color: #ecf0f1;
@@ -59,10 +61,31 @@ html, body {
         transition: background 0.3s;
       }
 
+        .sidebar ul li button.active {
+          background: #34495e;
+        }
+
         .sidebar ul li a:hover,
         .sidebar ul li button:hover {
           background: #34495e;
         }
+
+.submenu {
+  padding-left: 20px;
+}
+
+  .submenu li button {
+    padding: 8px 15px;
+  }
+
+.arrow {
+  font-size: 12px;
+  transition: transform 0.3s;
+}
+
+  .arrow.open {
+    transform: rotate(180deg);
+  }
 
 .main-content {
   flex-grow: 1;
@@ -131,59 +154,4 @@ header {
     font-size: 20px;
     font-weight: bold;
     color: #34495e;
-  }
-
-.table-container {
-  margin-top: 20px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-  table thead {
-    background: #2c3e50;
-    color: #fff;
-  }
-
-  table th, table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-  }
-
-  table tbody tr:hover {
-    background: #f2f2f2;
-  }
-
-.action-button {
-  background: #3498db;
-  color: #fff;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-  .action-button:hover {
-    background: #2980b9;
-  }
-
-.user-info {
-  text-align: right;
-}
-
-  .user-info p {
-    font-size: 14px;
-    color: #666;
-  }
-
-  .user-info strong {
-    color: #2c3e50;
   }
