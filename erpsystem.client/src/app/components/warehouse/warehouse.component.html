@@ -36,23 +36,59 @@
           <div class="add-item-form">
             <h3>Dodaj nowy produkt</h3>
             <form>
-              <input [(ngModel)]="newItem.name" placeholder="Nazwa" name="name" required>
-              <input [(ngModel)]="newItem.code" placeholder="Kod" name="code" required>
-              <input [(ngModel)]="newItem.quantity" type="number" placeholder="Ilość" name="quantity" required min="0" (ngModelChange)="syncMovementQuantity()">
-              <input [(ngModel)]="newItem.price" type="number" placeholder="Cena" name="price" required min="0" step="0.01">
-              <input [(ngModel)]="newItem.category" placeholder="Kategoria" name="category" required>
-              <select [(ngModel)]="newItem.location" name="location" required>
-                <option value="" disabled>Wybierz lokalizację</option>
-                <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
-              </select>
-              <h4>Pierwsze przyjęcie</h4>
-              <select [(ngModel)]="newMovement.movementType" name="movementType" required>
-                <option value="Receipt">Przyjęcie</option>
-                <option value="Production" disabled>Produkcja</option>
-              </select>
-              <input [(ngModel)]="newMovement.supplier" placeholder="Dostawca" name="supplier" required>
-              <input [(ngModel)]="newMovement.documentNumber" placeholder="Numer dokumentu (np. PZ)" name="documentNumber" required>
-              <textarea [(ngModel)]="newMovement.description" placeholder="Opis przyjęcia" name="description"></textarea>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="name">Nazwa</label>
+                  <input [(ngModel)]="newItem.name" id="name" placeholder="Nazwa" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="code">Kod</label>
+                  <input [(ngModel)]="newItem.code" id="code" placeholder="Kod" name="code" required>
+                </div>
+                <div class="form-group">
+                  <label for="quantity">Ilość</label>
+                  <input [(ngModel)]="newItem.quantity" id="quantity" type="number" placeholder="Ilość" name="quantity" required min="0" (ngModelChange)="syncMovementQuantity()">
+                </div>
+                <div class="form-group">
+                  <label for="price">Cena</label>
+                  <input [(ngModel)]="newItem.price" id="price" type="number" placeholder="Cena" name="price" required min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                  <label for="category">Kategoria</label>
+                  <input [(ngModel)]="newItem.category" id="category" placeholder="Kategoria" name="category" required>
+                </div>
+                <div class="form-group">
+                  <label for="location">Lokalizacja</label>
+                  <select [(ngModel)]="newItem.location" id="location" name="location" required>
+                    <option value="" disabled>Wybierz lokalizację</option>
+                    <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="movement-section">
+                <h4>Pierwsze przyjęcie</h4>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="movementType">Typ ruchu</label>
+                    <select [(ngModel)]="newMovement.movementType" id="movementType" name="movementType" required>
+                      <option value="Przyjęcie">Przyjęcie</option>
+                      <option value="Produkcja" disabled>Produkcja</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="supplier">Dostawca</label>
+                    <input [(ngModel)]="newMovement.supplier" id="supplier" placeholder="Dostawca" name="supplier" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="documentNumber">Numer dokumentu</label>
+                    <input [(ngModel)]="newMovement.documentNumber" id="documentNumber" placeholder="Numer dokumentu (np. PZ)" name="documentNumber" required>
+                  </div>
+                </div>
+                <div class="form-group full-width">
+                  <label for="description">Opis przyjęcia</label>
+                  <textarea [(ngModel)]="newMovement.description" id="description" placeholder="Opis przyjęcia" name="description"></textarea>
+                </div>
+              </div>
               <div class="form-buttons">
                 <button type="button" (click)="addItemWithMovement()">Dodaj produkt i ruch</button>
                 <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
@@ -143,13 +179,13 @@
           <div class="movements-container" *ngIf="showMovements && selectedItemId">
             <form>
               <select [(ngModel)]="newMovement.movementType" name="movementType" required>
-                <option value="Receipt">Przyjęcie</option>
-                <option value="Issue">Wydanie</option>
+                <option value="Przyjęcie">Przyjęcie</option>
+                <option value="Wydanie">Wydanie</option>
               </select>
               <select [(ngModel)]="newMovement.status" name="status" required>
-                <option value="Planned">Zaplanowane</option>
-                <option value="InProgress">W trakcie</option>
-                <option value="Completed">Zakończone</option>
+                <option value="Zaplanowane">Zaplanowane</option>
+                <option value="W trakcie">W trakcie</option>
+                <option value="Zakończone">Zakończone</option>
               </select>
               <input [(ngModel)]="newMovement.quantity" type="number" placeholder="Ilość" name="quantity" required min="1">
               <input [(ngModel)]="newMovement.supplier" placeholder="Dostawca" name="supplier">

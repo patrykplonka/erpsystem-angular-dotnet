@@ -17,7 +17,7 @@ import * as XLSX from 'xlsx';
 export class WarehouseComponent implements OnInit {
   warehouseItems: WarehouseItemDto[] = [];
   deletedItems: WarehouseItemDto[] = [];
-  newItem: CreateWarehouseItemDto = { name: '', code: '', quantity: null, price: null, category: '', location: '' };
+  newItem: CreateWarehouseItemDto = { name: '', code: '', quantity: null, price: null, category: '', location: '', createdBy: '' };
   editItem: UpdateWarehouseItemDto | null = null;
   currentUserEmail: string | null = null;
   currentUserFullName: string = 'Unknown';
@@ -36,12 +36,12 @@ export class WarehouseComponent implements OnInit {
   movements: WarehouseMovement[] = [];
   newMovement: CreateWarehouseMovementDto = {
     warehouseItemId: 0,
-    movementType: 'Receipt',
+    movementType: 'Przyjęcie',
     quantity: 0,
     supplier: '',
     documentNumber: '',
     description: '',
-    status: 'Completed',
+    status: 'Zakończone',
     createdBy: '',
     date: '',
     comment: ''
@@ -305,7 +305,8 @@ export class WarehouseComponent implements OnInit {
       ...this.newItem,
       quantity: this.newItem.quantity ?? 0,
       price: this.newItem.price ?? 0,
-      location: this.newItem.location || 'Brak'
+      location: this.newItem.location || 'Brak',
+      createdBy: this.currentUserFullName
     };
     this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
       response => {
@@ -326,13 +327,13 @@ export class WarehouseComponent implements OnInit {
             this.toggleAddForm();
             this.newMovement = {
               warehouseItemId: 0,
-              movementType: 'Receipt',
+              movementType: 'Przyjęcie',
               quantity: 0,
               supplier: '',
               documentNumber: '',
               description: '',
-              status: 'Completed',
-              createdBy: '',
+              status: 'Zakończone',
+              createdBy: this.currentUserFullName,
               date: '',
               comment: ''
             };
@@ -349,7 +350,9 @@ export class WarehouseComponent implements OnInit {
   }
 
   deleteItem(id: number) {
-    this.http.delete(`https://localhost:7224/api/warehouse/${id}`).subscribe(
+    this.http.delete(`https://localhost:7224/api/warehouse/${id}`, {
+      body: { createdBy: this.currentUserFullName }
+    }).subscribe(
       () => {
         this.loadItems();
         this.loadOperationLogs();
@@ -360,7 +363,7 @@ export class WarehouseComponent implements OnInit {
   }
 
   restoreItem(id: number) {
-    this.http.post(`https://localhost:7224/api/warehouse/restore/${id}`, {}).subscribe(
+    this.http.post(`https://localhost:7224/api/warehouse/restore/${id}`, { createdBy: this.currentUserFullName }).subscribe(
       () => {
         this.loadItems();
         this.loadOperationLogs();
@@ -384,7 +387,8 @@ export class WarehouseComponent implements OnInit {
         this.errorMessage = 'Ilość i cena nie mogą być ujemne.';
         return;
       }
-      this.http.put(`https://localhost:7224/api/warehouse/${this.editItem.id}`, this.editItem).subscribe(
+      const updatedItem = { ...this.editItem, createdBy: this.currentUserFullName };
+      this.http.put(`https://localhost:7224/api/warehouse/${this.editItem.id}`, updatedItem).subscribe(
         () => {
           this.successMessage = `Zaktualizowano produkt: ${this.editItem!.name}`;
           this.errorMessage = null;
@@ -415,16 +419,16 @@ export class WarehouseComponent implements OnInit {
     this.errorMessage = null;
     this.successMessage = null;
     if (!this.showAddForm) {
-      this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '' };
+      this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '', createdBy: this.currentUserFullName };
       this.newMovement = {
         warehouseItemId: 0,
-        movementType: 'Receipt',
+        movementType: 'Przyjęcie',
         quantity: 0,
         supplier: '',
         documentNumber: '',
         description: '',
-        status: 'Completed',
-        createdBy: '',
+        status: 'Zakończone',
+        createdBy: this.currentUserFullName,
         date: '',
         comment: ''
       };
@@ -493,12 +497,12 @@ export class WarehouseComponent implements OnInit {
         this.loadOperationLogs();
         this.newMovement = {
           warehouseItemId: this.newMovement.warehouseItemId,
-          movementType: 'Receipt',
+          movementType: 'Przyjęcie',
           quantity: 0,
           supplier: '',
           documentNumber: '',
           description: '',
-          status: 'Completed',
+          status: 'Zakończone',
           createdBy: this.currentUserFullName,
           date: '',
           comment: ''
@@ -545,18 +549,28 @@ export class WarehouseComponent implements OnInit {
   }
 
   processBulkMovements(data: any[]) {
-    const movements = data.map(row => ({
-      warehouseItemId: parseInt(row.warehouseItemId, 10),
-      movementType: row.movementType,
-      quantity: parseInt(row.quantity, 10),
-      supplier: row.supplier || '',
-      documentNumber: row.documentNumber || '',
-      description: row.description || '',
-      createdBy: this.currentUserFullName,
-      status: row.status || 'Completed',
-      comment: row.comment || '',
-      date: this.formatDateForApi(new Date())
-    }));
+    const movements = data.map(row => {
+      let movementType = row.movementType;
+      if (movementType === 'Receipt') movementType = 'Przyjęcie';
+      if (movementType === 'Issue') movementType = 'Wydanie';
+      if (movementType === 'Production') movementType = 'Produkcja';
+      let status = row.status || 'Zakończone';
+      if (status === 'Planned') status = 'Zaplanowane';
+      if (status === 'InProgress') status = 'W trakcie';
+      if (status === 'Completed') status = 'Zakończone';
+      return {
+        warehouseItemId: parseInt(row.warehouseItemId, 10),
+        movementType: movementType,
+        quantity: parseInt(row.quantity, 10),
+        supplier: row.supplier || '',
+        documentNumber: row.documentNumber || '',
+        description: row.description || '',
+        createdBy: this.currentUserFullName,
+        status: status,
+        comment: row.comment || '',
+        date: this.formatDateForApi(new Date())
+      };
+    });
     movements.forEach(movement => {
       this.movementService.createMovement(movement).subscribe(
         () => {
@@ -579,7 +593,7 @@ export class WarehouseComponent implements OnInit {
   exportToExcel() {
     const worksheet = XLSX.utils.json_to_sheet(this.filteredOperationLogs.map(log => ({
       ID: log.id,
-      Użytkownik: log.user === "System" ? this.currentUserFullName : log.user,
+      Użytkownik: log.user,
       Operacja: log.operation,
       Produkt: log.itemName,
       'ID Produktu': log.itemId,
@@ -640,6 +654,7 @@ interface CreateWarehouseItemDto {
   price: number | null;
   category: string;
   location: string;
+  createdBy: string;
 }
 
 interface UpdateWarehouseItemDto {
@@ -650,6 +665,7 @@ interface UpdateWarehouseItemDto {
   price: number;
   category: string;
   location: string;
+  createdBy?: string;
 }
 
 interface Location {
@@ -677,7 +693,7 @@ interface WarehouseMovement {
   description: string;
   date: string;
   createdBy: string;
-  status: 'Planned' | 'InProgress' | 'Completed';
+  status: 'Zaplanowane' | 'W trakcie' | 'Zakończone';
   comment?: string;
 }
 
@@ -688,7 +704,7 @@ interface CreateWarehouseMovementDto {
   supplier: string;
   documentNumber: string;
   description: string;
-  status: 'Planned' | 'InProgress' | 'Completed';
+  status: 'Zaplanowane' | 'W trakcie' | 'Zakończone';
   createdBy: string;
   date: string;
   comment?: string;
