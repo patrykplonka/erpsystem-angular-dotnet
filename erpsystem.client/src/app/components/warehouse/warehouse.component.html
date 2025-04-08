@@ -38,15 +38,23 @@
             <form>
               <input [(ngModel)]="newItem.name" placeholder="Nazwa" name="name" required>
               <input [(ngModel)]="newItem.code" placeholder="Kod" name="code" required>
-              <input [(ngModel)]="newItem.quantity" type="number" placeholder="Ilość" name="quantity" required>
-              <input [(ngModel)]="newItem.price" type="number" placeholder="Cena" name="price" required>
+              <input [(ngModel)]="newItem.quantity" type="number" placeholder="Ilość" name="quantity" required min="0" (ngModelChange)="syncMovementQuantity()">
+              <input [(ngModel)]="newItem.price" type="number" placeholder="Cena" name="price" required min="0" step="0.01">
               <input [(ngModel)]="newItem.category" placeholder="Kategoria" name="category" required>
               <select [(ngModel)]="newItem.location" name="location" required>
                 <option value="" disabled>Wybierz lokalizację</option>
                 <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
               </select>
+              <h4>Pierwsze przyjęcie</h4>
+              <select [(ngModel)]="newMovement.movementType" name="movementType" required>
+                <option value="Receipt">Przyjęcie</option>
+                <option value="Production" disabled>Produkcja</option>
+              </select>
+              <input [(ngModel)]="newMovement.supplier" placeholder="Dostawca" name="supplier" required>
+              <input [(ngModel)]="newMovement.documentNumber" placeholder="Numer dokumentu (np. PZ)" name="documentNumber" required>
+              <textarea [(ngModel)]="newMovement.description" placeholder="Opis przyjęcia" name="description"></textarea>
               <div class="form-buttons">
-                <button type="button" (click)="addItem()">Dodaj</button>
+                <button type="button" (click)="addItemWithMovement()">Dodaj produkt i ruch</button>
                 <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
               </div>
             </form>
@@ -144,6 +152,8 @@
                 <option value="Completed">Zakończone</option>
               </select>
               <input [(ngModel)]="newMovement.quantity" type="number" placeholder="Ilość" name="quantity" required min="1">
+              <input [(ngModel)]="newMovement.supplier" placeholder="Dostawca" name="supplier">
+              <input [(ngModel)]="newMovement.documentNumber" placeholder="Numer dokumentu" name="documentNumber">
               <textarea [(ngModel)]="newMovement.description" placeholder="Opis" name="description"></textarea>
               <textarea [(ngModel)]="newMovement.comment" placeholder="Komentarz" name="comment"></textarea>
               <button type="button" (click)="addMovement()">Dodaj ruch</button>
@@ -155,6 +165,8 @@
                   <th (click)="sortMovements('movementType')">Typ <span [ngClass]="{'sort-asc': movementSortField === 'movementType' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'movementType' && movementSortDirection === 'desc'}"></span></th>
                   <th (click)="sortMovements('status')">Status <span [ngClass]="{'sort-asc': movementSortField === 'status' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'status' && movementSortDirection === 'desc'}"></span></th>
                   <th (click)="sortMovements('quantity')">Ilość <span [ngClass]="{'sort-asc': movementSortField === 'quantity' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'quantity' && movementSortDirection === 'desc'}"></span></th>
+                  <th (click)="sortMovements('supplier')">Dostawca <span [ngClass]="{'sort-asc': movementSortField === 'supplier' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'supplier' && movementSortDirection === 'desc'}"></span></th>
+                  <th (click)="sortMovements('documentNumber')">Numer dokumentu <span [ngClass]="{'sort-asc': movementSortField === 'documentNumber' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'documentNumber' && movementSortDirection === 'desc'}"></span></th>
                   <th (click)="sortMovements('date')">Data <span [ngClass]="{'sort-asc': movementSortField === 'date' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'date' && movementSortDirection === 'desc'}"></span></th>
                   <th (click)="sortMovements('description')">Opis <span [ngClass]="{'sort-asc': movementSortField === 'description' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'description' && movementSortDirection === 'desc'}"></span></th>
                   <th (click)="sortMovements('comment')">Komentarz <span [ngClass]="{'sort-asc': movementSortField === 'comment' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'comment' && movementSortDirection === 'desc'}"></span></th>
@@ -166,6 +178,8 @@
                   <td data-label="Typ">{{ m.movementType }}</td>
                   <td data-label="Status">{{ m.status }}</td>
                   <td data-label="Ilość">{{ m.quantity }}</td>
+                  <td data-label="Dostawca">{{ m.supplier }}</td>
+                  <td data-label="Numer dokumentu">{{ m.documentNumber }}</td>
                   <td data-label="Data">{{ m.date }}</td>
                   <td data-label="Opis">{{ m.description }}</td>
                   <td data-label="Komentarz">{{ m.comment }}</td>

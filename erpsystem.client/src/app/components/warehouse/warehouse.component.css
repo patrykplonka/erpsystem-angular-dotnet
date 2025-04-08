@@ -157,6 +157,12 @@ header {
     margin-bottom: 12px;
   }
 
+  .add-item-form h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 15px 0 10px;
+  }
+
   .add-item-form form,
   .edit-item-form form {
     display: flex;
@@ -166,6 +172,7 @@ header {
 
   .add-item-form input,
   .add-item-form select,
+  .add-item-form textarea,
   .edit-item-form input,
   .edit-item-form select {
     padding: 10px;
@@ -178,6 +185,7 @@ header {
 
     .add-item-form input:focus,
     .add-item-form select:focus,
+    .add-item-form textarea:focus,
     .edit-item-form input:focus,
     .edit-item-form select:focus {
       border-color: #3b82f6;
@@ -185,10 +193,16 @@ header {
 
     .add-item-form input.ng-invalid.ng-touched,
     .add-item-form select.ng-invalid.ng-touched,
+    .add-item-form textarea.ng-invalid.ng-touched,
     .edit-item-form input.ng-invalid.ng-touched,
     .edit-item-form select.ng-invalid.ng-touched {
       border-color: #dc3545;
     }
+
+  .add-item-form textarea {
+    width: 100%;
+    resize: vertical;
+  }
 
 .form-buttons {
   display: flex;
@@ -448,7 +462,8 @@ header {
   }
 
     .movements-container select.ng-invalid.ng-touched,
-    .movements-container input.ng-invalid.ng-touched {
+    .movements-container input.ng-invalid.ng-touched,
+    .movements-container textarea.ng-invalid.ng-touched {
       border-color: #dc3545;
     }
 
@@ -489,78 +504,53 @@ header {
     font-weight: 600;
   }
 
-.movement-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  margin-bottom: 20px;
-  align-items: center;
-}
-
-  .movement-filters input {
-    padding: 10px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
+  .movements-container table {
     width: 100%;
-    max-width: 160px;
-    outline: none;
-    transition: border-color 0.2s;
-    flex: 1;
-    min-width: 120px;
+    border-collapse: collapse;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
   }
 
-    .movement-filters input:focus {
-      border-color: #3b82f6;
+  .movements-container thead {
+    background: #f1f5f9;
+  }
+
+  .movements-container th,
+  .movements-container td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .movements-container th {
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    position: relative;
+    padding-right: 20px;
+  }
+
+    .movements-container th .sort-asc::after {
+      content: '↑';
+      position: absolute;
+      right: 5px;
     }
 
-.movements-container table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border-radius: 12px;
-  overflow: hidden;
-}
+    .movements-container th .sort-desc::after {
+      content: '↓';
+      position: absolute;
+      right: 5px;
+    }
 
-.movements-container thead {
-  background: #f1f5f9;
-}
-
-.movements-container th,
-.movements-container td {
-  padding: 10px;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.movements-container th {
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  position: relative;
-  padding-right: 20px;
-}
-
-  .movements-container th .sort-asc::after {
-    content: '↑';
-    position: absolute;
-    right: 5px;
+  .movements-container td {
+    font-size: 13px;
   }
 
-  .movements-container th .sort-desc::after {
-    content: '↓';
-    position: absolute;
-    right: 5px;
+  .movements-container tbody tr:hover {
+    background: #f9fafb;
   }
-
-.movements-container td {
-  font-size: 13px;
-}
-
-.movements-container tbody tr:hover {
-  background: #f9fafb;
-}
 
 .history-section {
   margin-top: 20px;
@@ -713,14 +703,12 @@ header {
   }
 
   .advanced-filters,
-  .movement-filters,
   .history-filters {
     gap: 12px;
     margin-bottom: 16px;
   }
 
     .advanced-filters input,
-    .movement-filters input,
     .history-filters input {
       width: 180px;
     }

@@ -34,7 +34,18 @@ export class WarehouseComponent implements OnInit {
   successMessage: string | null = null;
   selectedItemId: number | null = null;
   movements: WarehouseMovement[] = [];
-  newMovement: any = { warehouseItemId: 0, movementType: 'Receipt', quantity: 0, description: '', status: 'Planned', comment: '' };
+  newMovement: CreateWarehouseMovementDto = {
+    warehouseItemId: 0,
+    movementType: 'Receipt',
+    quantity: 0,
+    supplier: '',
+    documentNumber: '',
+    description: '',
+    status: 'Completed',
+    createdBy: '',
+    date: '',
+    comment: ''
+  };
   showMovements: boolean = false;
   availableLocations: Location[] = [];
   operationLogs: OperationLog[] = [];
@@ -118,15 +129,13 @@ export class WarehouseComponent implements OnInit {
   }
 
   checkLowStock() {
-    this.notifications = [];
-    this.warehouseItems.forEach(item => {
-      if (item.quantity <= this.lowStockThreshold) {
-        this.notifications.push(`Niski stan magazynowy: ${item.name} (Ilość: ${item.quantity})`);
-      }
-    });
+    this.notifications = this.warehouseItems
+      .filter(item => item.quantity <= this.lowStockThreshold)
+      .map(item => `Niski stan magazynowy: ${item.name} (Ilość: ${item.quantity})`);
   }
 
   applyFilters() {
+    this.checkLowStock();
   }
 
   updateItemMovementsInfo() {
@@ -275,26 +284,67 @@ export class WarehouseComponent implements OnInit {
     );
   }
 
-  addItem() {
+  syncMovementQuantity() {
+    this.newMovement.quantity = this.newItem.quantity ?? 0;
+  }
+
+  addItemWithMovement() {
     if (!this.newItem.name || !this.newItem.code || this.newItem.quantity === null || this.newItem.price === null || !this.newItem.category || !this.newItem.location) {
-      this.errorMessage = 'Wszystkie pola są wymagane.';
+      this.errorMessage = 'Wszystkie pola produktu są wymagane.';
       return;
     }
     if (this.newItem.quantity < 0 || this.newItem.price < 0) {
       this.errorMessage = 'Ilość i cena nie mogą być ujemne.';
       return;
     }
-    const itemToSend = { ...this.newItem, quantity: this.newItem.quantity ?? 0, price: this.newItem.price ?? 0, location: this.newItem.location || 'Brak' };
+    if (!this.newMovement.supplier || !this.newMovement.documentNumber) {
+      this.errorMessage = 'Dostawca i numer dokumentu są wymagane dla pierwszego przyjęcia.';
+      return;
+    }
+    const itemToSend: CreateWarehouseItemDto = {
+      ...this.newItem,
+      quantity: this.newItem.quantity ?? 0,
+      price: this.newItem.price ?? 0,
+      location: this.newItem.location || 'Brak'
+    };
     this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
       response => {
         this.successMessage = `Dodano produkt: ${response.name}`;
         this.errorMessage = null;
-        this.loadItems();
-        this.loadOperationLogs();
-        this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '' };
-        this.showAddForm = false;
+        const movementToSend: CreateWarehouseMovementDto = {
+          ...this.newMovement,
+          warehouseItemId: response.id,
+          quantity: this.newItem.quantity ?? 0,
+          createdBy: this.currentUserFullName,
+          date: this.formatDateForApi(new Date())
+        };
+        this.movementService.createMovement(movementToSend).subscribe(
+          () => {
+            this.successMessage += ' oraz zarejestrowano przyjęcie.';
+            this.loadItems();
+            this.loadOperationLogs();
+            this.toggleAddForm();
+            this.newMovement = {
+              warehouseItemId: 0,
+              movementType: 'Receipt',
+              quantity: 0,
+              supplier: '',
+              documentNumber: '',
+              description: '',
+              status: 'Completed',
+              createdBy: '',
+              date: '',
+              comment: ''
+            };
+          },
+          error => {
+            this.errorMessage = `Błąd dodawania ruchu: ${error.status} ${error.message}`;
+          }
+        );
       },
-      error => this.errorMessage = error.error || `Błąd dodawania produktu: ${error.status} ${error.message}`
+      error => {
+        this.errorMessage = `Błąd dodawania produktu: ${error.status} ${error.message}`;
+      }
     );
   }
 
@@ -364,6 +414,21 @@ export class WarehouseComponent implements OnInit {
     this.showAddForm = !this.showAddForm;
     this.errorMessage = null;
     this.successMessage = null;
+    if (!this.showAddForm) {
+      this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '' };
+      this.newMovement = {
+        warehouseItemId: 0,
+        movementType: 'Receipt',
+        quantity: 0,
+        supplier: '',
+        documentNumber: '',
+        description: '',
+        status: 'Completed',
+        createdBy: '',
+        date: '',
+        comment: ''
+      };
+    }
   }
 
   toggleHistoryView() {
@@ -419,7 +484,6 @@ export class WarehouseComponent implements OnInit {
     this.newMovement.date = this.formatDateForApi(new Date());
     this.newMovement.createdBy = this.currentUserFullName;
     this.newMovement.comment = this.newMovement.comment !== undefined ? this.newMovement.comment : '';
-    console.log('Wysyłane dane:', JSON.stringify(this.newMovement, null, 2));
     this.movementService.createMovement(this.newMovement).subscribe(
       () => {
         this.successMessage = 'Ruch magazynowy dodany.';
@@ -431,13 +495,16 @@ export class WarehouseComponent implements OnInit {
           warehouseItemId: this.newMovement.warehouseItemId,
           movementType: 'Receipt',
           quantity: 0,
+          supplier: '',
+          documentNumber: '',
           description: '',
-          status: 'Planned',
+          status: 'Completed',
+          createdBy: this.currentUserFullName,
+          date: '',
           comment: ''
         };
       },
       error => {
-        console.log('Błąd serwera:', JSON.stringify(error, null, 2));
         if (error.status === 400 && error.error === 'Niewystarczająca ilość na magazynie') {
           this.errorMessage = `Niewystarczająca ilość na magazynie dla produktu ID ${this.newMovement.warehouseItemId}.`;
         } else {
@@ -464,7 +531,6 @@ export class WarehouseComponent implements OnInit {
     const lines = csv.split('\n');
     const result: any[] = [];
     const headers = lines[0].split(',').map(h => h.trim());
-
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim().replace(/^"(.+)"$/, '$1'));
       if (values.length === headers.length) {
@@ -483,15 +549,15 @@ export class WarehouseComponent implements OnInit {
       warehouseItemId: parseInt(row.warehouseItemId, 10),
       movementType: row.movementType,
       quantity: parseInt(row.quantity, 10),
+      supplier: row.supplier || '',
+      documentNumber: row.documentNumber || '',
       description: row.description || '',
       createdBy: this.currentUserFullName,
-      status: row.status || 'Planned',
-      comment: row.comment !== undefined ? row.comment : '',
+      status: row.status || 'Completed',
+      comment: row.comment || '',
       date: this.formatDateForApi(new Date())
     }));
-
     movements.forEach(movement => {
-      console.log('Wysyłane dane masowe:', JSON.stringify(movement, null, 2));
       this.movementService.createMovement(movement).subscribe(
         () => {
           this.loadMovements(movement.warehouseItemId);
@@ -499,7 +565,6 @@ export class WarehouseComponent implements OnInit {
           this.loadOperationLogs();
         },
         error => {
-          console.log('Błąd serwera:', JSON.stringify(error, null, 2));
           if (error.status === 400 && error.error === 'Niewystarczająca ilość na magazynie') {
             this.errorMessage = `Błąd dla produktu ID ${movement.warehouseItemId}: Niewystarczająca ilość na magazynie.`;
           } else {
@@ -533,6 +598,7 @@ export class WarehouseComponent implements OnInit {
       this.sortField = field;
       this.sortDirection = 'asc';
     }
+    this.applyFilters();
   }
 
   sortMovements(field: string) {
@@ -606,9 +672,24 @@ interface WarehouseMovement {
   warehouseItemId: number;
   movementType: string;
   quantity: number;
+  supplier: string;
+  documentNumber: string;
   description: string;
   date: string;
   createdBy: string;
   status: 'Planned' | 'InProgress' | 'Completed';
+  comment?: string;
+}
+
+interface CreateWarehouseMovementDto {
+  warehouseItemId: number;
+  movementType: string;
+  quantity: number;
+  supplier: string;
+  documentNumber: string;
+  description: string;
+  status: 'Planned' | 'InProgress' | 'Completed';
+  createdBy: string;
+  date: string;
   comment?: string;
 }
