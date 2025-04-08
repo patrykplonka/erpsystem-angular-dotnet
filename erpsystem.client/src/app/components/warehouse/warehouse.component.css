@@ -665,6 +665,91 @@ header {
     background: #16a34a;
   }
 
+.reports-section {
+  margin-top: 20px;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+  .reports-section h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #2c3e50;
+  }
+
+.report-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.report-content table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.report-content thead {
+  background: #f1f5f9;
+}
+
+.report-content th,
+.report-content td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.report-content th {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.report-content td {
+  font-size: 13px;
+}
+
+.report-content tbody tr:hover {
+  background: #f9fafb;
+}
+
+.movement-filters {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  align-items: flex-end;
+}
+
+  .movement-filters .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .movement-filters label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 5px;
+  }
+
+  .movement-filters input {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+    .movement-filters input:focus {
+      border-color: #3b82f6;
+    }
+
 @media (min-width: 768px) {
   .warehouse-container {
     flex-direction: row;

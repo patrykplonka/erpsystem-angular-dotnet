@@ -9,6 +9,9 @@
       <ul>
         <li><a href="#">📊 Statystyki</a></li>
         <li><button (click)="goToWarehouse()">📦 Magazyn</button></li>
+        <li><button (click)="showReport('stock')">📋 Stan magazynowy</button></li>
+        <li><button (click)="showReport('movements')">📅 Ruchy w okresie</button></li>
+        <li><button (click)="showReport('popular')">⭐ Najpopularniejsze</button></li>
         <li><a href="#">📄 Faktury</a></li>
         <li><a href="#">👤 Klienci</a></li>
         <li><a href="#">⚙️ Ustawienia</a></li>
@@ -259,6 +262,88 @@
           </table>
           <div class="export-buttons">
             <button (click)="exportToExcel()">Eksportuj do Excel</button>
+          </div>
+        </div>
+        <div class="reports-section">
+          <h2>Raporty</h2>
+          <div class="report-tabs">
+            <button class="toggle-history" (click)="showReport('stock')">Stan magazynowy</button>
+            <button class="toggle-history" (click)="showReport('movements')">Ruchy w okresie</button>
+            <button class="toggle-history" (click)="showReport('popular')">Najpopularniejsze produkty</button>
+          </div>
+          <div *ngIf="currentReport === 'stock'" class="report-content">
+            <h3>Stan magazynowy</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Nazwa</th>
+                  <th>Kod</th>
+                  <th>Ilość</th>
+                  <th>Kategoria</th>
+                  <th>Lokalizacja</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of warehouseItems">
+                  <td>{{ item.name }}</td>
+                  <td>{{ item.code }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>{{ item.category }}</td>
+                  <td>{{ item.location }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div *ngIf="currentReport === 'movements'" class="report-content">
+            <h3>Ruchy w okresie</h3>
+            <form (ngSubmit)="loadMovementsInPeriod()" class="movement-filters">
+              <div class="form-group">
+                <label for="movementStartDate">Od</label>
+                <input type="date" id="movementStartDate" [(ngModel)]="movementStartDate" name="startDate" required>
+              </div>
+              <div class="form-group">
+                <label for="movementEndDate">Do</label>
+                <input type="date" id="movementEndDate" [(ngModel)]="movementEndDate" name="endDate" required>
+              </div>
+              <button type="submit" class="add-button">Pokaż ruchy</button>
+            </form>
+            <table *ngIf="movementsInPeriod.length > 0">
+              <thead>
+                <tr>
+                  <th>Typ</th>
+                  <th>Produkt</th>
+                  <th>Ilość</th>
+                  <th>Data</th>
+                  <th>Użytkownik</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let movement of movementsInPeriod">
+                  <td>{{ movement.movementType }}</td>
+                  <td>{{ movement.warehouseItemName }}</td>
+                  <td>{{ movement.quantity }}</td>
+                  <td>{{ formatDate(movement.date) }}</td>
+                  <td>{{ movement.createdBy }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div *ngIf="currentReport === 'popular'" class="report-content">
+            <h3>Najpopularniejsze produkty</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Nazwa</th>
+                  <th>Liczba wydań</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let product of popularProducts">
+                  <td>{{ product.name }}</td>
+                  <td>{{ product.issueCount }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>

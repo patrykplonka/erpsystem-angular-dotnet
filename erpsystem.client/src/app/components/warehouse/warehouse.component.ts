@@ -72,6 +72,11 @@ export class WarehouseComponent implements OnInit {
   movementStartDateFilter: string = '';
   movementEndDateFilter: string = '';
   movementUserFilter: string = '';
+  currentReport: string | null = null;
+  movementStartDate: string = '';
+  movementEndDate: string = '';
+  movementsInPeriod: WarehouseMovement[] = [];
+  popularProducts: { name: string, issueCount: number }[] = [];
 
   constructor(
     private http: HttpClient,
@@ -633,6 +638,57 @@ export class WarehouseComponent implements OnInit {
     }
     this.applyHistoryFilters();
   }
+
+  showReport(report: string) {
+    this.currentReport = report;
+    if (report === 'popular') {
+      this.loadPopularProducts();
+    }
+  }
+
+  loadMovementsInPeriod() {
+    const start = this.movementStartDate;
+    const end = this.movementEndDate;
+    if (!start || !end) {
+      this.errorMessage = 'Obie daty są wymagane.';
+      return;
+    }
+    this.http.get<WarehouseMovement[]>(`https://localhost:7224/api/warehousemovements/period?start=${start}&end=${end}`).subscribe(
+      data => {
+        this.movementsInPeriod = data.map(movement => ({
+          ...movement,
+          warehouseItemName: this.warehouseItems.find(item => item.id === movement.warehouseItemId)?.name || 'Nieznany'
+        }));
+        this.successMessage = 'Załadowano ruchy w okresie.';
+        this.errorMessage = null;
+      },
+      error => {
+        this.errorMessage = `Błąd ładowania ruchów: ${error.status} ${error.message}`;
+      }
+    );
+  }
+
+  loadPopularProducts() {
+    this.http.get<WarehouseMovement[]>('https://localhost:7224/api/warehousemovements').subscribe(
+      movements => {
+        const issueMovements = movements.filter(m => m.movementType === 'Wydanie');
+        const productIssueCount = issueMovements.reduce((acc, m) => {
+          acc[m.warehouseItemId] = (acc[m.warehouseItemId] || 0) + 1;
+          return acc;
+        }, {} as Record<number, number>);
+
+        this.popularProducts = this.warehouseItems
+          .map(item => ({
+            name: item.name,
+            issueCount: productIssueCount[item.id] || 0
+          }))
+          .sort((a, b) => b.issueCount - a.issueCount);
+      },
+      error => {
+        this.errorMessage = `Błąd ładowania ruchów: ${error.status} ${error.message}`;
+      }
+    );
+  }
 }
 
 interface WarehouseItemDto {
@@ -695,6 +751,7 @@ interface WarehouseMovement {
   createdBy: string;
   status: 'Zaplanowane' | 'W trakcie' | 'Zakończone';
   comment?: string;
+  warehouseItemName?: string;
 }
 
 interface CreateWarehouseMovementDto {
