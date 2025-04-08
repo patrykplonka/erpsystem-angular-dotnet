@@ -36,7 +36,7 @@ export class WarehouseComponent implements OnInit {
   movements: WarehouseMovement[] = [];
   newMovement: CreateWarehouseMovementDto = {
     warehouseItemId: 0,
-    movementType: 'Przyjęcie',
+    movementType: 'Przyjęcie zewnętrzne',
     quantity: 0,
     supplier: '',
     documentNumber: '',
@@ -327,7 +327,7 @@ export class WarehouseComponent implements OnInit {
             this.toggleAddForm();
             this.newMovement = {
               warehouseItemId: 0,
-              movementType: 'Przyjęcie',
+              movementType: 'Przyjęcie zewnętrzne',
               quantity: 0,
               supplier: '',
               documentNumber: '',
@@ -422,7 +422,7 @@ export class WarehouseComponent implements OnInit {
       this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '', createdBy: this.currentUserFullName };
       this.newMovement = {
         warehouseItemId: 0,
-        movementType: 'Przyjęcie',
+        movementType: 'Przyjęcie zewnętrzne',
         quantity: 0,
         supplier: '',
         documentNumber: '',
@@ -497,7 +497,7 @@ export class WarehouseComponent implements OnInit {
         this.loadOperationLogs();
         this.newMovement = {
           warehouseItemId: this.newMovement.warehouseItemId,
-          movementType: 'Przyjęcie',
+          movementType: 'Przyjęcie zewnętrzne',
           quantity: 0,
           supplier: '',
           documentNumber: '',
@@ -551,7 +551,7 @@ export class WarehouseComponent implements OnInit {
   processBulkMovements(data: any[]) {
     const movements = data.map(row => {
       let movementType = row.movementType;
-      if (movementType === 'Receipt') movementType = 'Przyjęcie';
+      if (movementType === 'Receipt') movementType = 'Przyjęcie zewnętrzne';
       if (movementType === 'Issue') movementType = 'Wydanie';
       if (movementType === 'Production') movementType = 'Produkcja';
       let status = row.status || 'Zakończone';

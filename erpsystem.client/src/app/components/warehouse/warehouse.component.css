@@ -132,10 +132,10 @@ header {
   border: 1px solid #f5c6cb;
 }
 
-.alert-warning {
-  background: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeeba;
+.low-stock-alert {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 .forms-container {
@@ -161,7 +161,7 @@ header {
   .add-item-form h4 {
     font-size: 16px;
     font-weight: 600;
-    margin: 20px 0 15px;
+    margin: 20px 0;
     color: #2c3e50;
   }
 

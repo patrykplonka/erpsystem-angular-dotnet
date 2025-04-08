@@ -30,7 +30,7 @@
         <div class="messages">
           <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
           <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
-          <div class="alert alert-warning" *ngFor="let notification of notifications">{{ notification }}</div>
+          <div class="alert low-stock-alert" *ngFor="let notification of notifications">{{ notification }}</div>
         </div>
         <div class="forms-container" *ngIf="showAddForm">
           <div class="add-item-form">
@@ -71,8 +71,8 @@
                   <div class="form-group">
                     <label for="movementType">Typ ruchu</label>
                     <select [(ngModel)]="newMovement.movementType" id="movementType" name="movementType" required>
-                      <option value="Przyjęcie">Przyjęcie</option>
-                      <option value="Produkcja" disabled>Produkcja</option>
+                      <option value="Przyjęcie zewnętrzne">Przyjęcie zewnętrzne</option>
+                      <option value="Przyjęcie wewnętrzne">Przyjęcie wewnętrzne</option>
                     </select>
                   </div>
                   <div class="form-group">
@@ -179,7 +179,8 @@
           <div class="movements-container" *ngIf="showMovements && selectedItemId">
             <form>
               <select [(ngModel)]="newMovement.movementType" name="movementType" required>
-                <option value="Przyjęcie">Przyjęcie</option>
+                <option value="Przyjęcie zewnętrzne">Przyjęcie zewnętrzne</option>
+                <option value="Przyjęcie wewnętrzne">Przyjęcie wewnętrzne</option>
                 <option value="Wydanie">Wydanie</option>
               </select>
               <select [(ngModel)]="newMovement.status" name="status" required>
