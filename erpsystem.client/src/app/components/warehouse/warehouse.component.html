@@ -182,7 +182,7 @@
                 <td data-label="Użytkownik">{{ log.user }}</td>
                 <td data-label="Operacja">{{ log.operation }}</td>
                 <td data-label="Produkt">{{ log.itemName }} (ID: {{ log.itemId }})</td>
-                <td data-label="Data">{{ log.timestamp }}</td>
+                <td data-label="Data">{{ formatDate(log.timestamp) }}</td>
                 <td data-label="Szczegóły">{{ log.details }}</td>
               </tr>
             </tbody>

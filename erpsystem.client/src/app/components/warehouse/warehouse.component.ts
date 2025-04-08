@@ -92,6 +92,11 @@ export class WarehouseComponent implements OnInit {
     });
   }
 
+  formatDateForApi(date: string | Date): string {
+    const d = new Date(date);
+    return d.toISOString();
+  }
+
   loadLocations() {
     this.http.get<Location[]>('https://localhost:7224/api/locations').subscribe(
       data => this.availableLocations = data,
@@ -125,7 +130,6 @@ export class WarehouseComponent implements OnInit {
   }
 
   applyFilters() {
-    this.sortItems(this.sortField);
   }
 
   updateItemMovementsInfo() {
@@ -260,7 +264,6 @@ export class WarehouseComponent implements OnInit {
         this.updateItemMovementsInfo();
         this.maxQuantity = Math.max(...this.warehouseItems.map(item => item.quantity), 100);
         this.uniqueCategories = [...new Set(this.warehouseItems.map(item => item.category))];
-        this.applyFilters();
       },
       error => this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}`
     );
@@ -270,7 +273,6 @@ export class WarehouseComponent implements OnInit {
     this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse/deleted').subscribe(
       data => {
         this.deletedItems = data;
-        this.applyFilters();
       },
       error => this.errorMessage = `Błąd ładowania usuniętych produktów: ${error.status} ${error.message}`
     );
@@ -451,8 +453,10 @@ export class WarehouseComponent implements OnInit {
       this.errorMessage = 'Typ ruchu i status są wymagane.';
       return;
     }
-    this.newMovement.date = this.formatDate(new Date());
+    this.newMovement.date = this.formatDateForApi(new Date());
     this.newMovement.createdBy = this.currentUserFullName;
+    this.newMovement.comment = this.newMovement.comment !== undefined ? this.newMovement.comment : '';
+    console.log('Wysyłane dane:', JSON.stringify(this.newMovement, null, 2));
     this.movementService.createMovement(this.newMovement).subscribe(
       () => {
         this.successMessage = 'Ruch magazynowy dodany.';
@@ -470,8 +474,9 @@ export class WarehouseComponent implements OnInit {
         };
       },
       error => {
-        if (error.status === 400 && error.error.includes('Za mało towaru')) {
-          this.errorMessage = error.error;
+        console.log('Błąd serwera:', JSON.stringify(error, null, 2));
+        if (error.status === 400 && error.error === 'Niewystarczająca ilość na magazynie') {
+          this.errorMessage = `Niewystarczająca ilość na magazynie dla produktu ID ${this.newMovement.warehouseItemId}.`;
         } else {
           this.errorMessage = error.error || `Błąd dodawania ruchu: ${error.status} ${error.message}`;
         }
@@ -498,7 +503,7 @@ export class WarehouseComponent implements OnInit {
     const headers = lines[0].split(',').map(h => h.trim());
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
+      const values = lines[i].split(',').map(v => v.trim().replace(/^"(.+)"$/, '$1'));
       if (values.length === headers.length) {
         const obj: any = {};
         headers.forEach((header, index) => {
@@ -518,11 +523,12 @@ export class WarehouseComponent implements OnInit {
       description: row.description || '',
       createdBy: this.currentUserFullName,
       status: row.status || 'Planned',
-      comment: row.comment || '',
-      date: this.formatDate(new Date())
+      comment: row.comment !== undefined ? row.comment : '',
+      date: this.formatDateForApi(new Date())
     }));
 
     movements.forEach(movement => {
+      console.log('Wysyłane dane masowe:', JSON.stringify(movement, null, 2));
       this.movementService.createMovement(movement).subscribe(
         () => {
           this.loadMovements(movement.warehouseItemId);
@@ -530,7 +536,12 @@ export class WarehouseComponent implements OnInit {
           this.loadOperationLogs();
         },
         error => {
-          this.errorMessage = `Błąd podczas masowego dodawania: ${error.message}`;
+          console.log('Błąd serwera:', JSON.stringify(error, null, 2));
+          if (error.status === 400 && error.error === 'Niewystarczająca ilość na magazynie') {
+            this.errorMessage = `Błąd dla produktu ID ${movement.warehouseItemId}: Niewystarczająca ilość na magazynie.`;
+          } else {
+            this.errorMessage = `Błąd podczas masowego dodawania: ${error.status} - ${error.statusText}. Szczegóły: ${error.error || 'Brak szczegółów'}`;
+          }
         }
       );
     });
@@ -559,7 +570,6 @@ export class WarehouseComponent implements OnInit {
       this.sortField = field;
       this.sortDirection = 'asc';
     }
-    this.applyFilters();
   }
 
   sortMovements(field: string) {
