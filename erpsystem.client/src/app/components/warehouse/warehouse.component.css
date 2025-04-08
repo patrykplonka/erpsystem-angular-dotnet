@@ -142,27 +142,32 @@ header {
   margin-bottom: 20px;
 }
 
-.add-item-form {
+.add-item-form,
+.edit-item-form {
   background: #ffffff;
   padding: 15px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-  .add-item-form h3 {
+  .add-item-form h3,
+  .edit-item-form h3 {
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 12px;
   }
 
-  .add-item-form form {
+  .add-item-form form,
+  .edit-item-form form {
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
 
   .add-item-form input,
-  .add-item-form select {
+  .add-item-form select,
+  .edit-item-form input,
+  .edit-item-form select {
     padding: 10px;
     font-size: 14px;
     border: 1px solid #e0e0e0;
@@ -172,12 +177,16 @@ header {
   }
 
     .add-item-form input:focus,
-    .add-item-form select:focus {
+    .add-item-form select:focus,
+    .edit-item-form input:focus,
+    .edit-item-form select:focus {
       border-color: #3b82f6;
     }
 
     .add-item-form input.ng-invalid.ng-touched,
-    .add-item-form select.ng-invalid.ng-touched {
+    .add-item-form select.ng-invalid.ng-touched,
+    .edit-item-form input.ng-invalid.ng-touched,
+    .edit-item-form select.ng-invalid.ng-touched {
       border-color: #dc3545;
     }
 
@@ -187,7 +196,8 @@ header {
   gap: 10px;
 }
 
-.add-item-form button {
+.add-item-form button,
+.edit-item-form button {
   background: #3b82f6;
   color: #ffffff;
   border: none;
@@ -198,7 +208,8 @@ header {
   transition: background 0.2s;
 }
 
-  .add-item-form button:hover {
+  .add-item-form button:hover,
+  .edit-item-form button:hover {
     background: #2563eb;
   }
 
@@ -672,16 +683,19 @@ header {
     margin-bottom: 24px;
   }
 
-  .add-item-form {
+  .add-item-form,
+  .edit-item-form {
     padding: 20px;
   }
 
-    .add-item-form h3 {
+    .add-item-form h3,
+    .edit-item-form h3 {
       font-size: 18px;
       margin-bottom: 16px;
     }
 
-    .add-item-form form {
+    .add-item-form form,
+    .edit-item-form form {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }

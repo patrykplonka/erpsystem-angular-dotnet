@@ -37,9 +37,6 @@ export class WarehouseComponent implements OnInit {
   newMovement: any = { warehouseItemId: 0, movementType: 'Receipt', quantity: 0, description: '', status: 'Planned', comment: '' };
   showMovements: boolean = false;
   availableLocations: Location[] = [];
-  selectedLocation: string = '';
-  showMoveForm: boolean = false;
-  itemToMoveId: number | null = null;
   operationLogs: OperationLog[] = [];
   showHistory: boolean = false;
   historyUserFilter: string = '';
@@ -329,8 +326,12 @@ export class WarehouseComponent implements OnInit {
 
   updateItem() {
     if (this.editItem) {
-      if (!this.editItem.name || !this.editItem.code || !this.editItem.quantity || !this.editItem.price || !this.editItem.category || !this.editItem.location) {
+      if (!this.editItem.name || !this.editItem.code || this.editItem.quantity === null || this.editItem.price === null || !this.editItem.category || !this.editItem.location) {
         this.errorMessage = 'Wszystkie pola są wymagane.';
+        return;
+      }
+      if (this.editItem.quantity < 0 || this.editItem.price < 0) {
+        this.errorMessage = 'Ilość i cena nie mogą być ujemne.';
         return;
       }
       this.http.put(`https://localhost:7224/api/warehouse/${this.editItem.id}`, this.editItem).subscribe(
@@ -343,44 +344,6 @@ export class WarehouseComponent implements OnInit {
         },
         error => this.errorMessage = error.error || `Błąd aktualizacji produktu: ${error.status} ${error.message}`
       );
-    }
-  }
-
-  moveItem(id: number, newLocation: string) {
-    if (!newLocation) {
-      this.errorMessage = 'Proszę wybrać nową lokalizację.';
-      return;
-    }
-    const payload = { newLocation, createdBy: this.currentUserFullName };
-    this.http.post(`https://localhost:7224/api/warehouse/move/${id}`, payload).subscribe(
-      () => {
-        this.successMessage = 'Produkt został przeniesiony.';
-        this.errorMessage = null;
-        this.loadItems();
-        this.loadOperationLogs();
-        this.showMoveForm = false;
-        this.itemToMoveId = null;
-        this.selectedLocation = '';
-      },
-      error => this.errorMessage = error.error || `Błąd przenoszenia produktu: ${error.status} ${error.message}`
-    );
-  }
-
-  startMove(id: number) {
-    this.itemToMoveId = id;
-    this.showMoveForm = true;
-    this.selectedLocation = '';
-  }
-
-  cancelMove() {
-    this.showMoveForm = false;
-    this.itemToMoveId = null;
-    this.selectedLocation = '';
-  }
-
-  submitMove() {
-    if (this.itemToMoveId !== null) {
-      this.moveItem(this.itemToMoveId, this.selectedLocation);
     }
   }
 

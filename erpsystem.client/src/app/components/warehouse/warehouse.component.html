@@ -52,6 +52,26 @@
             </form>
           </div>
         </div>
+        <div class="forms-container" *ngIf="editItem">
+          <div class="edit-item-form">
+            <h3>Edytuj produkt</h3>
+            <form>
+              <input [(ngModel)]="editItem.name" placeholder="Nazwa" name="name" required>
+              <input [(ngModel)]="editItem.code" placeholder="Kod" name="code" required>
+              <input [(ngModel)]="editItem.quantity" type="number" placeholder="Ilość" name="quantity" required>
+              <input [(ngModel)]="editItem.price" type="number" placeholder="Cena" name="price" required>
+              <input [(ngModel)]="editItem.category" placeholder="Kategoria" name="category" required>
+              <select [(ngModel)]="editItem.location" name="location" required>
+                <option value="" disabled>Wybierz lokalizację</option>
+                <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
+              </select>
+              <div class="form-buttons">
+                <button type="button" (click)="updateItem()">Zapisz</button>
+                <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
+              </div>
+            </form>
+          </div>
+        </div>
         <div class="items-list">
           <div class="list-controls">
             <button class="add-button" (click)="toggleAddForm()">Dodaj produkt</button>
@@ -105,9 +125,8 @@
                   <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>
                   <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
                   <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreItem(item.id)">Przywróć</button>
-                  <button *ngIf="!showDeleted" class="action-button move-button" (click)="startMove(item.id)">Przenieś</button>
                   <button *ngIf="!showDeleted" class="action-button" (click)="toggleMovements(item.id)">
-                    {{ showMovements && selectedItemId === item.id ? "Ukryj ruchy" : "Pokaż ruchy" }}
+                    {{ showMovements && selectedItemId === item.id ? "Ukryj ruchy" : "Ruchy magazynowe" }}
                   </button>
                 </td>
               </tr>
