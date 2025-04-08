@@ -14,6 +14,7 @@ html, body {
 
 .dashboard-container {
   display: flex;
+  flex: 1;
   height: 100vh;
 }
 
@@ -88,12 +89,13 @@ html, body {
   }
 
 .main-content {
-  flex-grow: 1;
+  flex: 1;
   padding: 20px;
   background: #fff;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  width: 100%;
 }
 
 header {
@@ -155,3 +157,19 @@ header {
     font-weight: bold;
     color: #34495e;
   }
+
+@media (min-width: 768px) {
+  .dashboard-container {
+    flex-direction: row;
+  }
+
+  .sidebar {
+    width: 250px;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .main-content {
+    padding: 20px;
+    width: calc(100% - 250px);
+  }
+}
