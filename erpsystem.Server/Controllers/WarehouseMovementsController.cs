@@ -20,7 +20,6 @@ namespace erpsystem.Server.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateMovement([FromBody] WarehouseMovementsDTO movementDto)
         {
-            // Logowanie otrzymanych danych dla debugowania
             Console.WriteLine($"Received movementDto: {System.Text.Json.JsonSerializer.Serialize(movementDto)}");
 
             if (!ModelState.IsValid)
@@ -50,32 +49,30 @@ namespace erpsystem.Server.Controllers
                 WarehouseItemId = movementDto.WarehouseItemId,
                 MovementType = movementDto.MovementType,
                 Quantity = movementDto.Quantity,
-                Date = DateTime.UtcNow,
-                Description = movementDto.Description,
-                CreatedBy = movementDto.CreatedBy // Zachowaj wartość przesłaną z frontendu
+                Date = movementDto.Date,
+                Description = movementDto.Description ?? string.Empty,
+                CreatedBy = string.IsNullOrEmpty(movementDto.CreatedBy) ? "Unknown" : movementDto.CreatedBy,
+                Status = movementDto.Status ?? "Planned",
+                Comment = movementDto.Comment ?? string.Empty
             };
 
-            // Jeśli CreatedBy jest null lub pusty, ustaw "Unknown" zamiast "System"
-            if (string.IsNullOrEmpty(movement.CreatedBy))
-            {
-                movement.CreatedBy = "Unknown"; // Domyślna wartość, jeśli brak danych
-            }
-
             _context.WarehouseMovements.Add(movement);
+            _context.WarehouseItems.Update(item);
             await _context.SaveChangesAsync();
 
             var responseDto = new WarehouseMovementsDTO
             {
-                Id = movement.Id,
+                Id = movement.Id, 
                 WarehouseItemId = movement.WarehouseItemId,
                 MovementType = movement.MovementType,
                 Quantity = movement.Quantity,
                 Date = movement.Date,
                 Description = movement.Description,
-                CreatedBy = movement.CreatedBy
+                CreatedBy = movement.CreatedBy,
+                Status = movement.Status,
+                Comment = movement.Comment
             };
 
-            // Logowanie zapisanego ruchu
             Console.WriteLine($"Saved movement: {System.Text.Json.JsonSerializer.Serialize(responseDto)}");
 
             return Ok(responseDto);
@@ -89,17 +86,18 @@ namespace erpsystem.Server.Controllers
                 .OrderByDescending(m => m.Date)
                 .Select(m => new WarehouseMovementsDTO
                 {
-                    Id = m.Id,
+                    Id = m.Id, // Id ruchu magazynowego
                     WarehouseItemId = m.WarehouseItemId,
                     MovementType = m.MovementType,
                     Quantity = m.Quantity,
                     Date = m.Date,
                     Description = m.Description,
-                    CreatedBy = m.CreatedBy
+                    CreatedBy = m.CreatedBy,
+                    Status = m.Status,
+                    Comment = m.Comment
                 })
                 .ToListAsync();
 
-            // Logowanie zwróconych danych
             Console.WriteLine($"Returning movements for item {warehouseItemId}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
 
             return Ok(movements);
