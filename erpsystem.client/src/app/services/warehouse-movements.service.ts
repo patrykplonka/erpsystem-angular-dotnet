@@ -18,4 +18,8 @@ export class WarehouseMovementsService {
     const url = `${this.apiUrl}/item/${warehouseItemId}`;
     return this.http.get<any[]>(url);
   }
+
+  getAllMovements(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl);
+  }
 }

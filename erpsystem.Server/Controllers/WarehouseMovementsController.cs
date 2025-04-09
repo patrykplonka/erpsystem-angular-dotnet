@@ -49,6 +49,8 @@ namespace erpsystem.Server.Controllers
                 WarehouseItemId = movementDto.WarehouseItemId,
                 MovementType = movementDto.MovementType,
                 Quantity = movementDto.Quantity,
+                Supplier = movementDto.Supplier ?? string.Empty, 
+                DocumentNumber = movementDto.DocumentNumber ?? string.Empty, 
                 Date = movementDto.Date,
                 Description = movementDto.Description ?? string.Empty,
                 CreatedBy = string.IsNullOrEmpty(movementDto.CreatedBy) ? "Unknown" : movementDto.CreatedBy,
@@ -62,10 +64,12 @@ namespace erpsystem.Server.Controllers
 
             var responseDto = new WarehouseMovementsDTO
             {
-                Id = movement.Id, 
+                Id = movement.Id,
                 WarehouseItemId = movement.WarehouseItemId,
                 MovementType = movement.MovementType,
                 Quantity = movement.Quantity,
+                Supplier = movement.Supplier,
+                DocumentNumber = movement.DocumentNumber,
                 Date = movement.Date,
                 Description = movement.Description,
                 CreatedBy = movement.CreatedBy,
@@ -86,10 +90,12 @@ namespace erpsystem.Server.Controllers
                 .OrderByDescending(m => m.Date)
                 .Select(m => new WarehouseMovementsDTO
                 {
-                    Id = m.Id, // Id ruchu magazynowego
+                    Id = m.Id,
                     WarehouseItemId = m.WarehouseItemId,
                     MovementType = m.MovementType,
                     Quantity = m.Quantity,
+                    Supplier = m.Supplier, 
+                    DocumentNumber = m.DocumentNumber, 
                     Date = m.Date,
                     Description = m.Description,
                     CreatedBy = m.CreatedBy,
@@ -99,6 +105,78 @@ namespace erpsystem.Server.Controllers
                 .ToListAsync();
 
             Console.WriteLine($"Returning movements for item {warehouseItemId}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
+
+            return Ok(movements);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllMovements()
+        {
+            var movements = await _context.WarehouseMovements
+                .OrderByDescending(m => m.Date)
+                .Select(m => new WarehouseMovementsDTO
+                {
+                    Id = m.Id,
+                    WarehouseItemId = m.WarehouseItemId,
+                    MovementType = m.MovementType,
+                    Quantity = m.Quantity,
+                    Supplier = m.Supplier, 
+                    DocumentNumber = m.DocumentNumber, 
+                    Date = m.Date,
+                    Description = m.Description,
+                    CreatedBy = m.CreatedBy,
+                    Status = m.Status,
+                    Comment = m.Comment
+                })
+                .ToListAsync();
+
+            Console.WriteLine($"Returning all movements: {System.Text.Json.JsonSerializer.Serialize(movements)}");
+
+            return Ok(movements);
+        }
+
+        [HttpGet("period")]
+        public async Task<IActionResult> GetMovementsInPeriod([FromQuery] string start, [FromQuery] string end)
+        {
+            if (string.IsNullOrEmpty(start) || string.IsNullOrEmpty(end))
+                return BadRequest("Parametry 'start' i 'end' są wymagane.");
+
+            DateTime startDate;
+            DateTime endDate;
+
+            try
+            {
+                startDate = DateTime.Parse(start);
+                endDate = DateTime.Parse(end);
+            }
+            catch (FormatException)
+            {
+                return BadRequest("Nieprawidłowy format daty. Oczekiwano formatu YYYY-MM-DD.");
+            }
+
+            if (startDate > endDate)
+                return BadRequest("Data początkowa nie może być późniejsza niż data końcowa.");
+
+            var movements = await _context.WarehouseMovements
+                .Where(m => m.Date >= startDate && m.Date <= endDate)
+                .OrderBy(m => m.Date)
+                .Select(m => new WarehouseMovementsDTO
+                {
+                    Id = m.Id,
+                    WarehouseItemId = m.WarehouseItemId,
+                    MovementType = m.MovementType,
+                    Quantity = m.Quantity,
+                    Supplier = m.Supplier,
+                    DocumentNumber = m.DocumentNumber,
+                    Date = m.Date,
+                    Description = m.Description,
+                    CreatedBy = m.CreatedBy,
+                    Status = m.Status,
+                    Comment = m.Comment
+                })
+                .ToListAsync();
+
+            Console.WriteLine($"Returning movements for period {start} to {end}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
 
             return Ok(movements);
         }
