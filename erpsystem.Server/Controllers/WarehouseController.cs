@@ -31,7 +31,15 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location
+            Location = item.Location,
+            Warehouse = item.Warehouse,
+            UnitOfMeasure = item.UnitOfMeasure,
+            MinimumStock = item.MinimumStock,
+            Supplier = item.Supplier,
+            BatchNumber = item.BatchNumber,
+            ExpirationDate = item.ExpirationDate,
+            PurchaseCost = item.PurchaseCost,
+            VatRate = item.VatRate
         }).ToList();
 
         return Ok(itemDtos);
@@ -54,6 +62,14 @@ public class WarehouseController : ControllerBase
             Price = createDto.Price,
             Category = createDto.Category,
             Location = createDto.Location,
+            Warehouse = createDto.Warehouse,
+            UnitOfMeasure = createDto.UnitOfMeasure,
+            MinimumStock = createDto.MinimumStock,
+            Supplier = createDto.Supplier,
+            BatchNumber = createDto.BatchNumber,
+            ExpirationDate = createDto.ExpirationDate,
+            PurchaseCost = createDto.PurchaseCost,
+            VatRate = createDto.VatRate,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = User?.Identity?.Name ?? "System"
         };
@@ -67,7 +83,7 @@ public class WarehouseController : ControllerBase
             ItemId = item.Id,
             ItemName = item.Name,
             Timestamp = DateTime.UtcNow,
-            Details = $"Dodano produkt: {item.Name}, ilość: {item.Quantity}, lokalizacja: {item.Location}"
+            Details = $"Dodano produkt: {item.Name}, ilość: {item.Quantity}, lokalizacja: {item.Location}, magazyn: {item.Warehouse}"
         };
         _context.OperationLogs.Add(log);
 
@@ -81,7 +97,15 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location
+            Location = item.Location,
+            Warehouse = item.Warehouse,
+            UnitOfMeasure = item.UnitOfMeasure,
+            MinimumStock = item.MinimumStock,
+            Supplier = item.Supplier,
+            BatchNumber = item.BatchNumber,
+            ExpirationDate = item.ExpirationDate,
+            PurchaseCost = item.PurchaseCost,
+            VatRate = item.VatRate
         };
 
         return CreatedAtAction(nameof(GetItems), new { id = item.Id }, resultDto);
@@ -127,7 +151,15 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location
+            Location = item.Location,
+            Warehouse = item.Warehouse,
+            UnitOfMeasure = item.UnitOfMeasure,
+            MinimumStock = item.MinimumStock,
+            Supplier = item.Supplier,
+            BatchNumber = item.BatchNumber,
+            ExpirationDate = item.ExpirationDate,
+            PurchaseCost = item.PurchaseCost,
+            VatRate = item.VatRate
         }).ToList();
 
         return Ok(itemDtos);
@@ -164,6 +196,14 @@ public class WarehouseController : ControllerBase
         item.Price = updateDto.Price;
         item.Category = updateDto.Category;
         item.Location = updateDto.Location;
+        item.Warehouse = updateDto.Warehouse;
+        item.UnitOfMeasure = updateDto.UnitOfMeasure;
+        item.MinimumStock = updateDto.MinimumStock;
+        item.Supplier = updateDto.Supplier;
+        item.BatchNumber = updateDto.BatchNumber;
+        item.ExpirationDate = updateDto.ExpirationDate;
+        item.PurchaseCost = updateDto.PurchaseCost;
+        item.VatRate = updateDto.VatRate;
 
         await _context.SaveChangesAsync();
 
@@ -175,7 +215,15 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location
+            Location = item.Location,
+            Warehouse = item.Warehouse,
+            UnitOfMeasure = item.UnitOfMeasure,
+            MinimumStock = item.MinimumStock,
+            Supplier = item.Supplier,
+            BatchNumber = item.BatchNumber,
+            ExpirationDate = item.ExpirationDate,
+            PurchaseCost = item.PurchaseCost,
+            VatRate = item.VatRate
         };
 
         return Ok(resultDto);
@@ -213,7 +261,15 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location
+            Location = item.Location,
+            Warehouse = item.Warehouse,
+            UnitOfMeasure = item.UnitOfMeasure,
+            MinimumStock = item.MinimumStock,
+            Supplier = item.Supplier,
+            BatchNumber = item.BatchNumber,
+            ExpirationDate = item.ExpirationDate,
+            PurchaseCost = item.PurchaseCost,
+            VatRate = item.VatRate
         };
 
         return Ok(resultDto);
@@ -252,7 +308,15 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location
+            Location = item.Location,
+            Warehouse = item.Warehouse,
+            UnitOfMeasure = item.UnitOfMeasure,
+            MinimumStock = item.MinimumStock,
+            Supplier = item.Supplier,
+            BatchNumber = item.BatchNumber,
+            ExpirationDate = item.ExpirationDate,
+            PurchaseCost = item.PurchaseCost,
+            VatRate = item.VatRate
         };
 
         return Ok(resultDto);
@@ -265,22 +329,21 @@ public class WarehouseController : ControllerBase
         if (item == null || item.IsDeleted)
             return NotFound("Produkt nie istnieje lub jest usunięty.");
 
-
         if (!Enum.TryParse<WarehouseMovementType>(movementDto.MovementType, out var movementType))
             return BadRequest("Nieprawidłowy typ ruchu.");
 
         switch (movementType)
         {
-            case WarehouseMovementType.PZ: 
-            case WarehouseMovementType.PW: 
-            case WarehouseMovementType.ZW: 
-            case WarehouseMovementType.ZK: 
+            case WarehouseMovementType.PZ:
+            case WarehouseMovementType.PW:
+            case WarehouseMovementType.ZW:
+            case WarehouseMovementType.ZK:
                 item.Quantity += movementDto.Quantity;
                 break;
 
-            case WarehouseMovementType.WZ: 
-            case WarehouseMovementType.RW: 
-            case WarehouseMovementType.MM: 
+            case WarehouseMovementType.WZ:
+            case WarehouseMovementType.RW:
+            case WarehouseMovementType.MM:
                 if (item.Quantity < movementDto.Quantity)
                 {
                     var errorMessage = $"Za mało towaru na stanie. Dostępna ilość: {item.Quantity}, żądana: {movementDto.Quantity}.";
@@ -300,8 +363,8 @@ public class WarehouseController : ControllerBase
                 item.Quantity -= movementDto.Quantity;
                 break;
 
-            case WarehouseMovementType.INW: 
-                item.Quantity = movementDto.Quantity; 
+            case WarehouseMovementType.INW:
+                item.Quantity = movementDto.Quantity;
                 break;
 
             default:
@@ -311,7 +374,7 @@ public class WarehouseController : ControllerBase
         var movement = new WarehouseMovements
         {
             WarehouseItemId = id,
-            MovementType = movementType, 
+            MovementType = movementType,
             Quantity = movementDto.Quantity,
             Description = movementDto.Description ?? string.Empty,
             Date = DateTime.UtcNow,
@@ -323,7 +386,6 @@ public class WarehouseController : ControllerBase
         };
 
         _context.WarehouseMovements.Add(movement);
-
 
         string operationType = movementType switch
         {
@@ -359,7 +421,15 @@ public class WarehouseController : ControllerBase
             Quantity = item.Quantity,
             Price = item.Price,
             Category = item.Category,
-            Location = item.Location
+            Location = item.Location,
+            Warehouse = item.Warehouse,
+            UnitOfMeasure = item.UnitOfMeasure,
+            MinimumStock = item.MinimumStock,
+            Supplier = item.Supplier,
+            BatchNumber = item.BatchNumber,
+            ExpirationDate = item.ExpirationDate,
+            PurchaseCost = item.PurchaseCost,
+            VatRate = item.VatRate
         };
 
         return Ok(resultDto);
@@ -378,7 +448,7 @@ public class WarehouseController : ControllerBase
             {
                 Id = m.Id,
                 WarehouseItemId = m.WarehouseItemId,
-                MovementType = m.MovementType.ToString(), 
+                MovementType = m.MovementType.ToString(),
                 Quantity = m.Quantity,
                 Description = m.Description,
                 Date = m.Date,
@@ -414,9 +484,8 @@ public class WarehouseController : ControllerBase
     [HttpGet("low-stock")]
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetLowStockItems()
     {
-        int lowStockThreshold = 5;
         var lowStockItems = await _context.WarehouseItems
-            .Where(i => !i.IsDeleted && i.Quantity <= lowStockThreshold)
+            .Where(i => !i.IsDeleted && i.Quantity <= i.MinimumStock)
             .Select(item => new WarehouseItemDto
             {
                 Id = item.Id,
@@ -425,7 +494,15 @@ public class WarehouseController : ControllerBase
                 Quantity = item.Quantity,
                 Price = item.Price,
                 Category = item.Category,
-                Location = item.Location
+                Location = item.Location,
+                Warehouse = item.Warehouse,
+                UnitOfMeasure = item.UnitOfMeasure,
+                MinimumStock = item.MinimumStock,
+                Supplier = item.Supplier,
+                BatchNumber = item.BatchNumber,
+                ExpirationDate = item.ExpirationDate,
+                PurchaseCost = item.PurchaseCost,
+                VatRate = item.VatRate
             })
             .ToListAsync();
 
@@ -441,6 +518,14 @@ public class WarehouseController : ControllerBase
         if (existingItem.Price != updateDto.Price) changes.Add($"Cena: {existingItem.Price} -> {updateDto.Price}");
         if (existingItem.Category != updateDto.Category) changes.Add($"Kategoria: {existingItem.Category} -> {updateDto.Category}");
         if (existingItem.Location != updateDto.Location) changes.Add($"Lokalizacja: {existingItem.Location} -> {updateDto.Location}");
+        if (existingItem.Warehouse != updateDto.Warehouse) changes.Add($"Magazyn: {existingItem.Warehouse} -> {updateDto.Warehouse}");
+        if (existingItem.UnitOfMeasure != updateDto.UnitOfMeasure) changes.Add($"Jednostka miary: {existingItem.UnitOfMeasure} -> {updateDto.UnitOfMeasure}");
+        if (existingItem.MinimumStock != updateDto.MinimumStock) changes.Add($"Minimalny stan: {existingItem.MinimumStock} -> {updateDto.MinimumStock}");
+        if (existingItem.Supplier != updateDto.Supplier) changes.Add($"Dostawca: {existingItem.Supplier ?? "-"} -> {updateDto.Supplier ?? "-"}");
+        if (existingItem.BatchNumber != updateDto.BatchNumber) changes.Add($"Numer partii: {existingItem.BatchNumber ?? "-"} -> {updateDto.BatchNumber ?? "-"}");
+        if (existingItem.ExpirationDate != updateDto.ExpirationDate) changes.Add($"Data ważności: {existingItem.ExpirationDate?.ToString("o") ?? "-"} -> {updateDto.ExpirationDate?.ToString("o") ?? "-"}");
+        if (existingItem.PurchaseCost != updateDto.PurchaseCost) changes.Add($"Koszt zakupu: {existingItem.PurchaseCost} -> {updateDto.PurchaseCost}");
+        if (existingItem.VatRate != updateDto.VatRate) changes.Add($"Stawka VAT: {existingItem.VatRate} -> {updateDto.VatRate}");
         return changes.Count > 0 ? string.Join(", ", changes) : "Brak zmian";
     }
 }
