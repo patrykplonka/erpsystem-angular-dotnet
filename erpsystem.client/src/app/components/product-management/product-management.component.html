@@ -237,38 +237,38 @@
             <thead>
               <tr>
                 <th (click)="sortItems('name')">Nazwa <span [ngClass]="{'sort-asc': sortField === 'name' && sortDirection === 'asc', 'sort-desc': sortField === 'name' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('code')">Kod <span [ngClass]="{'sort-asc': sortField === 'code' && sortDirection === 'asc', 'sort-desc': sortField === 'code' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('quantity')">Ilość <span [ngClass]="{'sort-asc': sortField === 'quantity' && sortDirection === 'asc', 'sort-desc': sortField === 'quantity' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('price')">Cena zakupu (netto) <span [ngClass]="{'sort-asc': sortField === 'price' && sortDirection === 'asc', 'sort-desc': sortField === 'price' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('category')">Kategoria <span [ngClass]="{'sort-asc': sortField === 'category' && sortDirection === 'asc', 'sort-desc': sortField === 'category' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('code')">Kod <span [ngClass]="{'sort-asc': sortField === 'code' && sortDirection === 'asc', 'sort-desc': sortField === 'code' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('batchNumber')">Numer partii <span [ngClass]="{'sort-asc': sortField === 'batchNumber' && sortDirection === 'asc', 'sort-desc': sortField === 'batchNumber' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('location')">Lokalizacja <span [ngClass]="{'sort-asc': sortField === 'location' && sortDirection === 'asc', 'sort-desc': sortField === 'location' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('warehouse')">Magazyn <span [ngClass]="{'sort-asc': sortField === 'warehouse' && sortDirection === 'asc', 'sort-desc': sortField === 'warehouse' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('quantity')">Ilość <span [ngClass]="{'sort-asc': sortField === 'quantity' && sortDirection === 'asc', 'sort-desc': sortField === 'quantity' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('unitOfMeasure')">Jednostka miary <span [ngClass]="{'sort-asc': sortField === 'unitOfMeasure' && sortDirection === 'asc', 'sort-desc': sortField === 'unitOfMeasure' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('minimumStock')">Min. stan <span [ngClass]="{'sort-asc': sortField === 'minimumStock' && sortDirection === 'asc', 'sort-desc': sortField === 'minimumStock' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('supplier')">Dostawca <span [ngClass]="{'sort-asc': sortField === 'supplier' && sortDirection === 'asc', 'sort-desc': sortField === 'supplier' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('batchNumber')">Numer partii <span [ngClass]="{'sort-asc': sortField === 'batchNumber' && sortDirection === 'asc', 'sort-desc': sortField === 'batchNumber' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('expirationDate')">Data ważności <span [ngClass]="{'sort-asc': sortField === 'expirationDate' && sortDirection === 'asc', 'sort-desc': sortField === 'expirationDate' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('price')">Cena zakupu (netto) <span [ngClass]="{'sort-asc': sortField === 'price' && sortDirection === 'asc', 'sort-desc': sortField === 'price' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('purchaseCost')">Koszt zakupu (netto) <span [ngClass]="{'sort-asc': sortField === 'purchaseCost' && sortDirection === 'asc', 'sort-desc': sortField === 'purchaseCost' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('vatRate')">Stawka VAT <span [ngClass]="{'sort-asc': sortField === 'vatRate' && sortDirection === 'asc', 'sort-desc': sortField === 'vatRate' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('minimumStock')">Min. stan <span [ngClass]="{'sort-asc': sortField === 'minimumStock' && sortDirection === 'asc', 'sort-desc': sortField === 'minimumStock' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('supplier')">Dostawca <span [ngClass]="{'sort-asc': sortField === 'supplier' && sortDirection === 'asc', 'sort-desc': sortField === 'supplier' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('expirationDate')">Data ważności <span [ngClass]="{'sort-asc': sortField === 'expirationDate' && sortDirection === 'asc', 'sort-desc': sortField === 'expirationDate' && sortDirection === 'desc'}"></span></th>
                 <th>Akcje</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let item of filteredItems">
                 <td data-label="Nazwa">{{ item.name }}</td>
-                <td data-label="Kod">{{ item.code }}</td>
-                <td data-label="Ilość">{{ item.quantity }}</td>
-                <td data-label="Cena zakupu (netto)">{{ item.price }} zł</td>
                 <td data-label="Kategoria">{{ item.category }}</td>
+                <td data-label="Kod">{{ item.code }}</td>
+                <td data-label="Numer partii">{{ item.batchNumber || '-' }}</td>
                 <td data-label="Lokalizacja">{{ item.location }}</td>
                 <td data-label="Magazyn">{{ item.warehouse }}</td>
+                <td data-label="Ilość">{{ item.quantity }}</td>
                 <td data-label="Jednostka miary">{{ item.unitOfMeasure }}</td>
-                <td data-label="Min. stan">{{ item.minimumStock }}</td>
-                <td data-label="Dostawca">{{ item.supplier || '-' }}</td>
-                <td data-label="Numer partii">{{ item.batchNumber || '-' }}</td>
-                <td data-label="Data ważności">{{ formatDate(item.expirationDate) }}</td>
+                <td data-label="Cena zakupu (netto)">{{ item.price }} zł</td>
                 <td data-label="Koszt zakupu (netto)">{{ item.purchaseCost }} zł</td>
                 <td data-label="Stawka VAT">{{ formatVatRate(item.vatRate) }}</td>
+                <td data-label="Min. stan">{{ item.minimumStock }}</td>
+                <td data-label="Dostawca">{{ item.supplier || '-' }}</td>
+                <td data-label="Data ważności">{{ formatDate(item.expirationDate) }}</td>
                 <td data-label="Akcje" class="actions">
                   <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>
                   <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
