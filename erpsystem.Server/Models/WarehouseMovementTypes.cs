@@ -1,14 +1,11 @@
-﻿namespace erpsystem.Server.Models
+﻿public enum WarehouseMovementType
 {
-    public enum WarehouseMovementType
-    {
-        PZ,  // Przyjęcie Zewnętrzne
-        PW,  // Przyjęcie Wewnętrzne
-        WZ,  // Wydanie Zewnętrzne
-        RW,  // Rozchód Wewnętrzny
-        MM,  // Przesunięcie Międzymagazynowe
-        ZW,  // Zwrot Wewnętrzny
-        ZK,  // Zwrot Konsygnacyjny
-        INW  // Inwentaryzacja
-    }
+    PZ = 0,  // Przyjęcie Zewnętrzne
+    PW = 1,  // Przyjęcie Wewnętrzne
+    WZ = 2,  // Wydanie Zewnętrzne
+    RW = 3,  // Rozchód Wewnętrzny
+    MM = 4,  // Przesunięcie Międzymagazynowe
+    ZW = 5,  // Zwrot Wewnętrzny
+    ZK = 6,  // Zwrot Konsygnacyjny
+    INW = 7  // Inwentaryzacja
 }

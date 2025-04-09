@@ -41,14 +41,10 @@ public class WarehouseController : ControllerBase
     public async Task<ActionResult<WarehouseItemDto>> AddItem([FromBody] CreateWarehouseItemDto createDto)
     {
         if (!ModelState.IsValid)
-        {
             return BadRequest(ModelState);
-        }
 
         if (await _context.WarehouseItems.AnyAsync(i => i.Code == createDto.Code && !i.IsDeleted))
-        {
             return BadRequest("Produkt o podanym kodzie już istnieje.");
-        }
 
         var item = new WarehouseItem
         {
@@ -96,9 +92,7 @@ public class WarehouseController : ControllerBase
     {
         var item = await _context.WarehouseItems.FindAsync(id);
         if (item == null)
-        {
             return NotFound("Produkt nie istnieje.");
-        }
 
         item.IsDeleted = true;
 
@@ -144,19 +138,13 @@ public class WarehouseController : ControllerBase
     {
         var item = await _context.WarehouseItems.FindAsync(id);
         if (item == null || item.IsDeleted)
-        {
             return NotFound("Produkt nie istnieje lub jest usunięty.");
-        }
 
         if (!ModelState.IsValid)
-        {
             return BadRequest(ModelState);
-        }
 
         if (item.Code != updateDto.Code && await _context.WarehouseItems.AnyAsync(i => i.Code == updateDto.Code && !i.IsDeleted))
-        {
             return BadRequest("Produkt o podanym kodzie już istnieje.");
-        }
 
         var changes = GetChangeDetails(item, updateDto);
         var log = new OperationLog
@@ -198,14 +186,10 @@ public class WarehouseController : ControllerBase
     {
         var item = await _context.WarehouseItems.FindAsync(id);
         if (item == null || item.IsDeleted)
-        {
             return NotFound("Produkt nie istnieje lub jest usunięty.");
-        }
 
         if (string.IsNullOrEmpty(request.NewLocation))
-        {
             return BadRequest("Nowa lokalizacja nie może być pusta.");
-        }
 
         var log = new OperationLog
         {
@@ -240,14 +224,10 @@ public class WarehouseController : ControllerBase
     {
         var item = await _context.WarehouseItems.FindAsync(id);
         if (item == null)
-        {
             return NotFound("Produkt nie istnieje.");
-        }
 
         if (!item.IsDeleted)
-        {
             return BadRequest("Produkt nie jest usunięty.");
-        }
 
         item.IsDeleted = false;
 
@@ -283,49 +263,81 @@ public class WarehouseController : ControllerBase
     {
         var item = await _context.WarehouseItems.FindAsync(id);
         if (item == null || item.IsDeleted)
-        {
             return NotFound("Produkt nie istnieje lub jest usunięty.");
-        }
 
-        if (movementDto.MovementType == "Issue" && item.Quantity < movementDto.Quantity)
+
+        if (!Enum.TryParse<WarehouseMovementType>(movementDto.MovementType, out var movementType))
+            return BadRequest("Nieprawidłowy typ ruchu.");
+
+        switch (movementType)
         {
-            var errorMessage = $"Za mało towaru na stanie. Dostępna ilość: {item.Quantity}, żądana: {movementDto.Quantity}.";
-            var errorLog = new OperationLog
-            {
-                User = User?.Identity?.Name ?? "System",
-                Operation = "Błąd krytyczny",
-                ItemId = item.Id,
-                ItemName = item.Name,
-                Timestamp = DateTime.UtcNow,
-                Details = errorMessage
-            };
-            _context.OperationLogs.Add(errorLog);
-            await _context.SaveChangesAsync();
-            return BadRequest(errorMessage);
+            case WarehouseMovementType.PZ: 
+            case WarehouseMovementType.PW: 
+            case WarehouseMovementType.ZW: 
+            case WarehouseMovementType.ZK: 
+                item.Quantity += movementDto.Quantity;
+                break;
+
+            case WarehouseMovementType.WZ: 
+            case WarehouseMovementType.RW: 
+            case WarehouseMovementType.MM: 
+                if (item.Quantity < movementDto.Quantity)
+                {
+                    var errorMessage = $"Za mało towaru na stanie. Dostępna ilość: {item.Quantity}, żądana: {movementDto.Quantity}.";
+                    var errorLog = new OperationLog
+                    {
+                        User = User?.Identity?.Name ?? "System",
+                        Operation = "Błąd krytyczny",
+                        ItemId = item.Id,
+                        ItemName = item.Name,
+                        Timestamp = DateTime.UtcNow,
+                        Details = errorMessage
+                    };
+                    _context.OperationLogs.Add(errorLog);
+                    await _context.SaveChangesAsync();
+                    return BadRequest(errorMessage);
+                }
+                item.Quantity -= movementDto.Quantity;
+                break;
+
+            case WarehouseMovementType.INW: 
+                item.Quantity = movementDto.Quantity; 
+                break;
+
+            default:
+                return BadRequest("Nieobsługiwany typ ruchu.");
         }
 
         var movement = new WarehouseMovements
         {
             WarehouseItemId = id,
-            MovementType = movementDto.MovementType,
+            MovementType = movementType, 
             Quantity = movementDto.Quantity,
-            Description = movementDto.Description,
+            Description = movementDto.Description ?? string.Empty,
             Date = DateTime.UtcNow,
-            CreatedBy = User?.Identity?.Name ?? "System"
+            CreatedBy = User?.Identity?.Name ?? "System",
+            Supplier = movementDto.Supplier ?? string.Empty,
+            DocumentNumber = movementDto.DocumentNumber ?? string.Empty,
+            Status = movementDto.Status ?? "Planned",
+            Comment = movementDto.Comment ?? string.Empty
         };
-
-        if (movementDto.MovementType == "Receipt")
-        {
-            item.Quantity += movementDto.Quantity;
-        }
-        else if (movementDto.MovementType == "Issue")
-        {
-            item.Quantity -= movementDto.Quantity;
-        }
 
         _context.WarehouseMovements.Add(movement);
 
-        var operationType = movementDto.MovementType == "Receipt" ? "Przyjęcie" : "Wydanie";
+
+        string operationType = movementType switch
+        {
+            WarehouseMovementType.PZ => "Przyjęcie Zewnętrzne",
+            WarehouseMovementType.PW => "Przyjęcie Wewnętrzne",
+            WarehouseMovementType.WZ => "Wydanie Zewnętrzne",
+            WarehouseMovementType.RW => "Rozchód Wewnętrzny",
+            WarehouseMovementType.MM => "Przesunięcie Międzymagazynowe",
+            WarehouseMovementType.ZW => "Zwrot Wewnętrzny",
+            WarehouseMovementType.ZK => "Zwrot Konsygnacyjny",
+            WarehouseMovementType.INW => "Inwentaryzacja",
+            _ => "Nieznana operacja"
+        };
+
         var log = new OperationLog
         {
             User = User?.Identity?.Name ?? "System",
@@ -358,9 +370,7 @@ public class WarehouseController : ControllerBase
     {
         var item = await _context.WarehouseItems.FindAsync(id);
         if (item == null)
-        {
             return NotFound("Produkt nie istnieje.");
-        }
 
         var movements = await _context.WarehouseMovements
             .Where(m => m.WarehouseItemId == id)
@@ -368,11 +378,15 @@ public class WarehouseController : ControllerBase
             {
                 Id = m.Id,
                 WarehouseItemId = m.WarehouseItemId,
-                MovementType = m.MovementType,
+                MovementType = m.MovementType.ToString(), 
                 Quantity = m.Quantity,
                 Description = m.Description,
                 Date = m.Date,
-                CreatedBy = m.CreatedBy
+                CreatedBy = m.CreatedBy,
+                Supplier = m.Supplier,
+                DocumentNumber = m.DocumentNumber,
+                Status = m.Status,
+                Comment = m.Comment
             })
             .ToListAsync();
 
@@ -383,17 +397,17 @@ public class WarehouseController : ControllerBase
     public ActionResult<IEnumerable<OperationLogDto>> GetOperationLogs()
     {
         var logs = _context.OperationLogs
-          .Select(l => new OperationLogDto
-          {
-              Id = l.Id,
-              User = l.User,
-              Operation = l.Operation,
-              ItemId = l.ItemId,
-              ItemName = l.ItemName,
-              Timestamp = l.Timestamp.ToString("o"),
-              Details = l.Details
-          })
-          .ToList();
+            .Select(l => new OperationLogDto
+            {
+                Id = l.Id,
+                User = l.User,
+                Operation = l.Operation,
+                ItemId = l.ItemId,
+                ItemName = l.ItemName,
+                Timestamp = l.Timestamp.ToString("o"),
+                Details = l.Details
+            })
+            .ToList();
         return Ok(logs);
     }
 

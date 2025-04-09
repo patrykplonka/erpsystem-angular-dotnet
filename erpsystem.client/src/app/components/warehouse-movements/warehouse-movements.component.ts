@@ -6,6 +6,17 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WarehouseMovementsService } from '../../services/warehouse-movements.service';
 
+export enum WarehouseMovementType {
+  PZ = 'PZ',  // Przyjęcie Zewnętrzne
+  PW = 'PW',  // Przyjęcie Wewnętrzne
+  WZ = 'WZ',  // Wydanie Zewnętrzne
+  RW = 'RW',  // Rozchód Wewnętrzny
+  MM = 'MM',  // Przesunięcie Międzymagazynowe
+  ZW = 'ZW',  // Zwrot Wewnętrzny
+  ZK = 'ZK',  // Zwrot Konsygnacyjny
+  INW = 'INW' // Inwentaryzacja
+}
+
 @Component({
   selector: 'app-warehouse-movements',
   standalone: true,
@@ -66,34 +77,25 @@ export class WarehouseMovementsComponent implements OnInit {
     this.http.get<Product[]>(url).subscribe({
       next: (data: Product[]) => {
         this.products = data;
-        console.log('Załadowane produkty:', this.products); // Debugowanie
         if (this.products.length === 0) {
           this.errorMessage = 'Brak produktów w bazie danych.';
         }
       },
       error: (error: any) => {
         this.errorMessage = `Błąd ładowania produktów: ${error.status} - ${error.statusText || 'Nieznany błąd'}`;
-        console.error('Szczegóły błędu:', error);
       }
     });
   }
 
   onProductChange() {
-    // Konwersja warehouseItemId na number, ponieważ <select> zwraca string
     const selectedId = Number(this.newMovement.warehouseItemId);
-    console.log('Wybrane ID produktu:', selectedId, 'Typ:', typeof selectedId); // Debugowanie
-    console.log('Dostępne produkty:', this.products); // Debugowanie
-
     const selectedProduct = this.products.find(product => product.id === selectedId);
     if (selectedProduct) {
       this.newMovement.productName = selectedProduct.name;
       this.newMovement.productCode = selectedProduct.code;
-      console.log('Wybrano produkt:', selectedProduct); // Debugowanie
-      console.log('Ustawiono productCode:', this.newMovement.productCode); // Debugowanie
     } else {
       this.newMovement.productName = '';
       this.newMovement.productCode = '';
-      console.log('Nie znaleziono produktu dla ID:', selectedId); // Debugowanie
     }
   }
 
@@ -175,7 +177,8 @@ export class WarehouseMovementsComponent implements OnInit {
           date: this.formatDate(movement.date),
           status: this.mapStatusFromApi(movement.status),
           productName: movement.productName || this.getProductName(movement.warehouseItemId),
-          productCode: movement.productCode || this.getProductCode(movement.warehouseItemId)
+          productCode: movement.productCode || this.getProductCode(movement.warehouseItemId),
+          movementType: this.mapMovementTypeFromApi(movement.movementType)
         }));
       },
       error: (error: any) => {
@@ -196,7 +199,7 @@ export class WarehouseMovementsComponent implements OnInit {
 
   addMovement() {
     const movementToAdd = {
-      warehouseItemId: Number(this.newMovement.warehouseItemId), // Konwersja na number
+      warehouseItemId: Number(this.newMovement.warehouseItemId),
       movementType: this.mapMovementTypeForApi(this.newMovement.movementType),
       quantity: this.newMovement.quantity,
       supplier: this.newMovement.supplier || '',
@@ -208,8 +211,6 @@ export class WarehouseMovementsComponent implements OnInit {
       comment: this.newMovement.comment || ''
     };
 
-    console.log('Wysyłany obiekt movementToAdd:', movementToAdd); // Debugowanie
-
     this.movementService.createMovement(movementToAdd).subscribe({
       next: () => {
         this.successMessage = 'Ruch magazynowy dodano pomyślnie.';
@@ -218,10 +219,6 @@ export class WarehouseMovementsComponent implements OnInit {
       },
       error: (error: any) => {
         this.errorMessage = `Błąd podczas dodawania ruchu: ${error.status} - ${error.statusText || 'Nieznany błąd'}`;
-        console.error('Szczegóły błędu:', error);
-        if (error.error) {
-          console.error('Treść błędu z serwera:', error.error);
-        }
       }
     });
   }
@@ -257,85 +254,49 @@ export class WarehouseMovementsComponent implements OnInit {
     }
   }
 
-  onFileChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        const text = e.target?.result as string;
-        const data = this.parseCSV(text);
-        this.processBulkMovements(data);
-      };
-      reader.readAsText(file);
+  mapMovementTypeFromApi(movementType: string): string {
+    switch (movementType) {
+      case WarehouseMovementType.PZ:
+        return 'Przyjęcie Zewnętrzne';
+      case WarehouseMovementType.PW:
+        return 'Przyjęcie Wewnętrzne';
+      case WarehouseMovementType.WZ:
+        return 'Wydanie Zewnętrzne';
+      case WarehouseMovementType.RW:
+        return 'Rozchód Wewnętrzny';
+      case WarehouseMovementType.MM:
+        return 'Przesunięcie Międzymagazynowe';
+      case WarehouseMovementType.ZW:
+        return 'Zwrot Wewnętrzny';
+      case WarehouseMovementType.ZK:
+        return 'Zwrot Konsygnacyjny';
+      case WarehouseMovementType.INW:
+        return 'Inwentaryzacja';
+      default:
+        return movementType;
     }
-  }
-
-  parseCSV(csv: string): any[] {
-    const lines = csv.split('\n');
-    const result: any[] = [];
-    const headers = lines[0].split(',').map(h => h.trim());
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim().replace(/^"(.+)"$/, '$1'));
-      if (values.length === headers.length) {
-        const obj: any = {};
-        headers.forEach((header, index) => {
-          obj[header] = values[index];
-        });
-        result.push(obj);
-      }
-    }
-    return result;
-  }
-
-  processBulkMovements(data: any[]) {
-    const movements = data.map(row => {
-      let movementType = row.movementType;
-      if (movementType === 'Receipt') movementType = 'Przyjęcie zewnętrzne';
-      if (movementType === 'Issue') movementType = 'Wydanie';
-      if (movementType === 'Production') movementType = 'Produkcja';
-      let status = row.status || 'Zakończone';
-      if (status === 'Planned') status = 'Zaplanowane';
-      if (status === 'InProgress') status = 'W trakcie';
-      if (status === 'Completed') status = 'Zakończone';
-      return {
-        warehouseItemId: parseInt(row.warehouseItemId, 10),
-        movementType: this.mapMovementTypeForApi(movementType),
-        quantity: parseInt(row.quantity, 10),
-        supplier: row.supplier || '',
-        documentNumber: row.documentNumber || this.generateDocumentNumber(),
-        description: row.description || '',
-        createdBy: this.currentUserFullName,
-        status: this.mapStatusForApi(status as 'Zaplanowane' | 'W trakcie' | 'Zakończone'),
-        comment: row.comment || '',
-        date: this.formatDateForApi(new Date())
-      };
-    });
-    movements.forEach((movement: any) => {
-      this.movementService.createMovement(movement).subscribe({
-        next: () => {
-          this.loadMovements();
-        },
-        error: (error: any) => {
-          this.errorMessage = error.error || `Błąd podczas masowego dodawania: ${error.status} - ${error.statusText}`;
-        }
-      });
-    });
-    this.successMessage = 'Masowe dodawanie ruchów zakończone.';
   }
 
   mapMovementTypeForApi(movementType: string): string {
     switch (movementType) {
-      case 'Przyjęcie zewnętrzne':
-      case 'Przyjęcie wewnętrzne':
-        return 'Receipt';
-      case 'Wydanie':
-        return 'Issue';
-      case 'Produkcja':
-        return 'Production';
+      case 'Przyjęcie Zewnętrzne':
+        return WarehouseMovementType.PZ;
+      case 'Przyjęcie Wewnętrzne':
+        return WarehouseMovementType.PW;
+      case 'Wydanie Zewnętrzne':
+        return WarehouseMovementType.WZ;
+      case 'Rozchód Wewnętrzny':
+        return WarehouseMovementType.RW;
+      case 'Przesunięcie Międzymagazynowe':
+        return WarehouseMovementType.MM;
+      case 'Zwrot Wewnętrzny':
+        return WarehouseMovementType.ZW;
+      case 'Zwrot Konsygnacyjny':
+        return WarehouseMovementType.ZK;
+      case 'Inwentaryzacja':
+        return WarehouseMovementType.INW;
       default:
-        console.warn(`Nieznany typ ruchu: ${movementType}, domyślnie ustawiono Receipt`);
-        return 'Receipt';
+        return movementType;
     }
   }
 
@@ -348,8 +309,7 @@ export class WarehouseMovementsComponent implements OnInit {
       case 'Zakończone':
         return 'Completed';
       default:
-        console.warn(`Nieznany status: ${status}, domyślnie ustawiono Planned`);
-        return 'Planned'; // Zamiast rzucać wyjątek, ustawiamy domyślną wartość
+        return 'Planned';
     }
   }
 
@@ -387,6 +347,72 @@ export class WarehouseMovementsComponent implements OnInit {
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+
+  onFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        const text = e.target?.result as string;
+        const data = this.parseCSV(text);
+        this.processBulkMovements(data);
+      };
+      reader.readAsText(file);
+    }
+  }
+
+  parseCSV(csv: string): any[] {
+    const lines = csv.split('\n');
+    const result: any[] = [];
+    const headers = lines[0].split(',').map(h => h.trim());
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim().replace(/^"(.+)"$/, '$1'));
+      if (values.length === headers.length) {
+        const obj: any = {};
+        headers.forEach((header, index) => {
+          obj[header] = values[index];
+        });
+        result.push(obj);
+      }
+    }
+    return result;
+  }
+
+  processBulkMovements(data: any[]) {
+    const movements = data.map(row => {
+      let movementType = row.movementType;
+      if (!Object.values(WarehouseMovementType).includes(movementType)) {
+        movementType = this.mapMovementTypeForApi(movementType); 
+      }
+      let status = row.status || 'Zakończone';
+      return {
+        warehouseItemId: parseInt(row.warehouseItemId, 10),
+        movementType: movementType,
+        quantity: parseInt(row.quantity, 10),
+        supplier: row.supplier || '',
+        documentNumber: row.documentNumber || this.generateDocumentNumber(),
+        description: row.description || '',
+        createdBy: this.currentUserFullName,
+        status: this.mapStatusForApi(status as 'Zaplanowane' | 'W trakcie' | 'Zakończone'),
+        comment: row.comment || '',
+        date: this.formatDateForApi(new Date())
+      };
+    });
+
+    movements.forEach((movement: any) => {
+      this.movementService.createMovement(movement).subscribe({
+        next: () => {
+          this.loadMovements();
+        },
+        error: (error: any) => {
+          this.errorMessage = error.error || `Błąd podczas masowego dodawania: ${error.status} - ${error.statusText}`;
+        }
+      });
+    });
+    this.successMessage = 'Masowe dodawanie ruchów zakończone.';
   }
 }
 
