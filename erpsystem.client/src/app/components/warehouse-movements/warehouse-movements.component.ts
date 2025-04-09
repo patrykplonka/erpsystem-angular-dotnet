@@ -332,7 +332,7 @@ export class WarehouseMovementsComponent implements OnInit {
       case 'Wydanie':
         return 'Issue';
       case 'Produkcja':
-        return 'Production'; // Dodano obsługę typu "Produkcja"
+        return 'Production';
       default:
         console.warn(`Nieznany typ ruchu: ${movementType}, domyślnie ustawiono Receipt`);
         return 'Receipt';
