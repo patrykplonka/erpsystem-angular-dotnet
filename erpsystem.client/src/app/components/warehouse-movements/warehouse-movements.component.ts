@@ -14,26 +14,27 @@ import { WarehouseMovementsService } from '../../services/warehouse-movements.se
   styleUrls: ['./warehouse-movements.component.css']
 })
 export class WarehouseMovementsComponent implements OnInit {
-  warehouseItems: WarehouseItemDto[] = [];
   movements: WarehouseMovement[] = [];
-  newMovement: CreateWarehouseMovementDto = {
+  products: Product[] = [];
+  newMovement: WarehouseMovement = {
+    id: 0,
     warehouseItemId: 0,
-    movementType: 'Przyjęcie zewnętrzne',
+    productName: '',
+    productCode: '',
+    movementType: '',
     quantity: 0,
     supplier: '',
     documentNumber: '',
     description: '',
-    status: 'Zakończone',
-    createdBy: '',
     date: '',
+    createdBy: '',
+    status: '',
     comment: ''
   };
   currentUserEmail: string | null = null;
   currentUserFullName: string = 'Unknown';
   errorMessage: string | null = null;
   successMessage: string | null = null;
-  selectedItemId: number | null = null;
-  showMovements: boolean = false;
   movementSortField: string = '';
   movementSortDirection: 'asc' | 'desc' = 'asc';
   movementTypeFilter: string = '';
@@ -44,6 +45,7 @@ export class WarehouseMovementsComponent implements OnInit {
   movementEndDateFilter: string = '';
   movementUserFilter: string = '';
   isWarehouseOpen: boolean = false;
+  isAddFormVisible: boolean = false;
 
   constructor(
     private http: HttpClient,
@@ -53,9 +55,65 @@ export class WarehouseMovementsComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.loadItems();
+    this.loadMovements();
+    this.loadProducts();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
     this.currentUserFullName = this.authService.getCurrentUserFullName();
+  }
+
+  loadProducts() {
+    const url = 'https://localhost:7224/api/Warehouse';
+    this.http.get<Product[]>(url).subscribe({
+      next: (data: Product[]) => {
+        this.products = data;
+        console.log('Załadowane produkty:', this.products); // Debugowanie
+        if (this.products.length === 0) {
+          this.errorMessage = 'Brak produktów w bazie danych.';
+        }
+      },
+      error: (error: any) => {
+        this.errorMessage = `Błąd ładowania produktów: ${error.status} - ${error.statusText || 'Nieznany błąd'}`;
+        console.error('Szczegóły błędu:', error);
+      }
+    });
+  }
+
+  onProductChange() {
+    // Konwersja warehouseItemId na number, ponieważ <select> zwraca string
+    const selectedId = Number(this.newMovement.warehouseItemId);
+    console.log('Wybrane ID produktu:', selectedId, 'Typ:', typeof selectedId); // Debugowanie
+    console.log('Dostępne produkty:', this.products); // Debugowanie
+
+    const selectedProduct = this.products.find(product => product.id === selectedId);
+    if (selectedProduct) {
+      this.newMovement.productName = selectedProduct.name;
+      this.newMovement.productCode = selectedProduct.code;
+      console.log('Wybrano produkt:', selectedProduct); // Debugowanie
+      console.log('Ustawiono productCode:', this.newMovement.productCode); // Debugowanie
+    } else {
+      this.newMovement.productName = '';
+      this.newMovement.productCode = '';
+      console.log('Nie znaleziono produktu dla ID:', selectedId); // Debugowanie
+    }
+  }
+
+  toggleAddForm() {
+    this.isAddFormVisible = !this.isAddFormVisible;
+    if (this.isAddFormVisible) {
+      this.newMovement.documentNumber = this.generateDocumentNumber();
+    } else {
+      this.resetForm();
+    }
+  }
+
+  generateDocumentNumber(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const datePart = `${year}${month}${day}`;
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    return `DOC/${datePart}/${randomNum}`;
   }
 
   formatDate(date: string | Date): string {
@@ -67,20 +125,6 @@ export class WarehouseMovementsComponent implements OnInit {
       hour: '2-digit',
       minute: '2-digit'
     });
-  }
-
-  formatDateForApi(date: string | Date): string {
-    const d = new Date(date);
-    return d.toISOString();
-  }
-
-  loadItems() {
-    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse').subscribe(
-      data => {
-        this.warehouseItems = data;
-      },
-      error => this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}`
-    );
   }
 
   applyFilters() {
@@ -123,78 +167,103 @@ export class WarehouseMovementsComponent implements OnInit {
     return filtered;
   }
 
-  toggleMovements(itemId: number) {
-    if (this.selectedItemId === itemId && this.showMovements) {
-      this.showMovements = false;
-      this.selectedItemId = null;
-    } else {
-      this.selectedItemId = itemId;
-      this.showMovements = true;
-      this.loadMovements(itemId);
-      this.newMovement.warehouseItemId = itemId;
-      this.newMovement.createdBy = this.currentUserFullName;
-    }
-  }
-
-  loadMovements(itemId: number) {
-    this.movementService.getMovementsByItem(itemId).subscribe(
-      data => {
+  loadMovements() {
+    this.movementService.getAllMovements().subscribe({
+      next: (data: any[]) => {
         this.movements = data.map(movement => ({
           ...movement,
-          date: this.formatDate(movement.date)
+          date: this.formatDate(movement.date),
+          status: this.mapStatusFromApi(movement.status),
+          productName: movement.productName || this.getProductName(movement.warehouseItemId),
+          productCode: movement.productCode || this.getProductCode(movement.warehouseItemId)
         }));
       },
-      error => this.errorMessage = `Błąd ładowania ruchów: ${error.status} ${error.message}`
-    );
+      error: (error: any) => {
+        this.errorMessage = `Błąd ładowania ruchów: ${error.status} ${error.message}`;
+      }
+    });
+  }
+
+  getProductName(warehouseItemId: number): string {
+    const product = this.products.find(p => p.id === warehouseItemId);
+    return product ? product.name : 'Nieznany produkt';
+  }
+
+  getProductCode(warehouseItemId: number): string {
+    const product = this.products.find(p => p.id === warehouseItemId);
+    return product ? product.code : 'Brak kodu';
   }
 
   addMovement() {
-    if (this.newMovement.quantity <= 0) {
-      this.errorMessage = 'Ilość musi być większa niż 0.';
-      return;
-    }
-    if (!this.newMovement.movementType || !this.newMovement.status) {
-      this.errorMessage = 'Typ ruchu i status są wymagane.';
-      return;
-    }
-    this.newMovement.date = this.formatDateForApi(new Date());
-    this.newMovement.createdBy = this.currentUserFullName;
-    this.newMovement.comment = this.newMovement.comment !== undefined ? this.newMovement.comment : '';
-    this.movementService.createMovement(this.newMovement).subscribe(
-      () => {
-        this.successMessage = 'Ruch magazynowy dodany.';
-        this.errorMessage = null;
-        this.loadMovements(this.newMovement.warehouseItemId);
-        this.loadItems();
-        this.newMovement = {
-          warehouseItemId: this.newMovement.warehouseItemId,
-          movementType: 'Przyjęcie zewnętrzne',
-          quantity: 0,
-          supplier: '',
-          documentNumber: '',
-          description: '',
-          status: 'Zakończone',
-          createdBy: this.currentUserFullName,
-          date: '',
-          comment: ''
-        };
+    const movementToAdd = {
+      warehouseItemId: Number(this.newMovement.warehouseItemId), // Konwersja na number
+      movementType: this.mapMovementTypeForApi(this.newMovement.movementType),
+      quantity: this.newMovement.quantity,
+      supplier: this.newMovement.supplier || '',
+      documentNumber: this.newMovement.documentNumber || '',
+      description: this.newMovement.description || '',
+      createdBy: this.currentUserFullName || 'Unknown',
+      date: this.formatDateForApi(new Date()),
+      status: this.mapStatusForApi(this.newMovement.status as 'Zaplanowane' | 'W trakcie' | 'Zakończone'),
+      comment: this.newMovement.comment || ''
+    };
+
+    console.log('Wysyłany obiekt movementToAdd:', movementToAdd); // Debugowanie
+
+    this.movementService.createMovement(movementToAdd).subscribe({
+      next: () => {
+        this.successMessage = 'Ruch magazynowy dodano pomyślnie.';
+        this.loadMovements();
+        this.toggleAddForm();
       },
-      error => {
-        if (error.status === 400 && error.error === 'Niewystarczająca ilość na magazynie') {
-          this.errorMessage = `Niewystarczająca ilość na magazynie dla produktu ID ${this.newMovement.warehouseItemId}.`;
-        } else {
-          this.errorMessage = error.error || `Błąd dodawania ruchu: ${error.status} ${error.message}`;
+      error: (error: any) => {
+        this.errorMessage = `Błąd podczas dodawania ruchu: ${error.status} - ${error.statusText || 'Nieznany błąd'}`;
+        console.error('Szczegóły błędu:', error);
+        if (error.error) {
+          console.error('Treść błędu z serwera:', error.error);
         }
       }
-    );
+    });
   }
 
-  onFileChange(event: any) {
-    const file = event.target.files[0];
+  resetForm() {
+    this.newMovement = {
+      id: 0,
+      warehouseItemId: 0,
+      productName: '',
+      productCode: '',
+      movementType: '',
+      quantity: 0,
+      supplier: '',
+      documentNumber: '',
+      description: '',
+      date: '',
+      createdBy: '',
+      status: '',
+      comment: ''
+    };
+  }
+
+  mapStatusFromApi(status: string): 'Zaplanowane' | 'W trakcie' | 'Zakończone' {
+    switch (status) {
+      case 'Planned':
+        return 'Zaplanowane';
+      case 'InProgress':
+        return 'W trakcie';
+      case 'Completed':
+        return 'Zakończone';
+      default:
+        return 'Zakończone';
+    }
+  }
+
+  onFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e: any) => {
-        const text = e.target.result as string;
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        const text = e.target?.result as string;
         const data = this.parseCSV(text);
         this.processBulkMovements(data);
       };
@@ -231,33 +300,62 @@ export class WarehouseMovementsComponent implements OnInit {
       if (status === 'Completed') status = 'Zakończone';
       return {
         warehouseItemId: parseInt(row.warehouseItemId, 10),
-        movementType: movementType,
+        movementType: this.mapMovementTypeForApi(movementType),
         quantity: parseInt(row.quantity, 10),
         supplier: row.supplier || '',
-        documentNumber: row.documentNumber || '',
+        documentNumber: row.documentNumber || this.generateDocumentNumber(),
         description: row.description || '',
         createdBy: this.currentUserFullName,
-        status: status,
+        status: this.mapStatusForApi(status as 'Zaplanowane' | 'W trakcie' | 'Zakończone'),
         comment: row.comment || '',
         date: this.formatDateForApi(new Date())
       };
     });
-    movements.forEach(movement => {
-      this.movementService.createMovement(movement).subscribe(
-        () => {
-          this.loadMovements(movement.warehouseItemId);
-          this.loadItems();
+    movements.forEach((movement: any) => {
+      this.movementService.createMovement(movement).subscribe({
+        next: () => {
+          this.loadMovements();
         },
-        error => {
-          if (error.status === 400 && error.error === 'Niewystarczająca ilość na magazynie') {
-            this.errorMessage = `Błąd dla produktu ID ${movement.warehouseItemId}: Niewystarczająca ilość na magazynie.`;
-          } else {
-            this.errorMessage = `Błąd podczas masowego dodawania: ${error.status} - ${error.statusText}. Szczegóły: ${error.error || 'Brak szczegółów'}`;
-          }
+        error: (error: any) => {
+          this.errorMessage = error.error || `Błąd podczas masowego dodawania: ${error.status} - ${error.statusText}`;
         }
-      );
+      });
     });
     this.successMessage = 'Masowe dodawanie ruchów zakończone.';
+  }
+
+  mapMovementTypeForApi(movementType: string): string {
+    switch (movementType) {
+      case 'Przyjęcie zewnętrzne':
+      case 'Przyjęcie wewnętrzne':
+        return 'Receipt';
+      case 'Wydanie':
+        return 'Issue';
+      case 'Produkcja':
+        return 'Production'; // Dodano obsługę typu "Produkcja"
+      default:
+        console.warn(`Nieznany typ ruchu: ${movementType}, domyślnie ustawiono Receipt`);
+        return 'Receipt';
+    }
+  }
+
+  mapStatusForApi(status: 'Zaplanowane' | 'W trakcie' | 'Zakończone'): 'Planned' | 'InProgress' | 'Completed' {
+    switch (status) {
+      case 'Zaplanowane':
+        return 'Planned';
+      case 'W trakcie':
+        return 'InProgress';
+      case 'Zakończone':
+        return 'Completed';
+      default:
+        console.warn(`Nieznany status: ${status}, domyślnie ustawiono Planned`);
+        return 'Planned'; // Zamiast rzucać wyjątek, ustawiamy domyślną wartość
+    }
+  }
+
+  formatDateForApi(date: string | Date): string {
+    const d = new Date(date);
+    return d.toISOString();
   }
 
   sortMovements(field: string) {
@@ -292,7 +390,23 @@ export class WarehouseMovementsComponent implements OnInit {
   }
 }
 
-interface WarehouseItemDto {
+interface WarehouseMovement {
+  id: number;
+  warehouseItemId: number;
+  productName: string;
+  productCode: string;
+  movementType: string;
+  quantity: number;
+  supplier: string;
+  documentNumber: string;
+  description: string;
+  date: string;
+  createdBy: string;
+  status: string;
+  comment?: string;
+}
+
+interface Product {
   id: number;
   name: string;
   code: string;
@@ -300,31 +414,4 @@ interface WarehouseItemDto {
   price: number;
   category: string;
   location: string;
-}
-
-interface WarehouseMovement {
-  id: number;
-  warehouseItemId: number;
-  movementType: string;
-  quantity: number;
-  supplier: string;
-  documentNumber: string;
-  description: string;
-  date: string;
-  createdBy: string;
-  status: 'Zaplanowane' | 'W trakcie' | 'Zakończone';
-  comment?: string;
-}
-
-interface CreateWarehouseMovementDto {
-  warehouseItemId: number;
-  movementType: string;
-  quantity: number;
-  supplier: string;
-  documentNumber: string;
-  description: string;
-  status: 'Zaplanowane' | 'W trakcie' | 'Zakończone';
-  createdBy: string;
-  date: string;
-  comment?: string;
 }
