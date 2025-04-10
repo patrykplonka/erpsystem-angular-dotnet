@@ -50,7 +50,6 @@ html, body {
       margin: 10px 0;
     }
 
-      .sidebar ul li a,
       .sidebar ul li button {
         display: flex;
         align-items: center;
@@ -72,7 +71,6 @@ html, body {
           background: #34495e;
         }
 
-        .sidebar ul li a:hover,
         .sidebar ul li button:hover {
           background: #34495e;
         }
@@ -109,13 +107,19 @@ header {
   justify-content: space-between;
   align-items: center;
   background: #fff;
-  padding: 10px 20px;
+  padding: 16px 24px;
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
 }
 
   header h1 {
     font-size: 20px;
     color: #333;
+  }
+
+  header p {
+    font-size: 14px;
+    color: #666;
   }
 
 .user-info {
@@ -132,7 +136,7 @@ header {
   }
 
 .warehouse-section {
-  padding: 0 10px;
+  padding: 0 24px;
   flex: 1;
 }
 
@@ -165,7 +169,7 @@ header {
 }
 
 .forms-container {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .add-item-form,
@@ -180,14 +184,8 @@ header {
   .edit-item-form h3 {
     font-size: 18px;
     font-weight: 600;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     color: #2c3e50;
-  }
-
-  .add-item-form form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
   }
 
 .form-grid {
@@ -250,6 +248,7 @@ header {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+  margin-top: 20px;
 }
 
 .add-item-form button,
@@ -285,17 +284,17 @@ header {
 .list-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .add-button,
 .toggle-deleted {
-  padding: 8px 14px;
+  padding: 10px 16px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   transition: background 0.2s;
 }
@@ -321,8 +320,8 @@ header {
 .advanced-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
   align-items: center;
 }
 
@@ -332,7 +331,7 @@ header {
     border-radius: 8px;
     font-size: 14px;
     width: 100%;
-    max-width: 160px;
+    max-width: 180px;
     outline: none;
     transition: border-color 0.2s;
     flex: 1;
@@ -384,7 +383,7 @@ header {
 
 .items-list th,
 .items-list td {
-  padding: 10px;
+  padding: 14px 16px;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -460,69 +459,36 @@ header {
     background: #059669;
   }
 
-@media (min-width: 768px) {
+@media (max-width: 767px) {
   .warehouse-container {
-    flex-direction: row;
+    flex-direction: column;
   }
 
   .sidebar {
-    width: 250px;
-    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    box-shadow: none;
   }
 
   .main-content {
-    padding: 20px;
-    width: calc(100% - 250px);
-  }
-
-  header {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 16px 24px;
-    margin-bottom: 24px;
+    padding: 10px;
+    width: 100%;
   }
 
   .warehouse-section {
-    padding: 0 24px;
+    padding: 0 10px;
   }
 
-  .forms-container {
-    margin-bottom: 24px;
-  }
-
-  .add-item-form,
-  .edit-item-form {
-    padding: 20px;
-  }
-
-    .add-item-form h3,
-    .edit-item-form h3 {
-      font-size: 18px;
-      margin-bottom: 16px;
-    }
-
-  .list-controls {
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .add-button,
-  .toggle-deleted {
-    padding: 10px 16px;
-    font-size: 14px;
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 
   .advanced-filters {
-    gap: 12px;
-    margin-bottom: 16px;
+    flex-direction: column;
+    align-items: stretch;
   }
 
-    .advanced-filters input {
-      width: 180px;
+    .advanced-filters input,
+    .advanced-filters select {
+      max-width: 100%;
     }
-
-  .items-list th,
-  .items-list td {
-    padding: 14px 16px;
-  }
 }
