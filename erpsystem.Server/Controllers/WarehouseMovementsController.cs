@@ -29,28 +29,48 @@ namespace erpsystem.Server.Controllers
             if (item == null || item.IsDeleted)
                 return NotFound("Produkt nie istnieje lub jest usunięty");
 
-            if (movementDto.MovementType == "Receipt")
-            {
-                item.Quantity += movementDto.Quantity;
-            }
-            else if (movementDto.MovementType == "Issue")
-            {
-                if (item.Quantity < movementDto.Quantity)
-                    return BadRequest("Niewystarczająca ilość na magazynie");
-                item.Quantity -= movementDto.Quantity;
-            }
-            else
-            {
+            if (!Enum.TryParse<WarehouseMovementType>(movementDto.MovementType, out var movementType))
                 return BadRequest("Nieprawidłowy typ ruchu");
+
+            switch (movementType)
+            {
+                case WarehouseMovementType.PZ: // Przyjęcie Zewnętrzne
+                case WarehouseMovementType.PW: // Przyjęcie Wewnętrzne
+                case WarehouseMovementType.ZW: // Zwrot Wewnętrzny
+                case WarehouseMovementType.ZK: // Zwrot Konsygnacyjny
+                    item.Quantity += movementDto.Quantity;
+                    break;
+
+                case WarehouseMovementType.WZ: // Wydanie Zewnętrzne
+                case WarehouseMovementType.RW: // Rozchód Wewnętrzny
+                    if (item.Quantity < movementDto.Quantity)
+                        return BadRequest("Niewystarczająca ilość na magazynie");
+                    item.Quantity -= movementDto.Quantity;
+                    break;
+
+                case WarehouseMovementType.MM: // Przesunięcie Międzymagazynowe
+                    // Tutaj można dodać logikę dla przesunięć, np. wymaga pola TargetWarehouseId
+                    if (item.Quantity < movementDto.Quantity)
+                        return BadRequest("Niewystarczająca ilość na magazynie do przesunięcia");
+                    item.Quantity -= movementDto.Quantity; // Zmniejsz w źródłowym magazynie
+                    // Dodaj logikę zwiększenia w docelowym magazynie, jeśli masz TargetWarehouseId
+                    break;
+
+                case WarehouseMovementType.INW: // Inwentaryzacja
+                    item.Quantity = movementDto.Quantity; // Ustaw nową wartość stanu
+                    break;
+
+                default:
+                    return BadRequest("Nieobsługiwany typ ruchu");
             }
 
             var movement = new WarehouseMovements
             {
                 WarehouseItemId = movementDto.WarehouseItemId,
-                MovementType = movementDto.MovementType,
+                MovementType = movementType,
                 Quantity = movementDto.Quantity,
-                Supplier = movementDto.Supplier ?? string.Empty, 
-                DocumentNumber = movementDto.DocumentNumber ?? string.Empty, 
+                Supplier = movementDto.Supplier ?? string.Empty,
+                DocumentNumber = movementDto.DocumentNumber ?? string.Empty,
                 Date = movementDto.Date,
                 Description = movementDto.Description ?? string.Empty,
                 CreatedBy = string.IsNullOrEmpty(movementDto.CreatedBy) ? "Unknown" : movementDto.CreatedBy,
@@ -66,7 +86,7 @@ namespace erpsystem.Server.Controllers
             {
                 Id = movement.Id,
                 WarehouseItemId = movement.WarehouseItemId,
-                MovementType = movement.MovementType,
+                MovementType = movement.MovementType.ToString(),
                 Quantity = movement.Quantity,
                 Supplier = movement.Supplier,
                 DocumentNumber = movement.DocumentNumber,
@@ -78,8 +98,32 @@ namespace erpsystem.Server.Controllers
             };
 
             Console.WriteLine($"Saved movement: {System.Text.Json.JsonSerializer.Serialize(responseDto)}");
-
             return Ok(responseDto);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllMovements()
+        {
+            var movements = await _context.WarehouseMovements
+                .OrderByDescending(m => m.Date)
+                .Select(m => new WarehouseMovementsDTO
+                {
+                    Id = m.Id,
+                    WarehouseItemId = m.WarehouseItemId,
+                    MovementType = m.MovementType.ToString(),
+                    Quantity = m.Quantity,
+                    Supplier = m.Supplier,
+                    DocumentNumber = m.DocumentNumber,
+                    Date = m.Date,
+                    Description = m.Description,
+                    CreatedBy = m.CreatedBy,
+                    Status = m.Status,
+                    Comment = m.Comment
+                })
+                .ToListAsync();
+
+            Console.WriteLine($"Returning all movements: {System.Text.Json.JsonSerializer.Serialize(movements)}");
+            return Ok(movements);
         }
 
         [HttpGet("item/{warehouseItemId}")]
@@ -92,10 +136,10 @@ namespace erpsystem.Server.Controllers
                 {
                     Id = m.Id,
                     WarehouseItemId = m.WarehouseItemId,
-                    MovementType = m.MovementType,
+                    MovementType = m.MovementType.ToString(),
                     Quantity = m.Quantity,
-                    Supplier = m.Supplier, 
-                    DocumentNumber = m.DocumentNumber, 
+                    Supplier = m.Supplier,
+                    DocumentNumber = m.DocumentNumber,
                     Date = m.Date,
                     Description = m.Description,
                     CreatedBy = m.CreatedBy,
@@ -105,33 +149,6 @@ namespace erpsystem.Server.Controllers
                 .ToListAsync();
 
             Console.WriteLine($"Returning movements for item {warehouseItemId}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
-
-            return Ok(movements);
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetAllMovements()
-        {
-            var movements = await _context.WarehouseMovements
-                .OrderByDescending(m => m.Date)
-                .Select(m => new WarehouseMovementsDTO
-                {
-                    Id = m.Id,
-                    WarehouseItemId = m.WarehouseItemId,
-                    MovementType = m.MovementType,
-                    Quantity = m.Quantity,
-                    Supplier = m.Supplier, 
-                    DocumentNumber = m.DocumentNumber, 
-                    Date = m.Date,
-                    Description = m.Description,
-                    CreatedBy = m.CreatedBy,
-                    Status = m.Status,
-                    Comment = m.Comment
-                })
-                .ToListAsync();
-
-            Console.WriteLine($"Returning all movements: {System.Text.Json.JsonSerializer.Serialize(movements)}");
-
             return Ok(movements);
         }
 
@@ -141,18 +158,8 @@ namespace erpsystem.Server.Controllers
             if (string.IsNullOrEmpty(start) || string.IsNullOrEmpty(end))
                 return BadRequest("Parametry 'start' i 'end' są wymagane.");
 
-            DateTime startDate;
-            DateTime endDate;
-
-            try
-            {
-                startDate = DateTime.Parse(start);
-                endDate = DateTime.Parse(end);
-            }
-            catch (FormatException)
-            {
+            if (!DateTime.TryParse(start, out DateTime startDate) || !DateTime.TryParse(end, out DateTime endDate))
                 return BadRequest("Nieprawidłowy format daty. Oczekiwano formatu YYYY-MM-DD.");
-            }
 
             if (startDate > endDate)
                 return BadRequest("Data początkowa nie może być późniejsza niż data końcowa.");
@@ -164,7 +171,7 @@ namespace erpsystem.Server.Controllers
                 {
                     Id = m.Id,
                     WarehouseItemId = m.WarehouseItemId,
-                    MovementType = m.MovementType,
+                    MovementType = m.MovementType.ToString(),
                     Quantity = m.Quantity,
                     Supplier = m.Supplier,
                     DocumentNumber = m.DocumentNumber,
@@ -177,7 +184,6 @@ namespace erpsystem.Server.Controllers
                 .ToListAsync();
 
             Console.WriteLine($"Returning movements for period {start} to {end}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
-
             return Ok(movements);
         }
     }

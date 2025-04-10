@@ -20,7 +20,7 @@ html, body {
 
 .dashboard-container {
   display: flex;
-  flex: 1; 
+  flex: 1;
   height: 100vh;
 }
 
@@ -95,7 +95,7 @@ html, body {
   }
 
 .main-content {
-  flex: 1; 
+  flex: 1;
   padding: 20px;
   background: #fff;
   display: flex;
@@ -133,7 +133,7 @@ header {
 
 .warehouse-section {
   padding: 0 10px;
-  flex: 1; 
+  flex: 1;
 }
 
 .messages {
@@ -206,6 +206,24 @@ header {
     font-size: 14px;
     font-weight: 500;
     color: #4b5563;
+  }
+
+.input-with-unit {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+  .input-with-unit input {
+    padding-right: 30px;
+    width: 100%;
+  }
+
+  .input-with-unit .unit {
+    position: absolute;
+    right: 10px;
+    color: #666;
+    font-size: 14px;
   }
 
 .add-item-form input,
@@ -454,7 +472,7 @@ header {
 
   .main-content {
     padding: 20px;
-    width: calc(100% - 250px); 
+    width: calc(100% - 250px);
   }
 
   header {

@@ -38,18 +38,20 @@
           </div>
           <form *ngIf="isAddFormVisible" (ngSubmit)="addMovement()" class="add-movement-form">
             <select [(ngModel)]="newMovement.warehouseItemId" name="warehouseItemId" (ngModelChange)="onProductChange()" required>
-              <option value="" disabled>
-               Wybierz produkt
-              </option>
+              <option value="" disabled>Wybierz produkt</option>
               <option *ngFor="let product of products" [value]="product.id">{{ product.name }}</option>
             </select>
             <input type="text" [(ngModel)]="newMovement.productCode" name="productCode" placeholder="Kod produktu" readonly>
             <select [(ngModel)]="newMovement.movementType" name="movementType" required>
               <option value="" disabled>Wybierz typ</option>
-              <option value="Przyjęcie zewnętrzne">Przyjęcie zewnętrzne</option>
-              <option value="Przyjęcie wewnętrzne">Przyjęcie wewnętrzne</option>
-              <option value="Wydanie">Wydanie</option>
-              <option value="Produkcja">Produkcja</option>
+              <option value="Przyjęcie Zewnętrzne">Przyjęcie Zewnętrzne (PZ)</option>
+              <option value="Przyjęcie Wewnętrzne">Przyjęcie Wewnętrzne (PW)</option>
+              <option value="Wydanie Zewnętrzne">Wydanie Zewnętrzne (WZ)</option>
+              <option value="Rozchód Wewnętrzny">Rozchód Wewnętrzny (RW)</option>
+              <option value="Przesunięcie Międzymagazynowe">Przesunięcie Międzymagazynowe (MM)</option>
+              <option value="Zwrot Wewnętrzny">Zwrot Wewnętrzny (ZW)</option>
+              <option value="Zwrot Konsygnacyjny">Zwrot Konsygnacyjny (ZK)</option>
+              <option value="Inwentaryzacja">Inwentaryzacja (INW)</option>
             </select>
             <input type="number" [(ngModel)]="newMovement.quantity" name="quantity" placeholder="Ilość" required min="1">
             <input type="text" [(ngModel)]="newMovement.supplier" name="supplier" placeholder="Dostawca">
