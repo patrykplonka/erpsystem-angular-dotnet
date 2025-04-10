@@ -4,11 +4,12 @@ import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SidebarComponent } from '../sidebar/sidebar.component';
 
 @Component({
   selector: 'app-product-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './product-management.component.html',
   styleUrls: ['./product-management.component.css']
 })
@@ -47,7 +48,6 @@ export class ProductManagementComponent implements OnInit {
   maxQuantity: number = 0;
   uniqueCategories: string[] = [];
   uniqueWarehouses: string[] = [];
-  isWarehouseOpen: boolean = false;
 
   constructor(
     private http: HttpClient,
@@ -285,8 +285,8 @@ export class ProductManagementComponent implements OnInit {
     }
   }
 
-  toggleWarehouseMenu() {
-    this.isWarehouseOpen = !this.isWarehouseOpen;
+  navigateTo(page: string) {
+    this.router.navigate([`/${page}`]);
   }
 
   goToProducts() {

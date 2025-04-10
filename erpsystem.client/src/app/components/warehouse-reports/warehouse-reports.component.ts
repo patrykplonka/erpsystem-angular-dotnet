@@ -4,12 +4,13 @@ import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SidebarComponent } from '../sidebar/sidebar.component';
 import * as XLSX from 'xlsx';
 
 @Component({
   selector: 'app-warehouse-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './warehouse-reports.component.html',
   styleUrls: ['./warehouse-reports.component.css']
 })
@@ -31,7 +32,6 @@ export class WarehouseReportsComponent implements OnInit {
   movementEndDate: string = '';
   movementsInPeriod: WarehouseMovement[] = [];
   popularProducts: { name: string, issueCount: number }[] = [];
-  isWarehouseOpen: boolean = false;
 
   constructor(
     private http: HttpClient,
@@ -214,20 +214,8 @@ export class WarehouseReportsComponent implements OnInit {
       );
   }
 
-  toggleWarehouseMenu() {
-    this.isWarehouseOpen = !this.isWarehouseOpen;
-  }
-
-  goToProducts() {
-    this.router.navigate(['/products']);
-  }
-
-  goToMovements() {
-    this.router.navigate(['/movements']);
-  }
-
-  goToReports() {
-    this.router.navigate(['/reports']);
+  navigateTo(page: string) {
+    this.router.navigate([`/${page}`]);
   }
 
   logout() {

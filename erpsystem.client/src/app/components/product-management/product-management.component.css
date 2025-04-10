@@ -22,75 +22,9 @@ html, body {
   display: flex;
   flex: 1;
   height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
 }
-
-.sidebar {
-  width: 250px;
-  background: #2c3e50;
-  padding: 20px;
-  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-}
-
-  .sidebar h2 {
-    text-align: center;
-    color: #ecf0f1;
-    margin-bottom: 20px;
-    font-size: 18px;
-    font-weight: bold;
-  }
-
-  .sidebar ul {
-    list-style: none;
-    padding: 0;
-  }
-
-    .sidebar ul li {
-      margin: 10px 0;
-    }
-
-      .sidebar ul li button {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 15px;
-        text-decoration: none;
-        color: #ecf0f1;
-        background: transparent;
-        border: none;
-        width: 100%;
-        text-align: left;
-        cursor: pointer;
-        border-radius: 5px;
-        font-size: 14px;
-        transition: background 0.3s;
-      }
-
-        .sidebar ul li button.active {
-          background: #34495e;
-        }
-
-        .sidebar ul li button:hover {
-          background: #34495e;
-        }
-
-.submenu {
-  padding-left: 20px;
-}
-
-  .submenu li button {
-    padding: 8px 15px;
-  }
-
-.arrow {
-  font-size: 12px;
-  transition: transform 0.3s;
-}
-
-  .arrow.open {
-    transform: rotate(180deg);
-  }
 
 .main-content {
   flex: 1;
@@ -100,6 +34,7 @@ html, body {
   flex-direction: column;
   overflow-y: auto;
   width: 100%;
+  height: 100vh;
 }
 
 header {
@@ -464,9 +399,9 @@ header {
     flex-direction: column;
   }
 
-  .sidebar {
-    width: 100%;
-    box-shadow: none;
+  .dashboard-container {
+    flex-direction: column;
+    padding: 0;
   }
 
   .main-content {
