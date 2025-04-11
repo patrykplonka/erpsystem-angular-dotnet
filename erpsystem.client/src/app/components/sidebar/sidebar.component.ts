@@ -30,6 +30,10 @@ export class SidebarComponent {
     this.navigate.emit('/reports');
   }
 
+  goToContractors() {
+    this.navigate.emit('/contractors');
+  }
+
   logout() {
     this.logoutEvent.emit();
   }
