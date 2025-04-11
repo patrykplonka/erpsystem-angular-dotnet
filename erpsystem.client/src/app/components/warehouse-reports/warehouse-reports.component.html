@@ -1,36 +1,28 @@
 <div class="warehouse-container">
   <div class="dashboard-container">
-    <aside class="sidebar">
-      <h2>Dashboard</h2>
-      <ul>
-        <li>
-          <button (click)="toggleWarehouseMenu()" [class.active]="isWarehouseOpen">
-            📦 Magazyn
-            <span class="arrow" [class.open]="isWarehouseOpen">▼</span>
-          </button>
-          <ul *ngIf="isWarehouseOpen" class="submenu">
-            <li><button (click)="goToProducts()">Produkty</button></li>
-            <li><button (click)="goToMovements()">Ruchy magazynowe</button></li>
-            <li><button (click)="goToReports()">Raporty</button></li>
-          </ul>
-        </li>
-        <li><button (click)="logout()">🚪 Wyloguj</button></li>
-      </ul>
-    </aside>
+    <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
     <main class="main-content">
       <header>
-        <h1>Raporty Magazynowe</h1>
+        <div>
+          <h1>Raporty Magazynowe</h1>
+          <p>Przeglądaj szczegółowe raporty magazynowe</p>
+        </div>
         <div class="user-info">
           <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
         </div>
       </header>
       <section class="warehouse-section">
+        <div class="messages">
+          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
         <div class="reports-section">
           <h2>Wybierz raport</h2>
           <div class="report-tabs">
             <button (click)="setReport('stock')" [class.active]="currentReport === 'stock'">Stan magazynowy</button>
             <button (click)="setReport('movements')" [class.active]="currentReport === 'movements'">Ruchy w okresie</button>
             <button (click)="setReport('popular')" [class.active]="currentReport === 'popular'">Najpopularniejsze produkty</button>
+            <button (click)="setReport('history')" [class.active]="currentReport === 'history'">Historia operacji</button>
           </div>
           <div *ngIf="currentReport === 'stock'" class="report-content">
             <h3>Stan magazynowy</h3>
@@ -38,19 +30,37 @@
               <thead>
                 <tr>
                   <th>Nazwa</th>
-                  <th>Kod</th>
-                  <th>Ilość</th>
                   <th>Kategoria</th>
+                  <th>Kod</th>
+                  <th>Numer partii</th>
                   <th>Lokalizacja</th>
+                  <th>Magazyn</th>
+                  <th>Ilość</th>
+                  <th>Jednostka miary</th>
+                  <th>Cena zakupu (netto)</th>
+                  <th>Koszt zakupu (netto)</th>
+                  <th>Stawka VAT</th>
+                  <th>Min. stan</th>
+                  <th>Dostawca</th>
+                  <th>Data ważności</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let item of warehouseItems">
-                  <td>{{ item.name }}</td>
-                  <td>{{ item.code }}</td>
-                  <td>{{ item.quantity }}</td>
-                  <td>{{ item.category }}</td>
-                  <td>{{ item.location }}</td>
+                  <td data-label="Nazwa">{{ item.name }}</td>
+                  <td data-label="Kategoria">{{ item.category }}</td>
+                  <td data-label="Kod">{{ item.code }}</td>
+                  <td data-label="Numer partii">{{ item.batchNumber || '-' }}</td>
+                  <td data-label="Lokalizacja">{{ item.location }}</td>
+                  <td data-label="Magazyn">{{ item.warehouse }}</td>
+                  <td data-label="Ilość">{{ item.quantity }}</td>
+                  <td data-label="Jednostka miary">{{ item.unitOfMeasure }}</td>
+                  <td data-label="Cena zakupu (netto)">{{ item.price }} zł</td>
+                  <td data-label="Koszt zakupu (netto)">{{ item.purchaseCost }} zł</td>
+                  <td data-label="Stawka VAT">{{ formatVatRate(item.vatRate) }}</td>
+                  <td data-label="Min. stan">{{ item.minimumStock }}</td>
+                  <td data-label="Dostawca">{{ item.supplier || '-' }}</td>
+                  <td data-label="Data ważności">{{ formatDate(item.expirationDate) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -71,23 +81,38 @@
             <table *ngIf="movementsInPeriod.length > 0">
               <thead>
                 <tr>
-                  <th>Typ</th>
-                  <th>Produkt</th>
+                  <th>Nazwa produktu</th>
+                  <th>Kod produktu</th>
+                  <th>Typ ruchu</th>
                   <th>Ilość</th>
+                  <th>Dostawca</th>
+                  <th>Numer dokumentu</th>
+                  <th>Opis</th>
+                  <th>Status</th>
+                  <th>Komentarz</th>
+                  <th>Magazyn</th>
                   <th>Data</th>
                   <th>Użytkownik</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let movement of movementsInPeriod">
-                  <td>{{ movement.movementType }}</td>
                   <td>{{ movement.warehouseItemName }}</td>
+                  <td>{{ movement.productCode }}</td>
+                  <td>{{ movement.movementType }}</td>
                   <td>{{ movement.quantity }}</td>
+                  <td>{{ movement.supplier || '-' }}</td>
+                  <td>{{ movement.documentNumber || '-' }}</td>
+                  <td>{{ movement.description || '-' }}</td>
+                  <td>{{ movement.status }}</td>
+                  <td>{{ movement.comment || '-' }}</td>
+                  <td>{{ movement.warehouse }}</td>
                   <td>{{ formatDate(movement.date) }}</td>
                   <td>{{ movement.createdBy }}</td>
                 </tr>
               </tbody>
             </table>
+            <p *ngIf="movementsInPeriod.length === 0 && !errorMessage">Wybierz okres, aby zobaczyć ruchy.</p>
           </div>
           <div *ngIf="currentReport === 'popular'" class="report-content">
             <h3>Najpopularniejsze produkty</h3>
@@ -102,6 +127,40 @@
                 <tr *ngFor="let product of popularProducts">
                   <td>{{ product.name }}</td>
                   <td>{{ product.issueCount }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div *ngIf="currentReport === 'history'" class="report-content">
+            <h3>Historia operacji</h3>
+            <div class="history-filters">
+              <input [(ngModel)]="historyUserFilter" placeholder="Filtruj po użytkowniku" (ngModelChange)="applyHistoryFilters()">
+              <input [(ngModel)]="historyItemFilter" placeholder="Filtruj po produkcie lub ID" (ngModelChange)="applyHistoryFilters()">
+              <input type="date" [(ngModel)]="historyStartDateFilter" (ngModelChange)="applyHistoryFilters()">
+              <input type="date" [(ngModel)]="historyEndDateFilter" (ngModelChange)="applyHistoryFilters()">
+              <button (click)="exportToExcel()" class="add-button">Eksportuj do Excel</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th (click)="sortHistory('id')">ID</th>
+                  <th (click)="sortHistory('user')">Użytkownik</th>
+                  <th (click)="sortHistory('operation')">Operacja</th>
+                  <th (click)="sortHistory('itemName')">Produkt</th>
+                  <th (click)="sortHistory('itemId')">ID Produktu</th>
+                  <th (click)="sortHistory('timestamp')">Data</th>
+                  <th (click)="sortHistory('details')">Szczegóły</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let log of filteredOperationLogs">
+                  <td data-label="ID">{{ log.id }}</td>
+                  <td data-label="Użytkownik">{{ log.user }}</td>
+                  <td data-label="Operacja">{{ log.operation }}</td>
+                  <td data-label="Produkt">{{ log.itemName }}</td>
+                  <td data-label="ID Produktu">{{ log.itemId }}</td>
+                  <td data-label="Data">{{ formatDate(log.timestamp) }}</td>
+                  <td data-label="Szczegóły">{{ log.details }}</td>
                 </tr>
               </tbody>
             </table>

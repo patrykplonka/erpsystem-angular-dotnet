@@ -5,7 +5,8 @@
   font-family: "Arial", sans-serif;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
   background: #f4f5f7;
@@ -23,53 +24,6 @@ html, body {
   flex: 1;
   height: 100vh;
 }
-
-.sidebar {
-  width: 250px;
-  background: #2c3e50;
-  padding: 20px;
-  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-}
-
-  .sidebar h2 {
-    text-align: center;
-    color: #ecf0f1;
-    margin-bottom: 20px;
-    font-size: 18px;
-    font-weight: bold;
-  }
-
-  .sidebar ul {
-    list-style: none;
-    padding: 0;
-  }
-
-    .sidebar ul li {
-      margin: 10px 0;
-    }
-
-      .sidebar ul li a,
-      .sidebar ul li button {
-        display: block;
-        padding: 10px 15px;
-        text-decoration: none;
-        color: #ecf0f1;
-        background: transparent;
-        border: none;
-        width: 100%;
-        text-align: left;
-        cursor: pointer;
-        border-radius: 5px;
-        font-size: 14px;
-        transition: background 0.3s;
-      }
-
-        .sidebar ul li a:hover,
-        .sidebar ul li button:hover {
-          background: #34495e;
-        }
 
 .main-content {
   flex: 1;
@@ -91,8 +45,13 @@ header {
 }
 
   header h1 {
-    font-size: 20px;
-    color: #333;
+    font-size: 24px;
+    color: #2c3e50;
+  }
+
+  header p {
+    font-size: 14px;
+    color: #666;
   }
 
 .user-info {
@@ -111,6 +70,26 @@ header {
 .warehouse-section {
   padding: 0 10px;
   flex: 1;
+}
+
+.messages {
+  margin-bottom: 20px;
+}
+
+.alert {
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.alert-danger {
+  background: #f8d7da;
+  color: #721c24;
 }
 
 .reports-section {
@@ -132,6 +111,7 @@ header {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
   .report-tabs button {
@@ -155,43 +135,70 @@ header {
       background: #d1d5db;
     }
 
-.report-content table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-  border-radius: 12px;
-  overflow: hidden;
+.report-content {
+  overflow-x: auto;
 }
 
-.report-content thead {
-  background: #f1f5f9;
-}
+  .report-content h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #2c3e50;
+  }
 
-.report-content th,
-.report-content td {
-  padding: 10px;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-}
+  .report-content table {
+    width: 100%;
+    min-width: 600px; /* Default for smaller tables like history (7 cols) and popular (2 cols) */
+    border-collapse: collapse;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+  }
 
-.report-content th {
-  font-weight: 600;
-  font-size: 13px;
-}
+    .report-content table.stock-table {
+      min-width: 1000px; /* Specific for stock report with 14 columns */
+    }
 
-.report-content td {
-  font-size: 13px;
-}
+    .report-content table.movements-table {
+      min-width: 900px; /* Specific for movements report with 12 columns */
+    }
 
-.report-content tbody tr:hover {
-  background: #f9fafb;
-}
+  .report-content thead {
+    background: #f1f5f9;
+  }
 
-.movement-filters {
+  .report-content th,
+  .report-content td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+  }
+
+  .report-content th {
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .report-content td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+  }
+
+  .report-content tbody tr:hover {
+    background: #f9fafb;
+  }
+
+.movement-filters,
+.history-filters {
   display: flex;
   gap: 15px;
   margin-bottom: 20px;
   align-items: flex-end;
+  flex-wrap: wrap;
 }
 
   .movement-filters .form-group {
@@ -199,14 +206,16 @@ header {
     flex-direction: column;
   }
 
-  .movement-filters label {
+  .movement-filters label,
+  .history-filters label {
     font-size: 14px;
     font-weight: 500;
     color: #4b5563;
     margin-bottom: 5px;
   }
 
-  .movement-filters input {
+  .movement-filters input,
+  .history-filters input {
     padding: 10px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
@@ -215,7 +224,8 @@ header {
     transition: border-color 0.2s;
   }
 
-    .movement-filters input:focus {
+    .movement-filters input:focus,
+    .history-filters input:focus {
       border-color: #3b82f6;
     }
 
@@ -235,14 +245,51 @@ header {
     background: #2563eb;
   }
 
+@media (max-width: 767px) {
+  .report-content table {
+    display: block;
+    width: 100%;
+  }
+
+  .report-content thead {
+    display: none;
+  }
+
+  .report-content tbody,
+  .report-content tr,
+  .report-content td {
+    display: block;
+    width: 100%;
+  }
+
+  .report-content td {
+    padding: 8px;
+    position: relative;
+    padding-left: 50%;
+    border-bottom: none;
+  }
+
+    .report-content td:before {
+      content: attr(data-label);
+      position: absolute;
+      left: 8px;
+      width: 45%;
+      padding-right: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      text-align: left;
+      color: #4b5563;
+    }
+
+  .report-content tr {
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 10px;
+  }
+}
+
 @media (min-width: 768px) {
   .warehouse-container {
     flex-direction: row;
-  }
-
-  .sidebar {
-    width: 250px;
-    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
   }
 
   .main-content {
@@ -252,27 +299,28 @@ header {
 
   .report-content th,
   .report-content td {
-    padding: 14px 16px;
-  }
-}
-
-.sidebar ul li button.active {
-  background: #34495e;
-}
-
-.submenu {
-  padding-left: 20px;
-}
-
-  .submenu li button {
-    padding: 8px 15px;
+    padding: 12px 14px;
   }
 
-.arrow {
-  font-size: 12px;
-  transition: transform 0.3s;
+  .report-content table {
+    min-width: 600px;
+  }
+
+    .report-content table.stock-table {
+      min-width: 800px;
+    }
+
+    .report-content table.movements-table {
+      min-width: 700px;
+    }
 }
 
-  .arrow.open {
-    transform: rotate(180deg);
+@media (min-width: 1200px) {
+  .report-content table {
+    min-width: 100%;
   }
+
+  .report-content td {
+    max-width: 200px;
+  }
+}

@@ -5,22 +5,23 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WarehouseMovementsService } from '../../services/warehouse-movements.service';
+import { SidebarComponent } from '../sidebar/sidebar.component';
 
 export enum WarehouseMovementType {
-  PZ = 'PZ',  // Przyjęcie Zewnętrzne
-  PW = 'PW',  // Przyjęcie Wewnętrzne
-  WZ = 'WZ',  // Wydanie Zewnętrzne
-  RW = 'RW',  // Rozchód Wewnętrzny
-  MM = 'MM',  // Przesunięcie Międzymagazynowe
-  ZW = 'ZW',  // Zwrot Wewnętrzny
-  ZK = 'ZK',  // Zwrot Konsygnacyjny
-  INW = 'INW' // Inwentaryzacja
+  PZ = 'PZ',
+  PW = 'PW',
+  WZ = 'WZ',
+  RW = 'RW',
+  MM = 'MM',
+  ZW = 'ZW',
+  ZK = 'ZK',
+  INW = 'INW'
 }
 
 @Component({
   selector: 'app-warehouse-movements',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './warehouse-movements.component.html',
   styleUrls: ['./warehouse-movements.component.css']
 })
@@ -55,7 +56,6 @@ export class WarehouseMovementsComponent implements OnInit {
   movementStartDateFilter: string = '';
   movementEndDateFilter: string = '';
   movementUserFilter: string = '';
-  isWarehouseOpen: boolean = false;
   isAddFormVisible: boolean = false;
 
   constructor(
@@ -328,27 +328,14 @@ export class WarehouseMovementsComponent implements OnInit {
     this.applyFilters();
   }
 
-  toggleWarehouseMenu() {
-    this.isWarehouseOpen = !this.isWarehouseOpen;
-  }
-
-  goToProducts() {
-    this.router.navigate(['/products']);
-  }
-
-  goToMovements() {
-    this.router.navigate(['/movements']);
-  }
-
-  goToReports() {
-    this.router.navigate(['/reports']);
+  navigateTo(page: string) {
+    this.router.navigate([`/${page}`]);
   }
 
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
-
 
   onFileChange(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -385,7 +372,7 @@ export class WarehouseMovementsComponent implements OnInit {
     const movements = data.map(row => {
       let movementType = row.movementType;
       if (!Object.values(WarehouseMovementType).includes(movementType)) {
-        movementType = this.mapMovementTypeForApi(movementType); 
+        movementType = this.mapMovementTypeForApi(movementType);
       }
       let status = row.status || 'Zakończone';
       return {

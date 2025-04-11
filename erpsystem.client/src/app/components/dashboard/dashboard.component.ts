@@ -1,17 +1,19 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { SidebarComponent } from '../sidebar/sidebar.component';
+import { DashboardContentComponent } from '../dashboard-content/dashboard-content.component';
 
 @Component({
   selector: 'app-dashboard',
+  standalone: true,
+  imports: [CommonModule, SidebarComponent, DashboardContentComponent],
   templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.css'],
-  imports: [CommonModule]
+  styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit {
   currentUserEmail: string | null = null;
-  isWarehouseOpen: boolean = false;
 
   constructor(
     private authService: AuthService,
@@ -22,20 +24,8 @@ export class DashboardComponent implements OnInit {
     this.currentUserEmail = localStorage.getItem('userEmail');
   }
 
-  toggleWarehouseMenu() {
-    this.isWarehouseOpen = !this.isWarehouseOpen;
-  }
-
-  goToProducts() {
-    this.router.navigate(['/products']);
-  }
-
-  goToMovements() {
-    this.router.navigate(['/movements']);
-  }
-
-  goToReports() {
-    this.router.navigate(['/reports']);
+  navigateTo(route: string) {
+    this.router.navigate([route]);
   }
 
   logout() {

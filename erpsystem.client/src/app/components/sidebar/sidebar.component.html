@@ -1,0 +1,17 @@
+<aside class="sidebar">
+  <h2>Dashboard</h2>
+  <ul>
+    <li>
+      <button (click)="toggleWarehouseMenu()" [class.active]="isWarehouseOpen">
+        📦 Magazyn
+        <span class="arrow" [class.open]="isWarehouseOpen">▼</span>
+      </button>
+      <ul *ngIf="isWarehouseOpen" class="submenu">
+        <li><button (click)="goToProducts()">Produkty</button></li>
+        <li><button (click)="goToMovements()">Ruchy magazynowe</button></li>
+        <li><button (click)="goToReports()">Raporty</button></li>
+      </ul>
+    </li>
+    <li><button (click)="logout()">🚪 Wyloguj</button></li>
+  </ul>
+</aside>
