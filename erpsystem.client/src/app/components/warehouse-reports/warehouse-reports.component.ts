@@ -20,7 +20,6 @@ export class WarehouseReportsComponent implements OnInit {
   errorMessage: string | null = null;
   successMessage: string | null = null;
   operationLogs: OperationLog[] = [];
-  showHistory: boolean = false;
   historyUserFilter: string = '';
   historyStartDateFilter: string = '';
   historyEndDateFilter: string = '';
@@ -31,7 +30,7 @@ export class WarehouseReportsComponent implements OnInit {
   movementStartDate: string = '';
   movementEndDate: string = '';
   movementsInPeriod: WarehouseMovement[] = [];
-  popularProducts: { name: string, issueCount: number }[] = [];
+  popularProducts: { name: string; issueCount: number }[] = [];
 
   constructor(
     private http: HttpClient,
@@ -49,28 +48,35 @@ export class WarehouseReportsComponent implements OnInit {
     this.currentReport = report;
     if (report === 'popular') {
       this.loadPopularProducts();
+    } else if (report === 'movements') {
+      this.movementsInPeriod = [];
+    } else if (report === 'history') {
+      this.loadOperationLogs(); // Ensure fresh data when selecting history
     }
   }
 
-  formatDate(date: string | Date): string {
+  formatDate(date: string | Date | null): string {
+    if (!date) return '-';
     const d = new Date(date);
     return d.toLocaleString('pl-PL', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
+  }
+
+  formatVatRate(vatRate: number): string {
+    return `${(vatRate * 100).toFixed(0)}%`;
   }
 
   loadOperationLogs() {
     this.http
       .get<OperationLog[]>('https://localhost:7224/api/warehouse/operation-logs')
-      .subscribe(
-        (data) => (this.operationLogs = data),
-        (error) =>
+      .subscribe({
+        next: (data) => (this.operationLogs = data),
+        error: (error) =>
           (this.errorMessage = `Błąd ładowania historii: ${error.status} ${error.message}`)
-      );
+      });
   }
 
   applyHistoryFilters() {
@@ -118,20 +124,13 @@ export class WarehouseReportsComponent implements OnInit {
   }
 
   loadItems() {
-    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse').subscribe(
-      (data) => {
+    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse').subscribe({
+      next: (data) => {
         this.warehouseItems = data;
       },
-      (error) =>
+      error: (error) =>
         (this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}`)
-    );
-  }
-
-  toggleHistoryView() {
-    this.showHistory = !this.showHistory;
-    if (this.showHistory) {
-      this.loadOperationLogs();
-    }
+    });
   }
 
   exportToExcel() {
@@ -172,28 +171,40 @@ export class WarehouseReportsComponent implements OnInit {
       .get<WarehouseMovement[]>(
         `https://localhost:7224/api/warehousemovements/period?start=${start}&end=${end}`
       )
-      .subscribe(
-        (data) => {
-          this.movementsInPeriod = data.map((movement) => ({
-            ...movement,
-            warehouseItemName:
-              this.warehouseItems.find((item) => item.id === movement.warehouseItemId)?.name ||
-              'Nieznany'
-          }));
+      .subscribe({
+        next: (data) => {
+          this.movementsInPeriod = data.map((movement) => {
+            const item = this.warehouseItems.find((i) => i.id === movement.warehouseItemId);
+            return {
+              ...movement,
+              warehouseItemName: item?.name || 'Nieznany',
+              productCode: item?.code || 'Brak',
+              category: item?.category || 'Brak',
+              location: item?.location || 'Brak',
+              warehouse: item?.warehouse || 'Brak',
+              unitOfMeasure: item?.unitOfMeasure || 'Brak',
+              minimumStock: item?.minimumStock || 0,
+              supplier: item?.supplier || '-',
+              batchNumber: item?.batchNumber || '-',
+              expirationDate: item?.expirationDate ? this.formatDate(item.expirationDate) : '-',
+              purchaseCost: item?.purchaseCost || 0,
+              vatRate: item?.vatRate ? this.formatVatRate(item.vatRate) : '0%'
+            };
+          });
           this.successMessage = 'Załadowano ruchy w okresie.';
           this.errorMessage = null;
         },
-        (error) =>
+        error: (error) =>
           (this.errorMessage = `Błąd ładowania ruchów: ${error.status} ${error.message}`)
-      );
+      });
   }
 
   loadPopularProducts() {
     this.http
       .get<WarehouseMovement[]>('https://localhost:7224/api/warehousemovements')
-      .subscribe(
-        (movements) => {
-          const issueMovements = movements.filter((m) => m.movementType === 'Wydanie');
+      .subscribe({
+        next: (movements) => {
+          const issueMovements = movements.filter((m) => m.movementType.includes('Wydanie'));
           const productIssueCount = issueMovements.reduce(
             (acc, m) => {
               acc[m.warehouseItemId] = (acc[m.warehouseItemId] || 0) + 1;
@@ -209,9 +220,9 @@ export class WarehouseReportsComponent implements OnInit {
             }))
             .sort((a, b) => b.issueCount - a.issueCount);
         },
-        (error) =>
+        error: (error) =>
           (this.errorMessage = `Błąd ładowania ruchów: ${error.status} ${error.message}`)
-      );
+      });
   }
 
   navigateTo(page: string) {
@@ -232,6 +243,14 @@ interface WarehouseItemDto {
   price: number;
   category: string;
   location: string;
+  warehouse: string;
+  unitOfMeasure: string;
+  minimumStock: number;
+  supplier: string;
+  batchNumber: string;
+  expirationDate: string | null;
+  purchaseCost: number;
+  vatRate: number;
 }
 
 interface OperationLog {
@@ -257,4 +276,15 @@ interface WarehouseMovement {
   status: 'Zaplanowane' | 'W trakcie' | 'Zakończone';
   comment?: string;
   warehouseItemName?: string;
+  productCode?: string;
+  category?: string;
+  location?: string;
+  warehouse?: string;
+  unitOfMeasure?: string;
+  minimumStock?: number;
+  supplierItem?: string;
+  batchNumber?: string;
+  expirationDate?: string;
+  purchaseCost?: number;
+  vatRate?: string;
 }
