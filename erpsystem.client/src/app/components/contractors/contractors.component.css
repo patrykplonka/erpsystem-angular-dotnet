@@ -457,3 +457,31 @@ tbody tr:hover {
     max-width: 200px;
   }
 }
+
+.import-button {
+  padding: 8px 14px;
+  background: #8b5cf6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+  display: inline-block;
+  position: relative;
+}
+
+  .import-button:hover {
+    background: #7c3aed;
+  }
+
+  .import-button input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { AuthService } from '../../services/auth.service'; 
+import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -19,6 +19,7 @@ export class ContractorsComponent implements OnInit {
   newContractor: CreateContractorDto = { name: '', type: 'Supplier', email: '', phone: '', address: '', taxId: '' };
   editContractor: UpdateContractorDto | null = null;
   selectedContractor: ContractorDto | null = null;
+  contractorToDelete: number | null = null;
   currentUserEmail: string | null = null;
   showDeleted: boolean = false;
   showAddForm: boolean = false;
@@ -26,7 +27,7 @@ export class ContractorsComponent implements OnInit {
   typeFilter: string = '';
   errorMessage: string | null = null;
   successMessage: string | null = null;
-  contractorTypes: string[] = ['Supplier', 'Client', 'Both'];
+  contractorTypes: string[] = ['Dostawca', 'Klient', 'Oba'];
   sortColumn: keyof ContractorDto | null = null;
   sortDirection: 'asc' | 'desc' = 'asc';
   pageSize = 10;
@@ -108,7 +109,7 @@ export class ContractorsComponent implements OnInit {
       this.sortColumn = column;
       this.sortDirection = 'asc';
     }
-    this.currentPage = 1; 
+    this.currentPage = 1;
   }
 
   nextPage() {
@@ -167,12 +168,21 @@ export class ContractorsComponent implements OnInit {
     });
   }
 
+  confirmDelete(id: number) {
+    this.contractorToDelete = id;
+  }
+
+  cancelDelete() {
+    this.contractorToDelete = null;
+  }
+
   deleteContractor(id: number) {
     this.http.delete(`${this.apiUrl}/${id}`).subscribe({
       next: () => {
         this.successMessage = 'Kontrahent usunięty.';
         this.errorMessage = null;
         this.loadContractors();
+        this.contractorToDelete = null;
       },
       error: (error) => this.errorMessage = `Błąd usuwania kontrahenta: ${error.status} ${error.message}`
     });
@@ -202,6 +212,54 @@ export class ContractorsComponent implements OnInit {
     link.click();
   }
 
+  importFromCsv(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+      const contractors: CreateContractorDto[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const [name, type, email, phone, address, taxId] = lines[i].split(',').map(val => val.trim());
+        if (name && type && email && taxId) {
+          contractors.push({
+            name,
+            type: type as 'Supplier' | 'Client' | 'Both',
+            email,
+            phone: phone || '',
+            address: address || '',
+            taxId
+          });
+        }
+      }
+
+      if (contractors.length === 0) {
+        this.errorMessage = 'Brak poprawnych danych w pliku CSV.';
+        return;
+      }
+
+      this.http.post(`${this.apiUrl}/import`, contractors).subscribe({
+        next: (response: any) => {
+          this.successMessage = response.message;
+          this.errorMessage = null;
+          this.loadContractors();
+          input.value = ''; // Resetuj input
+        },
+        error: (error) => {
+          this.errorMessage = error.error.message || 'Błąd importu kontrahentów.';
+          if (error.error.errors) {
+            this.errorMessage += ' ' + error.error.errors.join(' ');
+          }
+        }
+      });
+    };
+    reader.readAsText(file);
+  }
+
   showDetails(contractor: ContractorDto) {
     this.selectedContractor = contractor;
   }
@@ -212,7 +270,7 @@ export class ContractorsComponent implements OnInit {
 
   toggleDeletedView() {
     this.showDeleted = !this.showDeleted;
-    this.currentPage = 1; 
+    this.currentPage = 1;
   }
 
   toggleAddForm() {

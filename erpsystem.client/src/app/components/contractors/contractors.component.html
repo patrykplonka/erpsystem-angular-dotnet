@@ -103,6 +103,10 @@
               {{ showDeleted ? "Pokaż aktywnych" : "Pokaż usuniętych" }}
             </button>
             <button class="export-button" (click)="exportToCsv()">Eksportuj do CSV</button>
+            <label class="import-button">
+              Importuj z CSV
+              <input type="file" accept=".csv" (change)="importFromCsv($event)" hidden>
+            </label>
           </div>
           <div class="advanced-filters">
             <input [(ngModel)]="nameFilter" placeholder="Szukaj po nazwie" (ngModelChange)="applyFilters()">
@@ -133,7 +137,7 @@
                 <td data-label="NIP">{{ contractor.taxId }}</td>
                 <td data-label="Akcje" class="actions">
                   <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(contractor)">Edytuj</button>
-                  <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteContractor(contractor.id)">Usuń</button>
+                  <button *ngIf="!showDeleted" class="action-button delete-button" (click)="confirmDelete(contractor.id)">Usuń</button>
                   <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreContractor(contractor.id)">Przywróć</button>
                 </td>
               </tr>
@@ -158,4 +162,17 @@
             <button class="close-button" (click)="closeDetails()">Zamknij</button>
           </div>
         </div>
-        <
+        <div class="modal" *ngIf="contractorToDelete">
+          <div class="modal-content">
+            <h3>Potwierdź usunięcie</h3>
+            <p>Czy na pewno chcesz usunąć tego kontrahenta?</p>
+            <div class="form-buttons">
+              <button class="delete-button" (click)="deleteContractor(contractorToDelete)">Tak</button>
+              <button class="cancel-button" (click)="cancelDelete()">Nie</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
