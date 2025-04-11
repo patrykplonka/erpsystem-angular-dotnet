@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { AuthService } from '../../services/auth.service'; // Dostosuj ścieżkę
+import { AuthService } from '../../services/auth.service'; 
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SidebarComponent } from '../sidebar/sidebar.component'; // Dostosuj ścieżkę
+import { SidebarComponent } from '../sidebar/sidebar.component'; 
 
 @Component({
   selector: 'app-contractors',
@@ -18,6 +18,7 @@ export class ContractorsComponent implements OnInit {
   deletedContractors: ContractorDto[] = [];
   newContractor: CreateContractorDto = { name: '', type: 'Supplier', email: '', phone: '', address: '', taxId: '' };
   editContractor: UpdateContractorDto | null = null;
+  selectedContractor: ContractorDto | null = null;
   currentUserEmail: string | null = null;
   showDeleted: boolean = false;
   showAddForm: boolean = false;
@@ -26,6 +27,10 @@ export class ContractorsComponent implements OnInit {
   errorMessage: string | null = null;
   successMessage: string | null = null;
   contractorTypes: string[] = ['Supplier', 'Client', 'Both'];
+  sortColumn: keyof ContractorDto | null = null;
+  sortDirection: 'asc' | 'desc' = 'asc';
+  pageSize = 10;
+  currentPage = 1;
 
   private apiUrl = 'https://localhost:7224/api/contractors';
 
@@ -50,21 +55,81 @@ export class ContractorsComponent implements OnInit {
     });
   }
 
+  isValidNip(nip: string): boolean {
+    nip = nip.replace(/[\s-]/g, '');
+    if (nip.length !== 10 || !/^\d{10}$/.test(nip)) return false;
+    const weights = [6, 5, 7, 2, 3, 4, 5, 6, 7];
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += parseInt(nip[i]) * weights[i];
+    }
+    const checksum = sum % 11;
+    return checksum === parseInt(nip[9]);
+  }
+
   applyFilters() {
-    return this.showDeleted ? this.deletedContractors : this.contractors.filter(c => {
+    let filtered = this.showDeleted ? [...this.deletedContractors] : [...this.contractors];
+    filtered = filtered.filter(c => {
       const matchesName = !this.nameFilter || c.name.toLowerCase().includes(this.nameFilter.toLowerCase());
       const matchesType = !this.typeFilter || c.type === this.typeFilter;
       return matchesName && matchesType;
     });
+    if (this.sortColumn) {
+      filtered.sort((a, b) => {
+        const valueA = a[this.sortColumn!];
+        const valueB = b[this.sortColumn!];
+        if (typeof valueA === 'string' && typeof valueB === 'string') {
+          return this.sortDirection === 'asc'
+            ? valueA.localeCompare(valueB)
+            : valueB.localeCompare(valueA);
+        }
+        return this.sortDirection === 'asc'
+          ? (valueA as number) - (valueB as number)
+          : (valueB as number) - (valueA as number);
+      });
+    }
+    return filtered;
   }
 
   get filteredContractors(): ContractorDto[] {
-    return this.applyFilters();
+    const filtered = this.applyFilters();
+    const startIndex = (this.currentPage - 1) * this.pageSize;
+    return filtered.slice(startIndex, startIndex + this.pageSize);
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.applyFilters().length / this.pageSize);
+  }
+
+  sortTable(column: keyof ContractorDto) {
+    if (this.sortColumn === column) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = 'asc';
+    }
+    this.currentPage = 1; 
+  }
+
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+    }
   }
 
   addContractor() {
     if (!this.newContractor.name || !this.newContractor.type || !this.newContractor.email || !this.newContractor.taxId) {
       this.errorMessage = 'Nazwa, typ, email i NIP są wymagane.';
+      return;
+    }
+    if (!this.isValidNip(this.newContractor.taxId)) {
+      this.errorMessage = 'Podany NIP jest nieprawidłowy.';
       return;
     }
     this.http.post<ContractorDto>(this.apiUrl, this.newContractor).subscribe({
@@ -85,6 +150,10 @@ export class ContractorsComponent implements OnInit {
   updateContractor() {
     if (!this.editContractor || !this.editContractor.name || !this.editContractor.type || !this.editContractor.email || !this.editContractor.taxId) {
       this.errorMessage = 'Nazwa, typ, email i NIP są wymagane.';
+      return;
+    }
+    if (!this.isValidNip(this.editContractor.taxId)) {
+      this.errorMessage = 'Podany NIP jest nieprawidłowy.';
       return;
     }
     this.http.put(`${this.apiUrl}/${this.editContractor.id}`, this.editContractor).subscribe({
@@ -120,9 +189,30 @@ export class ContractorsComponent implements OnInit {
     });
   }
 
+  exportToCsv() {
+    const headers = ['ID,Nazwa,Typ,Email,Telefon,Adres,NIP,Usunięty\n'];
+    const rows = this.applyFilters().map(c =>
+      `${c.id},${c.name},${c.type},${c.email},${c.phone || ''},${c.address || ''},${c.taxId},${c.isDeleted ? 'Tak' : 'Nie'}`
+    );
+    const csvContent = headers.concat(rows).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `kontrahenci_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  }
+
+  showDetails(contractor: ContractorDto) {
+    this.selectedContractor = contractor;
+  }
+
+  closeDetails() {
+    this.selectedContractor = null;
+  }
+
   toggleDeletedView() {
     this.showDeleted = !this.showDeleted;
-    this.applyFilters();
+    this.currentPage = 1; 
   }
 
   toggleAddForm() {
@@ -139,7 +229,7 @@ export class ContractorsComponent implements OnInit {
   }
 
   navigateTo(page: string) {
-    this.router.navigate([page]); // Obsługuje ścieżki z "/" z sidebara
+    this.router.navigate([page]);
   }
 
   logout() {

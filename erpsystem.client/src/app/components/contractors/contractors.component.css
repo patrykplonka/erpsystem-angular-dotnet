@@ -176,7 +176,7 @@ header {
   margin-bottom: 15px;
 }
 
-.add-button, .toggle-deleted {
+.add-button, .toggle-deleted, .export-button {
   padding: 8px 14px;
   background: #3b82f6;
   color: #ffffff;
@@ -198,6 +198,14 @@ header {
 
   .toggle-deleted:hover {
     background: #4b5563;
+  }
+
+.export-button {
+  background: #10b981;
+}
+
+  .export-button:hover {
+    background: #059669;
   }
 
 .advanced-filters {
@@ -233,19 +241,30 @@ thead {
   background: #f1f5f9;
 }
 
-th, td {
+th {
   padding: 10px;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
   font-size: 13px;
-}
-
-th {
   font-weight: 600;
   white-space: nowrap;
+  cursor: pointer;
 }
 
+  th span {
+    font-size: 10px;
+  }
+
+    th span.asc {
+      transform: rotate(180deg);
+      display: inline-block;
+    }
+
 td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -295,6 +314,84 @@ tbody tr:hover {
 
   .restore-button:hover {
     background: #059669;
+  }
+
+.clickable {
+  cursor: pointer;
+  color: #3b82f6;
+}
+
+  .clickable:hover {
+    text-decoration: underline;
+  }
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+  .pagination button {
+    padding: 8px 14px;
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+    .pagination button:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+    }
+
+  .pagination span {
+    align-self: center;
+    font-size: 14px;
+  }
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+  .modal-content h3 {
+    margin-bottom: 15px;
+  }
+
+  .modal-content p {
+    margin: 10px 0;
+  }
+
+.close-button {
+  padding: 8px 14px;
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+  .close-button:hover {
+    background: #dc2626;
   }
 
 @media (max-width: 767px) {

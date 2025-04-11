@@ -102,6 +102,7 @@
             <button class="toggle-deleted" (click)="toggleDeletedView()">
               {{ showDeleted ? "Pokaż aktywnych" : "Pokaż usuniętych" }}
             </button>
+            <button class="export-button" (click)="exportToCsv()">Eksportuj do CSV</button>
           </div>
           <div class="advanced-filters">
             <input [(ngModel)]="nameFilter" placeholder="Szukaj po nazwie" (ngModelChange)="applyFilters()">
@@ -113,18 +114,18 @@
           <table>
             <thead>
               <tr>
-                <th>Nazwa</th>
-                <th>Typ</th>
-                <th>Email</th>
-                <th>Telefon</th>
-                <th>Adres</th>
-                <th>NIP</th>
+                <th (click)="sortTable('name')">Nazwa <span *ngIf="sortColumn === 'name'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('type')">Typ <span *ngIf="sortColumn === 'type'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('email')">Email <span *ngIf="sortColumn === 'email'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('phone')">Telefon <span *ngIf="sortColumn === 'phone'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('address')">Adres <span *ngIf="sortColumn === 'address'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('taxId')">NIP <span *ngIf="sortColumn === 'taxId'" [class.asc]="sortDirection === 'asc'">▼</span></th>
                 <th>Akcje</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let contractor of filteredContractors">
-                <td data-label="Nazwa">{{ contractor.name }}</td>
+                <td data-label="Nazwa" (click)="showDetails(contractor)" class="clickable">{{ contractor.name }}</td>
                 <td data-label="Typ">{{ contractor.type }}</td>
                 <td data-label="Email">{{ contractor.email }}</td>
                 <td data-label="Telefon">{{ contractor.phone || '-' }}</td>
@@ -138,8 +139,23 @@
               </tr>
             </tbody>
           </table>
+          <div class="pagination" *ngIf="totalPages > 1">
+            <button (click)="prevPage()" [disabled]="currentPage === 1">Poprzednia</button>
+            <span>Strona {{ currentPage }} z {{ totalPages }}</span>
+            <button (click)="nextPage()" [disabled]="currentPage === totalPages">Następna</button>
+          </div>
         </div>
-      </section>
-    </main>
-  </div>
-</div>
+        <div class="modal" *ngIf="selectedContractor">
+          <div class="modal-content">
+            <h3>Szczegóły kontrahenta</h3>
+            <p><strong>Nazwa:</strong> {{ selectedContractor.name }}</p>
+            <p><strong>Typ:</strong> {{ selectedContractor.type }}</p>
+            <p><strong>Email:</strong> {{ selectedContractor.email }}</p>
+            <p><strong>Telefon:</strong> {{ selectedContractor.phone || '-' }}</p>
+            <p><strong>Adres:</strong> {{ selectedContractor.address || '-' }}</p>
+            <p><strong>NIP:</strong> {{ selectedContractor.taxId }}</p>
+            <p><strong>Usunięty:</strong> {{ selectedContractor.isDeleted ? 'Tak' : 'Nie' }}</p>
+            <button class="close-button" (click)="closeDetails()">Zamknij</button>
+          </div>
+        </div>
+        <
