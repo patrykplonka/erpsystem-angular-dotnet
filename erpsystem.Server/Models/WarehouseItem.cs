@@ -11,8 +11,9 @@
         public string Location { get; set; }
         public string Warehouse { get; set; } 
         public string UnitOfMeasure { get; set; } 
-        public int MinimumStock { get; set; } 
-        public string Supplier { get; set; } 
+        public int MinimumStock { get; set; }
+        public int? ContractorId { get; set; } 
+        public Contractor? Contractor { get; set; }
         public string BatchNumber { get; set; } 
         public DateTime? ExpirationDate { get; set; } 
         public decimal PurchaseCost { get; set; } 

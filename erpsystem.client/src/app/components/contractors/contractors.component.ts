@@ -4,7 +4,7 @@ import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SidebarComponent } from '../sidebar/sidebar.component'; 
+import { SidebarComponent } from '../sidebar/sidebar.component';
 
 @Component({
   selector: 'app-contractors',
@@ -27,7 +27,11 @@ export class ContractorsComponent implements OnInit {
   typeFilter: string = '';
   errorMessage: string | null = null;
   successMessage: string | null = null;
-  contractorTypes: string[] = ['Dostawca', 'Klient', 'Oba'];
+  contractorTypes: { display: string, value: string }[] = [
+    { display: 'Dostawca', value: 'Supplier' },
+    { display: 'Klient', value: 'Client' },
+    { display: 'Oba', value: 'Both' }
+  ];
   sortColumn: keyof ContractorDto | null = null;
   sortDirection: 'asc' | 'desc' = 'asc';
   pageSize = 10;
@@ -54,6 +58,11 @@ export class ContractorsComponent implements OnInit {
       },
       error: (error) => this.errorMessage = `Błąd ładowania kontrahentów: ${error.status} ${error.message}`
     });
+  }
+
+  getTypeDisplay(type: string): string {
+    const typeObj = this.contractorTypes.find(t => t.value === type);
+    return typeObj ? typeObj.display : type;
   }
 
   isValidNip(nip: string): boolean {
@@ -247,7 +256,7 @@ export class ContractorsComponent implements OnInit {
           this.successMessage = response.message;
           this.errorMessage = null;
           this.loadContractors();
-          input.value = ''; // Resetuj input
+          input.value = '';
         },
         error: (error) => {
           this.errorMessage = error.error.message || 'Błąd importu kontrahentów.';

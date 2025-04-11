@@ -1,28 +1,18 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace erpsystem.Server.Models.DTOs
+﻿public class UpdateWarehouseItemDto
 {
-    public class UpdateWarehouseItemDto
-    {
-        [Required(ErrorMessage = "Id jest wymagane")]
-        public int Id { get; set; }
-
-        [Required(ErrorMessage = "Nazwa jest wymagana")]
-        [StringLength(100, MinimumLength = 2, ErrorMessage = "Nazwa musi mieć od 2 do 100 znaków")]
-        public string Name { get; set; }
-
-        [Required(ErrorMessage = "Kod jest wymagany")]
-        [StringLength(50, ErrorMessage = "Kod nie może przekraczać 50 znaków")]
-        public string Code { get; set; }
-
-        [Range(0, int.MaxValue, ErrorMessage = "Ilość musi być nieujemna")]
-        public int Quantity { get; set; }
-
-        [Range(0, double.MaxValue, ErrorMessage = "Cena musi być nieujemna")]
-        public decimal Price { get; set; }
-
-        [Required(ErrorMessage = "Kategoria jest wymagana")]
-        [StringLength(50, ErrorMessage = "Kategoria nie może przekraczać 50 znaków")]
-        public string Category { get; set; }
-    }
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public decimal Price { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
+    public string Warehouse { get; set; } = string.Empty;
+    public string UnitOfMeasure { get; set; } = string.Empty;
+    public int MinimumStock { get; set; }
+    public int? ContractorId { get; set; } 
+    public string BatchNumber { get; set; } = string.Empty;
+    public DateTime? ExpirationDate { get; set; }
+    public decimal PurchaseCost { get; set; }
+    public decimal VatRate { get; set; }
 }

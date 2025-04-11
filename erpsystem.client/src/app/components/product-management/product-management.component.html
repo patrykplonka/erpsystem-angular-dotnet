@@ -89,8 +89,12 @@
                   <input [(ngModel)]="newItem.minimumStock" id="minimumStock" type="number" placeholder="Minimalny stan" name="minimumStock" required min="0">
                 </div>
                 <div class="form-group">
-                  <label for="supplier">Dostawca</label>
-                  <input [(ngModel)]="newItem.supplier" id="supplier" placeholder="Dostawca" name="supplier">
+                  <label for="contractorId">Dostawca</label>
+                  <div *ngIf="availableSuppliers.length === 0">Brak dostawców do wyświetlenia.</div>
+                  <select [(ngModel)]="newItem.contractorId" id="contractorId" name="contractorId">
+                    <option [ngValue]="null">Brak dostawcy</option>
+                    <option *ngFor="let supplier of availableSuppliers" [ngValue]="supplier.id">{{ supplier.name }}</option>
+                  </select>
                 </div>
                 <div class="form-group">
                   <label for="expirationDate">Data ważności</label>
@@ -176,8 +180,12 @@
                   <input [(ngModel)]="editItem.minimumStock" id="editMinimumStock" type="number" placeholder="Minimalny stan" name="editMinimumStock" required min="0">
                 </div>
                 <div class="form-group">
-                  <label for="editSupplier">Dostawca</label>
-                  <input [(ngModel)]="editItem.supplier" id="editSupplier" placeholder="Dostawca" name="editSupplier">
+                  <label for="editContractorId">Dostawca</label>
+                  <div *ngIf="availableSuppliers.length === 0">Brak dostawców do wyświetlenia.</div>
+                  <select [(ngModel)]="editItem.contractorId" id="editContractorId" name="editContractorId">
+                    <option [ngValue]="null">Brak dostawcy</option>
+                    <option *ngFor="let supplier of availableSuppliers" [ngValue]="supplier.id">{{ supplier.name }}</option>
+                  </select>
                 </div>
                 <div class="form-group">
                   <label for="editExpirationDate">Data ważności</label>
@@ -232,7 +240,7 @@
                 <th (click)="sortItems('purchaseCost')">Koszt zakupu (netto) <span [ngClass]="{'sort-asc': sortField === 'purchaseCost' && sortDirection === 'asc', 'sort-desc': sortField === 'purchaseCost' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('vatRate')">Stawka VAT <span [ngClass]="{'sort-asc': sortField === 'vatRate' && sortDirection === 'asc', 'sort-desc': sortField === 'vatRate' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('minimumStock')">Min. stan <span [ngClass]="{'sort-asc': sortField === 'minimumStock' && sortDirection === 'asc', 'sort-desc': sortField === 'minimumStock' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('supplier')">Dostawca <span [ngClass]="{'sort-asc': sortField === 'supplier' && sortDirection === 'asc', 'sort-desc': sortField === 'supplier' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('contractorName')">Dostawca <span [ngClass]="{'sort-asc': sortField === 'contractorName' && sortDirection === 'asc', 'sort-desc': sortField === 'contractorName' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('expirationDate')">Data ważności <span [ngClass]="{'sort-asc': sortField === 'expirationDate' && sortDirection === 'asc', 'sort-desc': sortField === 'expirationDate' && sortDirection === 'desc'}"></span></th>
                 <th>Akcje</th>
               </tr>
@@ -251,7 +259,7 @@
                 <td data-label="Koszt zakupu (netto)">{{ item.purchaseCost }} zł</td>
                 <td data-label="Stawka VAT">{{ formatVatRate(item.vatRate) }}</td>
                 <td data-label="Min. stan">{{ item.minimumStock }}</td>
-                <td data-label="Dostawca">{{ item.supplier || '-' }}</td>
+                <td data-label="Dostawca">{{ item.contractorName || '-' }}</td>
                 <td data-label="Data ważności">{{ formatDate(item.expirationDate) }}</td>
                 <td data-label="Akcje" class="actions">
                   <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>

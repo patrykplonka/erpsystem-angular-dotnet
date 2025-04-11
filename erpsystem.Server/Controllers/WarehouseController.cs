@@ -21,6 +21,7 @@ public class WarehouseController : ControllerBase
     {
         var items = await _context.WarehouseItems
             .Where(i => !i.IsDeleted)
+            .Include(i => i.Contractor) 
             .ToListAsync();
 
         var itemDtos = items.Select(item => new WarehouseItemDto
@@ -35,7 +36,8 @@ public class WarehouseController : ControllerBase
             Warehouse = item.Warehouse,
             UnitOfMeasure = item.UnitOfMeasure,
             MinimumStock = item.MinimumStock,
-            Supplier = item.Supplier,
+            ContractorId = item.ContractorId, 
+            ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty, 
             BatchNumber = item.BatchNumber,
             ExpirationDate = item.ExpirationDate,
             PurchaseCost = item.PurchaseCost,
@@ -54,6 +56,10 @@ public class WarehouseController : ControllerBase
         if (await _context.WarehouseItems.AnyAsync(i => i.Code == createDto.Code && !i.IsDeleted))
             return BadRequest("Produkt o podanym kodzie już istnieje.");
 
+
+        if (createDto.ContractorId.HasValue && !await _context.Contractors.AnyAsync(c => c.Id == createDto.ContractorId && !c.IsDeleted))
+            return BadRequest("Podany dostawca nie istnieje lub jest usunięty.");
+
         var item = new WarehouseItem
         {
             Name = createDto.Name,
@@ -65,13 +71,14 @@ public class WarehouseController : ControllerBase
             Warehouse = createDto.Warehouse,
             UnitOfMeasure = createDto.UnitOfMeasure,
             MinimumStock = createDto.MinimumStock,
-            Supplier = createDto.Supplier,
+            ContractorId = createDto.ContractorId, 
             BatchNumber = createDto.BatchNumber,
             ExpirationDate = createDto.ExpirationDate,
             PurchaseCost = createDto.PurchaseCost,
             VatRate = createDto.VatRate,
             CreatedDate = DateTime.UtcNow,
-            CreatedBy = User?.Identity?.Name ?? "System"
+            CreatedBy = User?.Identity?.Name ?? "System",
+            IsDeleted = false
         };
 
         _context.WarehouseItems.Add(item);
@@ -101,7 +108,8 @@ public class WarehouseController : ControllerBase
             Warehouse = item.Warehouse,
             UnitOfMeasure = item.UnitOfMeasure,
             MinimumStock = item.MinimumStock,
-            Supplier = item.Supplier,
+            ContractorId = item.ContractorId,
+            ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
             BatchNumber = item.BatchNumber,
             ExpirationDate = item.ExpirationDate,
             PurchaseCost = item.PurchaseCost,
@@ -141,6 +149,7 @@ public class WarehouseController : ControllerBase
     {
         var deletedItems = await _context.WarehouseItems
             .Where(i => i.IsDeleted)
+            .Include(i => i.Contractor) 
             .ToListAsync();
 
         var itemDtos = deletedItems.Select(item => new WarehouseItemDto
@@ -155,7 +164,8 @@ public class WarehouseController : ControllerBase
             Warehouse = item.Warehouse,
             UnitOfMeasure = item.UnitOfMeasure,
             MinimumStock = item.MinimumStock,
-            Supplier = item.Supplier,
+            ContractorId = item.ContractorId,
+            ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
             BatchNumber = item.BatchNumber,
             ExpirationDate = item.ExpirationDate,
             PurchaseCost = item.PurchaseCost,
@@ -166,7 +176,7 @@ public class WarehouseController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateItem(int id, [FromBody] CreateWarehouseItemDto updateDto)
+    public async Task<IActionResult> UpdateItem(int id, [FromBody] UpdateWarehouseItemDto updateDto)
     {
         var item = await _context.WarehouseItems.FindAsync(id);
         if (item == null || item.IsDeleted)
@@ -177,6 +187,10 @@ public class WarehouseController : ControllerBase
 
         if (item.Code != updateDto.Code && await _context.WarehouseItems.AnyAsync(i => i.Code == updateDto.Code && !i.IsDeleted))
             return BadRequest("Produkt o podanym kodzie już istnieje.");
+
+
+        if (updateDto.ContractorId.HasValue && !await _context.Contractors.AnyAsync(c => c.Id == updateDto.ContractorId && !c.IsDeleted))
+            return BadRequest("Podany dostawca nie istnieje lub jest usunięty.");
 
         var changes = GetChangeDetails(item, updateDto);
         var log = new OperationLog
@@ -199,7 +213,7 @@ public class WarehouseController : ControllerBase
         item.Warehouse = updateDto.Warehouse;
         item.UnitOfMeasure = updateDto.UnitOfMeasure;
         item.MinimumStock = updateDto.MinimumStock;
-        item.Supplier = updateDto.Supplier;
+        item.ContractorId = updateDto.ContractorId; 
         item.BatchNumber = updateDto.BatchNumber;
         item.ExpirationDate = updateDto.ExpirationDate;
         item.PurchaseCost = updateDto.PurchaseCost;
@@ -219,7 +233,8 @@ public class WarehouseController : ControllerBase
             Warehouse = item.Warehouse,
             UnitOfMeasure = item.UnitOfMeasure,
             MinimumStock = item.MinimumStock,
-            Supplier = item.Supplier,
+            ContractorId = item.ContractorId,
+            ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
             BatchNumber = item.BatchNumber,
             ExpirationDate = item.ExpirationDate,
             PurchaseCost = item.PurchaseCost,
@@ -265,7 +280,8 @@ public class WarehouseController : ControllerBase
             Warehouse = item.Warehouse,
             UnitOfMeasure = item.UnitOfMeasure,
             MinimumStock = item.MinimumStock,
-            Supplier = item.Supplier,
+            ContractorId = item.ContractorId,
+            ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
             BatchNumber = item.BatchNumber,
             ExpirationDate = item.ExpirationDate,
             PurchaseCost = item.PurchaseCost,
@@ -312,7 +328,8 @@ public class WarehouseController : ControllerBase
             Warehouse = item.Warehouse,
             UnitOfMeasure = item.UnitOfMeasure,
             MinimumStock = item.MinimumStock,
-            Supplier = item.Supplier,
+            ContractorId = item.ContractorId,
+            ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
             BatchNumber = item.BatchNumber,
             ExpirationDate = item.ExpirationDate,
             PurchaseCost = item.PurchaseCost,
@@ -425,7 +442,8 @@ public class WarehouseController : ControllerBase
             Warehouse = item.Warehouse,
             UnitOfMeasure = item.UnitOfMeasure,
             MinimumStock = item.MinimumStock,
-            Supplier = item.Supplier,
+            ContractorId = item.ContractorId,
+            ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
             BatchNumber = item.BatchNumber,
             ExpirationDate = item.ExpirationDate,
             PurchaseCost = item.PurchaseCost,
@@ -486,6 +504,7 @@ public class WarehouseController : ControllerBase
     {
         var lowStockItems = await _context.WarehouseItems
             .Where(i => !i.IsDeleted && i.Quantity <= i.MinimumStock)
+            .Include(i => i.Contractor) 
             .Select(item => new WarehouseItemDto
             {
                 Id = item.Id,
@@ -498,7 +517,8 @@ public class WarehouseController : ControllerBase
                 Warehouse = item.Warehouse,
                 UnitOfMeasure = item.UnitOfMeasure,
                 MinimumStock = item.MinimumStock,
-                Supplier = item.Supplier,
+                ContractorId = item.ContractorId,
+                ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
                 BatchNumber = item.BatchNumber,
                 ExpirationDate = item.ExpirationDate,
                 PurchaseCost = item.PurchaseCost,
@@ -509,7 +529,7 @@ public class WarehouseController : ControllerBase
         return Ok(lowStockItems);
     }
 
-    private string GetChangeDetails(WarehouseItem existingItem, CreateWarehouseItemDto updateDto)
+    private string GetChangeDetails(WarehouseItem existingItem, UpdateWarehouseItemDto updateDto)
     {
         var changes = new List<string>();
         if (existingItem.Name != updateDto.Name) changes.Add($"Nazwa: {existingItem.Name} -> {updateDto.Name}");
@@ -521,7 +541,7 @@ public class WarehouseController : ControllerBase
         if (existingItem.Warehouse != updateDto.Warehouse) changes.Add($"Magazyn: {existingItem.Warehouse} -> {updateDto.Warehouse}");
         if (existingItem.UnitOfMeasure != updateDto.UnitOfMeasure) changes.Add($"Jednostka miary: {existingItem.UnitOfMeasure} -> {updateDto.UnitOfMeasure}");
         if (existingItem.MinimumStock != updateDto.MinimumStock) changes.Add($"Minimalny stan: {existingItem.MinimumStock} -> {updateDto.MinimumStock}");
-        if (existingItem.Supplier != updateDto.Supplier) changes.Add($"Dostawca: {existingItem.Supplier ?? "-"} -> {updateDto.Supplier ?? "-"}");
+        if (existingItem.ContractorId != updateDto.ContractorId) changes.Add($"Dostawca: {(existingItem.Contractor?.Name ?? "-")} -> {(updateDto.ContractorId.HasValue ? _context.Contractors.Find(updateDto.ContractorId)?.Name ?? "-" : "-")}");
         if (existingItem.BatchNumber != updateDto.BatchNumber) changes.Add($"Numer partii: {existingItem.BatchNumber ?? "-"} -> {updateDto.BatchNumber ?? "-"}");
         if (existingItem.ExpirationDate != updateDto.ExpirationDate) changes.Add($"Data ważności: {existingItem.ExpirationDate?.ToString("o") ?? "-"} -> {updateDto.ExpirationDate?.ToString("o") ?? "-"}");
         if (existingItem.PurchaseCost != updateDto.PurchaseCost) changes.Add($"Koszt zakupu: {existingItem.PurchaseCost} -> {updateDto.PurchaseCost}");

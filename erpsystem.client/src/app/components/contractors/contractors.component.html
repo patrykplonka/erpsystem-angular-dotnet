@@ -29,7 +29,7 @@
                   <label for="type">Typ</label>
                   <select [(ngModel)]="newContractor.type" id="type" name="type" required>
                     <option value="" disabled>Wybierz typ</option>
-                    <option *ngFor="let type of contractorTypes" [value]="type">{{ type }}</option>
+                    <option *ngFor="let type of contractorTypes" [value]="type.value">{{ type.display }}</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -69,7 +69,7 @@
                   <label for="editType">Typ</label>
                   <select [(ngModel)]="editContractor.type" id="editType" name="editType" required>
                     <option value="" disabled>Wybierz typ</option>
-                    <option *ngFor="let type of contractorTypes" [value]="type">{{ type }}</option>
+                    <option *ngFor="let type of contractorTypes" [value]="type.value">{{ type.display }}</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -112,7 +112,7 @@
             <input [(ngModel)]="nameFilter" placeholder="Szukaj po nazwie" (ngModelChange)="applyFilters()">
             <select [(ngModel)]="typeFilter" (ngModelChange)="applyFilters()">
               <option value="">Wszystkie typy</option>
-              <option *ngFor="let type of contractorTypes" [value]="type">{{ type }}</option>
+              <option *ngFor="let type of contractorTypes" [value]="type.value">{{ type.display }}</option>
             </select>
           </div>
           <table>
@@ -130,7 +130,7 @@
             <tbody>
               <tr *ngFor="let contractor of filteredContractors">
                 <td data-label="Nazwa" (click)="showDetails(contractor)" class="clickable">{{ contractor.name }}</td>
-                <td data-label="Typ">{{ contractor.type }}</td>
+                <td data-label="Typ">{{ getTypeDisplay(contractor.type) }}</td>
                 <td data-label="Email">{{ contractor.email }}</td>
                 <td data-label="Telefon">{{ contractor.phone || '-' }}</td>
                 <td data-label="Adres">{{ contractor.address || '-' }}</td>
@@ -153,7 +153,7 @@
           <div class="modal-content">
             <h3>Szczegóły kontrahenta</h3>
             <p><strong>Nazwa:</strong> {{ selectedContractor.name }}</p>
-            <p><strong>Typ:</strong> {{ selectedContractor.type }}</p>
+            <p><strong>Typ:</strong> {{ getTypeDisplay(selectedContractor.type) }}</p>
             <p><strong>Email:</strong> {{ selectedContractor.email }}</p>
             <p><strong>Telefon:</strong> {{ selectedContractor.phone || '-' }}</p>
             <p><strong>Adres:</strong> {{ selectedContractor.address || '-' }}</p>

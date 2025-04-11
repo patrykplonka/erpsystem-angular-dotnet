@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
@@ -16,7 +16,7 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 export class ProductManagementComponent implements OnInit {
   warehouseItems: WarehouseItemDto[] = [];
   deletedItems: WarehouseItemDto[] = [];
-  newItem: CreateWarehouseItemDto = { name: '', code: '', quantity: null, price: null, category: '', location: '', warehouse: '', unitOfMeasure: '', minimumStock: null, supplier: '', batchNumber: '', expirationDate: null, purchaseCost: null, vatRate: null };
+  newItem: CreateWarehouseItemDto = { name: '', code: '', quantity: null, price: null, category: '', location: '', warehouse: '', unitOfMeasure: '', minimumStock: null, contractorId: null, batchNumber: '', expirationDate: null, purchaseCost: null, vatRate: null };
   editItem: UpdateWarehouseItemDto | null = null;
   currentUserEmail: string | null = null;
   currentUserFullName: string = 'Unknown';
@@ -40,6 +40,7 @@ export class ProductManagementComponent implements OnInit {
     { display: '8%', value: 0.08 },
     { display: '0%', value: 0 }
   ];
+  availableSuppliers: ContractorDto[] = [];
   lowStockThreshold: number = 5;
   notifications: string[] = [];
   sortField: string = '';
@@ -49,14 +50,19 @@ export class ProductManagementComponent implements OnInit {
   uniqueCategories: string[] = [];
   uniqueWarehouses: string[] = [];
 
+  private contractorsApiUrl = 'https://localhost:7224/api/contractors';
+  private warehouseApiUrl = 'https://localhost:7224/api/warehouse';
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
     this.loadItems();
+    this.loadSuppliers();
     this.loadLocations();
     this.loadWarehouses();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
@@ -67,11 +73,7 @@ export class ProductManagementComponent implements OnInit {
   formatDate(date: string | Date | null): string {
     if (!date) return '-';
     const d = new Date(date);
-    return d.toLocaleString('pl-PL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    return d.toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
   formatVatRate(vatRate: number): string {
@@ -84,6 +86,21 @@ export class ProductManagementComponent implements OnInit {
     this.newItem.batchNumber = `BATCH-${timestamp}-${random}`;
   }
 
+  loadSuppliers() {
+    this.http.get<ContractorDto[]>(this.contractorsApiUrl).subscribe({
+      next: (data) => {
+        this.availableSuppliers = data.filter(c => !c.isDeleted && (c.type.toLowerCase() === 'supplier' || c.type.toLowerCase() === 'both'));
+        if (this.availableSuppliers.length === 0) {
+          this.errorMessage = 'Brak dostępnych dostawców. Sprawdź, czy istnieją aktywni kontrahenci typu "Supplier" lub "Both".';
+        }
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.errorMessage = `Błąd ładowania dostawców: ${error.status} ${error.message}`;
+      }
+    });
+  }
+
   loadLocations() {
     this.http.get<Location[]>('https://localhost:7224/api/locations').subscribe(
       data => this.availableLocations = data,
@@ -92,7 +109,7 @@ export class ProductManagementComponent implements OnInit {
   }
 
   loadWarehouses() {
-    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse').subscribe(
+    this.http.get<WarehouseItemDto[]>(this.warehouseApiUrl).subscribe(
       data => {
         this.uniqueWarehouses = [...new Set(data.map(item => item.warehouse))];
         this.availableWarehouses = [...new Set([...this.availableWarehouses, ...this.uniqueWarehouses])];
@@ -101,63 +118,8 @@ export class ProductManagementComponent implements OnInit {
     );
   }
 
-  loadLowStockItems() {
-    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse/low-stock').subscribe(
-      data => {
-        this.notifications = data.map(item => `Niski stan magazynowy: ${item.name} (Ilość: ${item.quantity})`);
-      },
-      error => this.errorMessage = `Błąd ładowania niskich stanów: ${error.status} ${error.message}`
-    );
-  }
-
-  checkLowStock() {
-    this.notifications = this.warehouseItems
-      .filter(item => item.quantity <= item.minimumStock)
-      .map(item => `Niski stan magazynowy: ${item.name} (Ilość: ${item.quantity})`);
-  }
-
-  applyFilters() {
-    this.checkLowStock();
-  }
-
-  get filteredItems(): WarehouseItemDto[] {
-    const items = this.showDeleted ? this.deletedItems : this.warehouseItems;
-    let filtered = items.filter(item => {
-      const matchesNameOrCode = !this.nameFilter ||
-        item.name.toLowerCase().includes(this.nameFilter.toLowerCase()) ||
-        item.code.toLowerCase().includes(this.nameFilter.toLowerCase());
-      const matchesMinQuantity = this.minQuantityFilter === null || item.quantity >= this.minQuantityFilter;
-      const matchesMaxQuantity = this.maxQuantityFilter === null || item.quantity <= this.maxQuantityFilter;
-      const matchesMinPrice = this.minPriceFilter === null || item.price >= this.minPriceFilter;
-      const matchesMaxPrice = this.maxPriceFilter === null || item.price <= this.maxPriceFilter;
-      const matchesCategory = !this.categoryFilter ||
-        item.category === this.categoryFilter;
-      const matchesLocation = !this.locationFilter ||
-        item.location === this.locationFilter;
-      const matchesWarehouse = !this.warehouseFilter ||
-        item.warehouse === this.warehouseFilter;
-      const matchesLowStock = !this.lowStockFilter || item.quantity <= item.minimumStock;
-      return matchesNameOrCode && matchesMinQuantity && matchesMaxQuantity && matchesMinPrice && matchesMaxPrice && matchesCategory && matchesLocation && matchesWarehouse && matchesLowStock;
-    });
-
-    if (this.sortField) {
-      filtered.sort((a, b) => {
-        const valueA = a[this.sortField as keyof WarehouseItemDto];
-        const valueB = b[this.sortField as keyof WarehouseItemDto];
-        if (typeof valueA === 'string' && typeof valueB === 'string') {
-          return this.sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-        } else if (typeof valueA === 'number' && typeof valueB === 'number') {
-          return this.sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
-  }
-
   loadItems() {
-    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse').subscribe(
+    this.http.get<WarehouseItemDto[]>(this.warehouseApiUrl).subscribe(
       data => {
         this.warehouseItems = data;
         this.checkLowStock();
@@ -171,10 +133,8 @@ export class ProductManagementComponent implements OnInit {
   }
 
   loadDeletedItems() {
-    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouse/deleted').subscribe(
-      data => {
-        this.deletedItems = data;
-      },
+    this.http.get<WarehouseItemDto[]>(`${this.warehouseApiUrl}/deleted`).subscribe(
+      data => this.deletedItems = data,
       error => this.errorMessage = `Błąd ładowania usuniętych produktów: ${error.status} ${error.message}`
     );
   }
@@ -196,27 +156,25 @@ export class ProductManagementComponent implements OnInit {
       warehouse: this.newItem.warehouse,
       unitOfMeasure: this.newItem.unitOfMeasure,
       minimumStock: this.newItem.minimumStock ?? 0,
-      supplier: this.newItem.supplier || '',
+      contractorId: this.newItem.contractorId,
       batchNumber: this.newItem.batchNumber || '',
       expirationDate: this.newItem.expirationDate,
       purchaseCost: this.newItem.purchaseCost ?? 0,
       vatRate: this.newItem.vatRate ?? 0
     };
-    this.http.post<WarehouseItemDto>('https://localhost:7224/api/warehouse', itemToSend).subscribe(
+    this.http.post<WarehouseItemDto>(this.warehouseApiUrl, itemToSend).subscribe(
       response => {
         this.successMessage = `Dodano produkt: ${response.name}`;
         this.errorMessage = null;
         this.loadItems();
         this.toggleAddForm();
       },
-      error => {
-        this.errorMessage = `Błąd dodawania produktu: ${error.status} ${error.message}`;
-      }
+      error => this.errorMessage = `Błąd dodawania produktu: ${error.status} ${error.message}`
     );
   }
 
   deleteItem(id: number) {
-    this.http.delete(`https://localhost:7224/api/warehouse/${id}`).subscribe(
+    this.http.delete(`${this.warehouseApiUrl}/${id}`).subscribe(
       () => {
         this.loadItems();
         if (this.showDeleted) this.loadDeletedItems();
@@ -226,7 +184,7 @@ export class ProductManagementComponent implements OnInit {
   }
 
   restoreItem(id: number) {
-    this.http.post(`https://localhost:7224/api/warehouse/restore/${id}`, {}).subscribe(
+    this.http.post(`${this.warehouseApiUrl}/restore/${id}`, {}).subscribe(
       () => {
         this.loadItems();
         this.loadDeletedItems();
@@ -236,7 +194,7 @@ export class ProductManagementComponent implements OnInit {
   }
 
   startEdit(item: WarehouseItemDto) {
-    this.editItem = { ...item };
+    this.editItem = { ...item, contractorId: item.contractorId };
   }
 
   updateItem() {
@@ -250,7 +208,7 @@ export class ProductManagementComponent implements OnInit {
         return;
       }
       const updatedItem = { ...this.editItem };
-      this.http.put(`https://localhost:7224/api/warehouse/${this.editItem.id}`, updatedItem).subscribe(
+      this.http.put(`${this.warehouseApiUrl}/${this.editItem.id}`, updatedItem).subscribe(
         () => {
           this.successMessage = `Zaktualizowano produkt: ${this.editItem!.name}`;
           this.errorMessage = null;
@@ -280,25 +238,56 @@ export class ProductManagementComponent implements OnInit {
     this.errorMessage = null;
     this.successMessage = null;
     if (!this.showAddForm) {
-      this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '', warehouse: '', unitOfMeasure: '', minimumStock: null, supplier: '', batchNumber: '', expirationDate: null, purchaseCost: null, vatRate: null };
+      this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '', warehouse: '', unitOfMeasure: '', minimumStock: null, contractorId: null, batchNumber: '', expirationDate: null, purchaseCost: null, vatRate: null };
       this.generateBatchNumber();
     }
   }
 
+  checkLowStock() {
+    this.notifications = this.warehouseItems
+      .filter(item => item.quantity <= item.minimumStock)
+      .map(item => `Niski stan magazynowy: ${item.name} (Ilość: ${item.quantity})`);
+  }
+
+  applyFilters() {
+    this.checkLowStock();
+  }
+
+  get filteredItems(): WarehouseItemDto[] {
+    const items = this.showDeleted ? this.deletedItems : this.warehouseItems;
+    let filtered = items.filter(item => {
+      const matchesNameOrCode = !this.nameFilter ||
+        item.name.toLowerCase().includes(this.nameFilter.toLowerCase()) ||
+        item.code.toLowerCase().includes(this.nameFilter.toLowerCase());
+      const matchesMinQuantity = this.minQuantityFilter === null || item.quantity >= this.minQuantityFilter;
+      const matchesMaxQuantity = this.maxQuantityFilter === null || item.quantity <= this.maxQuantityFilter;
+      const matchesMinPrice = this.minPriceFilter === null || item.price >= this.minPriceFilter;
+      const matchesMaxPrice = this.maxPriceFilter === null || item.price <= this.maxPriceFilter;
+      const matchesCategory = !this.categoryFilter || item.category === this.categoryFilter;
+      const matchesLocation = !this.locationFilter || item.location === this.locationFilter;
+      const matchesWarehouse = !this.warehouseFilter || item.warehouse === this.warehouseFilter;
+      const matchesLowStock = !this.lowStockFilter || item.quantity <= item.minimumStock;
+      return matchesNameOrCode && matchesMinQuantity && matchesMaxQuantity && matchesMinPrice && matchesMaxPrice && matchesCategory && matchesLocation && matchesWarehouse && matchesLowStock;
+    });
+
+    if (this.sortField) {
+      filtered.sort((a, b) => {
+        const valueA = a[this.sortField as keyof WarehouseItemDto];
+        const valueB = b[this.sortField as keyof WarehouseItemDto];
+        if (typeof valueA === 'string' && typeof valueB === 'string') {
+          return this.sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+        } else if (typeof valueA === 'number' && typeof valueB === 'number') {
+          return this.sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }
+
   navigateTo(page: string) {
     this.router.navigate([`/${page}`]);
-  }
-
-  goToProducts() {
-    this.router.navigate(['/products']);
-  }
-
-  goToMovements() {
-    this.router.navigate(['/movements']);
-  }
-
-  goToReports() {
-    this.router.navigate(['/reports']);
   }
 
   logout() {
@@ -328,7 +317,8 @@ interface WarehouseItemDto {
   warehouse: string;
   unitOfMeasure: string;
   minimumStock: number;
-  supplier: string;
+  contractorId: number | null;
+  contractorName: string;
   batchNumber: string;
   expirationDate: string | null;
   purchaseCost: number;
@@ -345,7 +335,7 @@ interface CreateWarehouseItemDto {
   warehouse: string;
   unitOfMeasure: string;
   minimumStock: number | null;
-  supplier: string;
+  contractorId: number | null;
   batchNumber: string;
   expirationDate: Date | null;
   purchaseCost: number | null;
@@ -363,7 +353,7 @@ interface UpdateWarehouseItemDto {
   warehouse: string;
   unitOfMeasure: string;
   minimumStock: number;
-  supplier: string;
+  contractorId: number | null;
   batchNumber: string;
   expirationDate: string | null;
   purchaseCost: number;
@@ -373,4 +363,15 @@ interface UpdateWarehouseItemDto {
 interface Location {
   id: number;
   name: string;
+}
+
+interface ContractorDto {
+  id: number;
+  name: string;
+  type: 'Supplier' | 'Client' | 'Both';
+  email: string;
+  phone: string;
+  address: string;
+  taxId: string;
+  isDeleted: boolean;
 }
