@@ -444,4 +444,5 @@ interface WarehouseItemDto {
   expirationDate?: Date;
   purchaseCost: number;
   vatRate: number;
+  isDeleted: boolean;
 }
