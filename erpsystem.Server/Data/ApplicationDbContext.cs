@@ -13,5 +13,7 @@ namespace erpsystem.Server.Data
         public DbSet<WarehouseItem> WarehouseItems { get; set; }
         public DbSet<WarehouseMovements> WarehouseMovements { get; set; }
         public DbSet<OperationLog> OperationLogs { get; set; }
+
+        public DbSet<Contractor> Contractors { get; set; }
     }
 }

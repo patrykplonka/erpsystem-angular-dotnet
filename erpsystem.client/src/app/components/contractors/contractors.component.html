@@ -1,0 +1,178 @@
+<div class="contractors-container">
+  <div class="dashboard-container">
+    <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
+    <main class="main-content">
+      <header>
+        <div>
+          <h1>Kontrahenci</h1>
+          <p>Zarządzaj kontrahentami w systemie</p>
+        </div>
+        <div class="user-info">
+          <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+        </div>
+      </header>
+      <section class="contractors-section">
+        <div class="messages">
+          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
+        <div class="forms-container" *ngIf="showAddForm">
+          <div class="add-contractor-form">
+            <h3>Dodaj nowego kontrahenta</h3>
+            <form>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="name">Nazwa</label>
+                  <input [(ngModel)]="newContractor.name" id="name" name="name" placeholder="Nazwa" required>
+                </div>
+                <div class="form-group">
+                  <label for="type">Typ</label>
+                  <select [(ngModel)]="newContractor.type" id="type" name="type" required>
+                    <option value="" disabled>Wybierz typ</option>
+                    <option *ngFor="let type of contractorTypes" [value]="type.value">{{ type.display }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="email">Email</label>
+                  <input [(ngModel)]="newContractor.email" id="email" name="email" type="email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                  <label for="phone">Telefon</label>
+                  <input [(ngModel)]="newContractor.phone" id="phone" name="phone" placeholder="Telefon">
+                </div>
+                <div class="form-group">
+                  <label for="address">Adres</label>
+                  <input [(ngModel)]="newContractor.address" id="address" name="address" placeholder="Adres">
+                </div>
+                <div class="form-group">
+                  <label for="taxId">NIP</label>
+                  <input [(ngModel)]="newContractor.taxId" id="taxId" name="taxId" placeholder="NIP" required>
+                </div>
+              </div>
+              <div class="form-buttons">
+                <button type="button" (click)="addContractor()">Dodaj kontrahenta</button>
+                <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="forms-container" *ngIf="editContractor">
+          <div class="edit-contractor-form">
+            <h3>Edytuj kontrahenta</h3>
+            <form>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="editName">Nazwa</label>
+                  <input [(ngModel)]="editContractor.name" id="editName" name="editName" placeholder="Nazwa" required>
+                </div>
+                <div class="form-group">
+                  <label for="editType">Typ</label>
+                  <select [(ngModel)]="editContractor.type" id="editType" name="editType" required>
+                    <option value="" disabled>Wybierz typ</option>
+                    <option *ngFor="let type of contractorTypes" [value]="type.value">{{ type.display }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editEmail">Email</label>
+                  <input [(ngModel)]="editContractor.email" id="editEmail" name="editEmail" type="email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                  <label for="editPhone">Telefon</label>
+                  <input [(ngModel)]="editContractor.phone" id="editPhone" name="editPhone" placeholder="Telefon">
+                </div>
+                <div class="form-group">
+                  <label for="editAddress">Adres</label>
+                  <input [(ngModel)]="editContractor.address" id="editAddress" name="editAddress" placeholder="Adres">
+                </div>
+                <div class="form-group">
+                  <label for="editTaxId">NIP</label>
+                  <input [(ngModel)]="editContractor.taxId" id="editTaxId" name="editTaxId" placeholder="NIP" required>
+                </div>
+              </div>
+              <div class="form-buttons">
+                <button type="button" (click)="updateContractor()">Zapisz</button>
+                <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="contractors-list">
+          <div class="list-controls">
+            <button class="add-button" (click)="toggleAddForm()">Dodaj kontrahenta</button>
+            <button class="toggle-deleted" (click)="toggleDeletedView()">
+              {{ showDeleted ? "Pokaż aktywnych" : "Pokaż usuniętych" }}
+            </button>
+            <button class="export-button" (click)="exportToCsv()">Eksportuj do CSV</button>
+            <label class="import-button">
+              Importuj z CSV
+              <input type="file" accept=".csv" (change)="importFromCsv($event)" hidden>
+            </label>
+          </div>
+          <div class="advanced-filters">
+            <input [(ngModel)]="nameFilter" placeholder="Szukaj po nazwie" (ngModelChange)="applyFilters()">
+            <select [(ngModel)]="typeFilter" (ngModelChange)="applyFilters()">
+              <option value="">Wszystkie typy</option>
+              <option *ngFor="let type of contractorTypes" [value]="type.value">{{ type.display }}</option>
+            </select>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th (click)="sortTable('name')">Nazwa <span *ngIf="sortColumn === 'name'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('type')">Typ <span *ngIf="sortColumn === 'type'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('email')">Email <span *ngIf="sortColumn === 'email'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('phone')">Telefon <span *ngIf="sortColumn === 'phone'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('address')">Adres <span *ngIf="sortColumn === 'address'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortTable('taxId')">NIP <span *ngIf="sortColumn === 'taxId'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th>Akcje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let contractor of filteredContractors">
+                <td data-label="Nazwa" (click)="showDetails(contractor)" class="clickable">{{ contractor.name }}</td>
+                <td data-label="Typ">{{ getTypeDisplay(contractor.type) }}</td>
+                <td data-label="Email">{{ contractor.email }}</td>
+                <td data-label="Telefon">{{ contractor.phone || '-' }}</td>
+                <td data-label="Adres">{{ contractor.address || '-' }}</td>
+                <td data-label="NIP">{{ contractor.taxId }}</td>
+                <td data-label="Akcje" class="actions">
+                  <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(contractor)">Edytuj</button>
+                  <button *ngIf="!showDeleted" class="action-button delete-button" (click)="confirmDelete(contractor.id)">Usuń</button>
+                  <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreContractor(contractor.id)">Przywróć</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination" *ngIf="totalPages > 1">
+            <button (click)="prevPage()" [disabled]="currentPage === 1">Poprzednia</button>
+            <span>Strona {{ currentPage }} z {{ totalPages }}</span>
+            <button (click)="nextPage()" [disabled]="currentPage === totalPages">Następna</button>
+          </div>
+        </div>
+        <div class="modal" *ngIf="selectedContractor">
+          <div class="modal-content">
+            <h3>Szczegóły kontrahenta</h3>
+            <p><strong>Nazwa:</strong> {{ selectedContractor.name }}</p>
+            <p><strong>Typ:</strong> {{ getTypeDisplay(selectedContractor.type) }}</p>
+            <p><strong>Email:</strong> {{ selectedContractor.email }}</p>
+            <p><strong>Telefon:</strong> {{ selectedContractor.phone || '-' }}</p>
+            <p><strong>Adres:</strong> {{ selectedContractor.address || '-' }}</p>
+            <p><strong>NIP:</strong> {{ selectedContractor.taxId }}</p>
+            <p><strong>Usunięty:</strong> {{ selectedContractor.isDeleted ? 'Tak' : 'Nie' }}</p>
+            <button class="close-button" (click)="closeDetails()">Zamknij</button>
+          </div>
+        </div>
+        <div class="modal" *ngIf="contractorToDelete">
+          <div class="modal-content">
+            <h3>Potwierdź usunięcie</h3>
+            <p>Czy na pewno chcesz usunąć tego kontrahenta?</p>
+            <div class="form-buttons">
+              <button class="delete-button" (click)="deleteContractor(contractorToDelete)">Tak</button>
+              <button class="cancel-button" (click)="cancelDelete()">Nie</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

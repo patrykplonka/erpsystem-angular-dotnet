@@ -1,0 +1,487 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Arial", sans-serif;
+}
+
+.contractors-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.dashboard-container {
+  display: flex;
+  flex: 1;
+  height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  background: #fff;
+  overflow-y: auto;
+  width: 100%;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  padding: 10px 20px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+  header h1 {
+    font-size: 24px;
+    color: #2c3e50;
+  }
+
+  header p {
+    font-size: 14px;
+    color: #666;
+  }
+
+.user-info {
+  text-align: right;
+}
+
+  .user-info p {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .user-info strong {
+    color: #2c3e50;
+  }
+
+.contractors-section {
+  padding: 0 10px;
+  flex: 1;
+}
+
+.messages {
+  margin-bottom: 20px;
+}
+
+.alert {
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.alert-danger {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.forms-container {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+.add-contractor-form, .edit-contractor-form {
+  max-width: 800px;
+}
+
+  .add-contractor-form h3, .edit-contractor-form h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #2c3e50;
+  }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+  .form-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 5px;
+  }
+
+  .form-group input, .form-group select {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+    .form-group input:focus, .form-group select:focus {
+      border-color: #3b82f6;
+    }
+
+.form-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+  .form-buttons button {
+    padding: 8px 14px;
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+    .form-buttons button:hover {
+      background: #2563eb;
+    }
+
+  .form-buttons .cancel-button {
+    background: #e5e7eb;
+    color: #4b5563;
+  }
+
+    .form-buttons .cancel-button:hover {
+      background: #d1d5db;
+    }
+
+.contractors-list {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.list-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.add-button, .toggle-deleted, .export-button {
+  padding: 8px 14px;
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+  .add-button:hover, .toggle-deleted:hover {
+    background: #2563eb;
+  }
+
+.toggle-deleted {
+  background: #6b7280;
+}
+
+  .toggle-deleted:hover {
+    background: #4b5563;
+  }
+
+.export-button {
+  background: #10b981;
+}
+
+  .export-button:hover {
+    background: #059669;
+  }
+
+.advanced-filters {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+  .advanced-filters input, .advanced-filters select {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+    .advanced-filters input:focus, .advanced-filters select:focus {
+      border-color: #3b82f6;
+    }
+
+table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+thead {
+  background: #f1f5f9;
+}
+
+th {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+  th span {
+    font-size: 10px;
+  }
+
+    th span.asc {
+      transform: rotate(180deg);
+      display: inline-block;
+    }
+
+td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+tbody tr:hover {
+  background: #f9fafb;
+}
+
+.actions {
+  display: flex;
+  gap: 5px;
+}
+
+.action-button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s;
+}
+
+.edit-button {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+  .edit-button:hover {
+    background: #2563eb;
+  }
+
+.delete-button {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+  .delete-button:hover {
+    background: #dc2626;
+  }
+
+.restore-button {
+  background: #10b981;
+  color: #ffffff;
+}
+
+  .restore-button:hover {
+    background: #059669;
+  }
+
+.clickable {
+  cursor: pointer;
+  color: #3b82f6;
+}
+
+  .clickable:hover {
+    text-decoration: underline;
+  }
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+  .pagination button {
+    padding: 8px 14px;
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+    .pagination button:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+    }
+
+  .pagination span {
+    align-self: center;
+    font-size: 14px;
+  }
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+  .modal-content h3 {
+    margin-bottom: 15px;
+  }
+
+  .modal-content p {
+    margin: 10px 0;
+  }
+
+.close-button {
+  padding: 8px 14px;
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+  .close-button:hover {
+    background: #dc2626;
+  }
+
+@media (max-width: 767px) {
+  table {
+    display: block;
+    width: 100%;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody, tr, td {
+    display: block;
+    width: 100%;
+  }
+
+  td {
+    padding: 8px;
+    position: relative;
+    padding-left: 50%;
+    border-bottom: none;
+  }
+
+    td:before {
+      content: attr(data-label);
+      position: absolute;
+      left: 8px;
+      width: 45%;
+      padding-right: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      text-align: left;
+      color: #4b5563;
+    }
+
+  tr {
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 10px;
+  }
+}
+
+@media (min-width: 768px) {
+  .contractors-container {
+    flex-direction: row;
+  }
+
+  .main-content {
+    width: calc(100% - 250px);
+  }
+
+  th, td {
+    padding: 12px 14px;
+  }
+}
+
+@media (min-width: 1200px) {
+  table {
+    min-width: 100%;
+  }
+
+  td {
+    max-width: 200px;
+  }
+}
+
+.import-button {
+  padding: 8px 14px;
+  background: #8b5cf6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+  display: inline-block;
+  position: relative;
+}
+
+  .import-button:hover {
+    background: #7c3aed;
+  }
+
+  .import-button input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }

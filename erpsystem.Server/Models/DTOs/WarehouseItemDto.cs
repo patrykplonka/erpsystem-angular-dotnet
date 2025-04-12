@@ -36,10 +36,10 @@ namespace erpsystem.Server.Models.DTOs
         public string UnitOfMeasure { get; set; } 
 
         [Range(0, int.MaxValue, ErrorMessage = "Minimalny stan musi być nieujemny")]
-        public int MinimumStock { get; set; } 
+        public int MinimumStock { get; set; }
 
-        [StringLength(100, ErrorMessage = "Nazwa dostawcy nie może przekraczać 100 znaków")]
-        public string Supplier { get; set; } 
+        public int? ContractorId { get; set; } 
+        public string ContractorName { get; set; } = string.Empty;
 
         [StringLength(50, ErrorMessage = "Numer partii nie może przekraczać 50 znaków")]
         public string BatchNumber { get; set; } 
