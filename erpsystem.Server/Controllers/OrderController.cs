@@ -197,6 +197,28 @@ namespace erpsystem.Server.Controllers
             return NoContent();
         }
 
+        [HttpGet("generate-order-number")]
+        public async Task<IActionResult> GenerateOrderNumber([FromQuery] string orderType)
+        {
+            if (orderType != "Purchase" && orderType != "Sale")
+            {
+                return BadRequest(new { message = "Nieprawidłowy typ zamówienia." });
+            }
+
+            var today = DateTime.UtcNow.ToString("yyyyMMdd");
+            var prefix = orderType == "Purchase" ? "PO" : "SO";
+            var pattern = $"{prefix}-{today}-%";
+
+            var count = await _context.Orders
+                .Where(o => o.OrderNumber.StartsWith($"{prefix}-{today}-") && !o.IsDeleted)
+                .CountAsync();
+
+            var sequence = (count + 1).ToString("D3"); // e.g., 001, 002
+            var orderNumber = $"{prefix}-{today}-{sequence}";
+
+            return Ok(new { orderNumber });
+        }
+
         [HttpPost("{id}/confirm")]
         public async Task<IActionResult> ConfirmOrder(int id)
         {
