@@ -133,6 +133,17 @@ namespace erpsystem.Server.Controllers
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
+            var history = new OrderHistory
+            {
+                OrderId = order.Id,
+                Action = "Created",
+                ModifiedBy = orderDto.CreatedBy,
+                ModifiedDate = DateTime.UtcNow,
+                Details = $"Order {order.OrderNumber} created."
+            };
+            _context.OrderHistory.Add(history);
+            await _context.SaveChangesAsync();
+
             orderDto.Id = order.Id;
             orderDto.TotalAmount = order.TotalAmount;
             orderDto.OrderItems.ForEach(oi => oi.OrderId = order.Id);
@@ -176,6 +187,16 @@ namespace erpsystem.Server.Controllers
 
             order.TotalAmount = order.OrderItems.Sum(oi => oi.TotalPrice);
 
+            var history = new OrderHistory
+            {
+                OrderId = order.Id,
+                Action = "Updated",
+                ModifiedBy = orderDto.CreatedBy,
+                ModifiedDate = DateTime.UtcNow,
+                Details = $"Order {order.OrderNumber} updated."
+            };
+            _context.OrderHistory.Add(history);
+
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -191,6 +212,17 @@ namespace erpsystem.Server.Controllers
             }
 
             order.IsDeleted = true;
+
+            var history = new OrderHistory
+            {
+                OrderId = order.Id,
+                Action = "Deleted",
+                ModifiedBy = "System", 
+                ModifiedDate = DateTime.UtcNow,
+                Details = $"Order {order.OrderNumber} marked as deleted."
+            };
+            _context.OrderHistory.Add(history);
+
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -280,9 +312,104 @@ namespace erpsystem.Server.Controllers
             }
 
             order.Status = "Confirmed";
+
+            var history = new OrderHistory
+            {
+                OrderId = order.Id,
+                Action = "Confirmed",
+                ModifiedBy = order.CreatedBy,
+                ModifiedDate = DateTime.UtcNow,
+                Details = $"Order {order.OrderNumber} confirmed."
+            };
+            _context.OrderHistory.Add(history);
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Zamówienie zostało potwierdzone." });
+        }
+
+        [HttpGet("{id}/history")]
+        public async Task<IActionResult> GetOrderHistory(int id)
+        {
+            var history = await _context.OrderHistory
+                .Where(h => h.OrderId == id)
+                .Select(h => new OrderHistoryDto
+                {
+                    Id = h.Id,
+                    OrderId = h.OrderId,
+                    Action = h.Action,
+                    ModifiedBy = h.ModifiedBy,
+                    ModifiedDate = h.ModifiedDate,
+                    Details = h.Details
+                })
+                .ToListAsync();
+
+            return Ok(history);
+        }
+
+        [HttpPost("{id}/update-status")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] string newStatus)
+        {
+            var order = await _context.Orders.FindAsync(id);
+            if (order == null || order.IsDeleted)
+                return NotFound();
+
+            var validStatuses = new[] { "Draft", "Confirmed", "InProgress", "Shipped", "Completed", "Cancelled" };
+            if (!validStatuses.Contains(newStatus))
+                return BadRequest(new { message = "Nieprawidłowy status." });
+
+            order.Status = newStatus;
+
+            var history = new OrderHistory
+            {
+                OrderId = order.Id,
+                Action = "StatusUpdated",
+                ModifiedBy = "System",
+                ModifiedDate = DateTime.UtcNow,
+                Details = $"Status changed to {newStatus}."
+            };
+            _context.OrderHistory.Add(history);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Status zmieniony na {newStatus}." });
+        }
+
+        [HttpGet("report")]
+        public async Task<IActionResult> GetOrderReport([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
+        {
+            var query = _context.Orders
+                .Include(o => o.Contractor)
+                .Where(o => !o.IsDeleted);
+
+            if (startDate.HasValue)
+                query = query.Where(o => o.OrderDate >= startDate.Value);
+            if (endDate.HasValue)
+                query = query.Where(o => o.OrderDate <= endDate.Value);
+
+            var report = await query
+                .GroupBy(o => o.Contractor.Name)
+                .Select(g => new
+                {
+                    Contractor = g.Key,
+                    TotalOrders = g.Count(),
+                    TotalAmount = g.Sum(o => o.TotalAmount)
+                })
+                .ToListAsync();
+
+            return Ok(report);
+        }
+
+        [HttpGet("dashboard-stats")]
+        public async Task<IActionResult> GetDashboardStats()
+        {
+            var stats = new
+            {
+                TotalOrders = await _context.Orders.CountAsync(o => !o.IsDeleted),
+                PendingOrders = await _context.Orders.CountAsync(o => o.Status == "Draft" && !o.IsDeleted),
+                TotalRevenue = await _context.Orders.Where(o => o.OrderType == "Sale" && !o.IsDeleted).SumAsync(o => o.TotalAmount)
+            };
+            return Ok(stats);
         }
     }
 }
