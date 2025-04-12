@@ -19,11 +19,14 @@
         <div class="forms-container" *ngIf="showAddForm">
           <div class="add-order-form">
             <h3>Dodaj nowe zamówienie</h3>
+            <button type="button" class="refresh-button" (click)="loadWarehouseItems()" [disabled]="isLoadingWarehouseItems">
+              {{ isLoadingWarehouseItems ? 'Ładowanie...' : 'Odśwież listę produktów' }}
+            </button>
             <form>
               <div class="form-grid">
                 <div class="form-group">
                   <label for="orderNumber">Numer zamówienia</label>
-                  <input [(ngModel)]="newOrder.orderNumber" id="orderNumber" name="orderNumber" placeholder="Numer zamówienia" required>
+                  <input [(ngModel)]="newOrder.orderNumber" id="orderNumber" name="orderNumber" readonly>
                 </div>
                 <div class="form-group">
                   <label for="contractorId">Kontrahent</label>
@@ -34,7 +37,7 @@
                 </div>
                 <div class="form-group">
                   <label for="orderType">Typ</label>
-                  <select [(ngModel)]="newOrder.orderType" id="orderType" name="orderType" required>
+                  <select [(ngModel)]="newOrder.orderType" id="orderType" name="orderType" (ngModelChange)="onOrderTypeChange()" required>
                     <option *ngFor="let type of orderTypes" [value]="type.value">{{ type.display }}</option>
                   </select>
                 </div>
@@ -48,18 +51,23 @@
                 <div *ngFor="let item of newOrder.orderItems; let i = index" class="order-item">
                   <div class="form-group">
                     <label>Produkt</label>
-                    <select [(ngModel)]="item.warehouseItemId" [name]="'warehouseItemId' + i" (ngModelChange)="updateOrderItem(item)" required>
+                    <select [(ngModel)]="item.warehouseItemId" [name]="'warehouseItemId' + i" (ngModelChange)="updateOrderItem(item)" required [disabled]="warehouseItems.length === 0 || isLoadingWarehouseItems">
                       <option value="0" disabled>Wybierz produkt</option>
                       <option *ngFor="let wi of warehouseItems" [value]="wi.id">{{ wi.name }} ({{ wi.quantity }} szt.)</option>
                     </select>
+                    <span *ngIf="warehouseItems.length === 0 && !isLoadingWarehouseItems" class="error-text">Brak dostępnych produktów w magazynie.</span>
                   </div>
                   <div class="form-group">
                     <label>Ilość</label>
                     <input [(ngModel)]="item.quantity" [name]="'quantity' + i" type="number" min="1" (ngModelChange)="updateOrderItem(item)" required>
                   </div>
                   <div class="form-group">
-                    <label>Stawka VAT</label>
-                    <input [(ngModel)]="item.vatRate" [name]="'vatRate' + i" type="number" step="0.01" min="0" (ngModelChange)="updateOrderItem(item)" required>
+                    <label>Cena jednostkowa</label>
+                    <input [value]="item.unitPrice | currency:'PLN'" [name]="'unitPrice' + i" readonly>
+                  </div>
+                  <div class="form-group vat-group">
+                    <label>Stawka VAT (%)</label>
+                    <input [(ngModel)]="item.vatRate" [ngModelOptions]="{updateOn: 'blur'}" [name]="'vatRate' + i" type="number" step="1" min="0" (ngModelChange)="updateOrderItem(item)" required>
                   </div>
                   <div class="form-group">
                     <label>Cena całkowita</label>
@@ -67,10 +75,10 @@
                   </div>
                   <button type="button" class="remove-item" (click)="removeOrderItem(newOrder.orderItems, i)">Usuń</button>
                 </div>
-                <button type="button" class="add-item" (click)="addOrderItem(newOrder.orderItems)">Dodaj produkt</button>
+                <button type="button" class="add-item" (click)="addOrderItem(newOrder.orderItems)" [disabled]="warehouseItems.length === 0 || isLoadingWarehouseItems">Dodaj produkt</button>
               </div>
               <div class="form-buttons">
-                <button type="button" (click)="addOrder()">Dodaj zamówienie</button>
+                <button type="button" (click)="addOrder()" [disabled]="isLoadingWarehouseItems">Dodaj zamówienie</button>
                 <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
               </div>
             </form>
@@ -79,11 +87,14 @@
         <div class="forms-container" *ngIf="editOrder">
           <div class="edit-order-form">
             <h3>Edytuj zamówienie</h3>
+            <button type="button" class="refresh-button" (click)="loadWarehouseItems()" [disabled]="isLoadingWarehouseItems">
+              {{ isLoadingWarehouseItems ? 'Ładowanie...' : 'Odśwież listę produktów' }}
+            </button>
             <form>
               <div class="form-grid">
                 <div class="form-group">
                   <label for="editOrderNumber">Numer zamówienia</label>
-                  <input [(ngModel)]="editOrder.orderNumber" id="editOrderNumber" name="editOrderNumber" placeholder="Numer zamówienia" required>
+                  <input [(ngModel)]="editOrder.orderNumber" id="editOrderNumber" name="editOrderNumber" readonly>
                 </div>
                 <div class="form-group">
                   <label for="editContractorId">Kontrahent</label>
@@ -108,18 +119,23 @@
                 <div *ngFor="let item of editOrder.orderItems; let i = index" class="order-item">
                   <div class="form-group">
                     <label>Produkt</label>
-                    <select [(ngModel)]="item.warehouseItemId" [name]="'editWarehouseItemId' + i" (ngModelChange)="updateOrderItem(item)" required>
+                    <select [(ngModel)]="item.warehouseItemId" [name]="'editWarehouseItemId' + i" (ngModelChange)="updateOrderItem(item)" required [disabled]="warehouseItems.length === 0 || isLoadingWarehouseItems">
                       <option value="0" disabled>Wybierz produkt</option>
                       <option *ngFor="let wi of warehouseItems" [value]="wi.id">{{ wi.name }} ({{ wi.quantity }} szt.)</option>
                     </select>
+                    <span *ngIf="warehouseItems.length === 0 && !isLoadingWarehouseItems" class="error-text">Brak dostępnych produktów w magazynie.</span>
                   </div>
                   <div class="form-group">
                     <label>Ilość</label>
                     <input [(ngModel)]="item.quantity" [name]="'editQuantity' + i" type="number" min="1" (ngModelChange)="updateOrderItem(item)" required>
                   </div>
                   <div class="form-group">
-                    <label>Stawka VAT</label>
-                    <input [(ngModel)]="item.vatRate" [name]="'editVatRate' + i" type="number" step="0.01" min="0" (ngModelChange)="updateOrderItem(item)" required>
+                    <label>Cena jednostkowa</label>
+                    <input [value]="item.unitPrice | currency:'PLN'" [name]="'editUnitPrice' + i" readonly>
+                  </div>
+                  <div class="form-group vat-group">
+                    <label>Stawka VAT (%)</label>
+                    <input [(ngModel)]="item.vatRate" [ngModelOptions]="{updateOn: 'blur'}" [name]="'editVatRate' + i" type="number" step="1" min="0" (ngModelChange)="updateOrderItem(item)" required>
                   </div>
                   <div class="form-group">
                     <label>Cena całkowita</label>
@@ -127,10 +143,10 @@
                   </div>
                   <button type="button" class="remove-item" (click)="removeOrderItem(editOrder.orderItems, i)">Usuń</button>
                 </div>
-                <button type="button" class="add-item" (click)="addOrderItem(editOrder.orderItems)">Dodaj produkt</button>
+                <button type="button" class="add-item" (click)="addOrderItem(editOrder.orderItems)" [disabled]="warehouseItems.length === 0 || isLoadingWarehouseItems">Dodaj produkt</button>
               </div>
               <div class="form-buttons">
-                <button type="button" (click)="updateOrder()">Zapisz</button>
+                <button type="button" (click)="updateOrder()" [disabled]="isLoadingWarehouseItems">Zapisz</button>
                 <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
               </div>
             </form>
@@ -168,7 +184,7 @@
                 <th (click)="sortTable('orderDate')">Data <span *ngIf="sortColumn === 'orderDate'" [class.asc]="sortDirection === 'asc'">▼</span></th>
                 <th (click)="sortTable('totalAmount')">Kwota <span *ngIf="sortColumn === 'totalAmount'" [class.asc]="sortDirection === 'asc'">▼</span></th>
                 <th (click)="sortTable('status')">Status <span *ngIf="sortColumn === 'status'" [class.asc]="sortDirection === 'asc'">▼</span></th>
-                <th>Akcje</th>
+                <th class="actions-header">Akcje</th>
               </tr>
             </thead>
             <tbody>
@@ -180,10 +196,12 @@
                 <td data-label="Kwota">{{ order.totalAmount | currency:'PLN' }}</td>
                 <td data-label="Status">{{ getStatusDisplay(order.status) }}</td>
                 <td data-label="Akcje" class="actions">
-                  <button *ngIf="!showDeleted && order.status === 'Draft'" class="action-button edit-button" (click)="startEdit(order)">Edytuj</button>
-                  <button *ngIf="!showDeleted && order.status === 'Draft'" class="action-button delete-button" (click)="confirmDelete(order.id)">Usuń</button>
-                  <button *ngIf="!showDeleted && order.status === 'Draft'" class="action-button confirm-button" (click)="confirmOrder(order.id)">Potwierdź</button>
-                  <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreOrder(order.id)">Przywróć</button>
+                  <div class="action-buttons">
+                    <button *ngIf="!showDeleted && order.status === 'Draft'" class="action-button edit-button" (click)="startEdit(order)">Edytuj</button>
+                    <button *ngIf="!showDeleted && order.status === 'Draft'" class="action-button delete-button" (click)="confirmDelete(order.id)">Usuń</button>
+                    <button *ngIf="!showDeleted && order.status === 'Draft'" class="action-button confirm-button" (click)="confirmOrder(order.id)">Potwierdź</button>
+                    <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreOrder(order.id)">Przywróć</button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -216,11 +234,11 @@
               </thead>
               <tbody>
                 <tr *ngFor="let item of selectedOrder.orderItems">
-                  <td>{{ item.warehouseItemName }}</td>
-                  <td>{{ item.quantity }}</td>
-                  <td>{{ item.unitPrice | currency:'PLN' }}</td>
-                  <td>{{ item.vatRate * 100 }}%</td>
-                  <td>{{ item.totalPrice | currency:'PLN' }}</td>
+                  <td data-label="Produkt">{{ item.warehouseItemName }}</td>
+                  <td data-label="Ilość">{{ item.quantity }}</td>
+                  <td data-label="Cena jednostkowa">{{ item.unitPrice | currency:'PLN' }}</td>
+                  <td data-label="VAT">{{ item.vatRate }}%</td>
+                  <td data-label="Razem">{{ item.totalPrice | currency:'PLN' }}</td>
                 </tr>
               </tbody>
             </table>

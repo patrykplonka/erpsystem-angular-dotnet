@@ -1,18 +1,15 @@
-/* Root container */
 .orders-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #f1f5f9;
+  background: #f5faff;
 }
 
-/* Dashboard layout */
 .dashboard-container {
   display: flex;
   flex: 1;
 }
 
-/* Main content area */
 .main-content {
   flex: 1;
   padding: 20px;
@@ -21,7 +18,6 @@
   width: 100%;
 }
 
-/* Header */
 header {
   display: flex;
   justify-content: space-between;
@@ -54,7 +50,6 @@ header {
     color: #1f2937;
   }
 
-/* Messages */
 .messages {
   margin-bottom: 20px;
 }
@@ -75,7 +70,6 @@ header {
   color: #991b1b;
 }
 
-/* Forms */
 .forms-container {
   background: #ffffff;
   padding: 20px;
@@ -114,7 +108,7 @@ header {
   .form-group select {
     padding: 8px 12px;
     border: 1px solid #d1d5db;
-    border-radius: 6px;
+    border-radius: 4px;
     font-size: 0.9rem;
     color: #1f2937;
     background: #ffffff;
@@ -129,11 +123,35 @@ header {
     }
 
     .form-group input[readonly] {
-      background: #f3f4f6;
+      background: #e5e7eb;
       cursor: not-allowed;
     }
 
-/* Order items */
+  .form-group.vat-group {
+    position: relative;
+  }
+
+    .form-group.vat-group input {
+      padding-right: 24px;
+    }
+
+    .form-group.vat-group::after {
+      content: '%';
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.9rem;
+      color: #4b5563;
+      pointer-events: none;
+    }
+
+.error-text {
+  color: #dc3545;
+  font-size: 0.85rem;
+  margin-top: 5px;
+}
+
 .order-items {
   margin-top: 20px;
   display: flex;
@@ -143,7 +161,7 @@ header {
 
 .order-item {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 50px;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 80px;
   gap: 10px;
   align-items: end;
 }
@@ -156,34 +174,54 @@ header {
   }
 
 .add-item,
-.remove-item {
+.remove-item,
+.refresh-button {
   padding: 8px 14px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.85rem;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .add-item {
-  background: #10b981;
+  background: #28a745;
   color: #ffffff;
 }
 
   .add-item:hover {
-    background: #059669;
+    background: #218838;
+  }
+
+  .add-item:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
   }
 
 .remove-item {
-  background: #ef4444;
+  background: #dc3545;
   color: #ffffff;
 }
 
   .remove-item:hover {
-    background: #dc2626;
+    background: #c82333;
   }
 
-/* Form buttons */
+.refresh-button {
+  background: #6c757d;
+  color: #ffffff;
+  margin-bottom: 15px;
+}
+
+  .refresh-button:hover {
+    background: #5a6268;
+  }
+
+  .refresh-button:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }
+
 .form-buttons {
   display: flex;
   gap: 10px;
@@ -193,19 +231,24 @@ header {
   .form-buttons button {
     padding: 10px 16px;
     border: none;
-    border-radius: 6px;
+    border-radius: 4px;
     font-size: 0.9rem;
     cursor: pointer;
     transition: background 0.2s;
   }
 
     .form-buttons button:first-child {
-      background: #3b82f6;
+      background: #007bff;
       color: #ffffff;
     }
 
       .form-buttons button:first-child:hover {
-        background: #2563eb;
+        background: #0056b3;
+      }
+
+      .form-buttons button:first-child:disabled {
+        background: #d1d5db;
+        cursor: not-allowed;
       }
 
 .cancel-button {
@@ -217,7 +260,6 @@ header {
     background: #d1d5db;
   }
 
-/* Orders list */
 .orders-list {
   background: #ffffff;
   padding: 20px;
@@ -225,7 +267,6 @@ header {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* List controls */
 .list-controls {
   display: flex;
   gap: 10px;
@@ -239,43 +280,43 @@ header {
 .import-button {
   padding: 10px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.9rem;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .add-button {
-  background: #3b82f6;
+  background: #007bff;
   color: #ffffff;
 }
 
   .add-button:hover {
-    background: #2563eb;
+    background: #0056b3;
   }
 
 .toggle-deleted {
-  background: #6b7280;
+  background: #6c757d;
   color: #ffffff;
 }
 
   .toggle-deleted:hover {
-    background: #4b5563;
+    background: #5a6268;
   }
 
 .export-button {
-  background: #10b981;
+  background: #28a745;
   color: #ffffff;
 }
 
   .export-button:hover {
-    background: #059669;
+    background: #218838;
   }
 
 .import-button {
   display: inline-flex;
   align-items: center;
-  background: #f59e0b;
+  background: #fd7e14;
   color: #ffffff;
   padding: 0;
 }
@@ -292,10 +333,9 @@ header {
   }
 
   .import-button:hover {
-    background: #d97706;
+    background: #e06c00;
   }
 
-/* Filters */
 .advanced-filters {
   display: flex;
   gap: 10px;
@@ -307,7 +347,7 @@ header {
   .advanced-filters select {
     padding: 8px 12px;
     border: 1px solid #d1d5db;
-    border-radius: 6px;
+    border-radius: 4px;
     font-size: 0.9rem;
     color: #1f2937;
     background: #ffffff;
@@ -322,7 +362,6 @@ header {
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
     }
 
-/* Table */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -347,6 +386,12 @@ th {
     background: #e5e7eb;
   }
 
+.actions-header {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-align: center; 
+}
+
 td.clickable {
   cursor: pointer;
   color: #3b82f6;
@@ -357,7 +402,12 @@ td.clickable {
   }
 
 .actions {
+  text-align: center; 
+}
+
+.action-buttons {
   display: flex;
+  justify-content: center; 
   gap: 5px;
   flex-wrap: wrap;
 }
@@ -365,49 +415,48 @@ td.clickable {
 .action-button {
   padding: 6px 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.85rem;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .edit-button {
-  background: #f59e0b;
+  background: #fd7e14;
   color: #ffffff;
 }
 
   .edit-button:hover {
-    background: #d97706;
+    background: #e06c00;
   }
 
 .delete-button {
-  background: #ef4444;
+  background: #dc3545;
   color: #ffffff;
 }
 
   .delete-button:hover {
-    background: #dc2626;
+    background: #c82333;
   }
 
 .confirm-button {
-  background: #10b981;
+  background: #28a745;
   color: #ffffff;
 }
 
   .confirm-button:hover {
-    background: #059669;
+    background: #218838;
   }
 
 .restore-button {
-  background: #6b7280;
+  background: #6c757d;
   color: #ffffff;
 }
 
   .restore-button:hover {
-    background: #4b5563;
+    background: #5a6268;
   }
 
-/* Items table in modal */
 .items-table {
   width: 100%;
   border-collapse: collapse;
@@ -427,7 +476,6 @@ td.clickable {
     font-weight: 600;
   }
 
-/* Pagination */
 .pagination {
   display: flex;
   align-items: center;
@@ -439,7 +487,7 @@ td.clickable {
   .pagination button {
     padding: 8px 12px;
     border: none;
-    border-radius: 6px;
+    border-radius: 4px;
     font-size: 0.9rem;
     cursor: pointer;
     background: #3b82f6;
@@ -461,7 +509,6 @@ td.clickable {
     color: #4b5563;
   }
 
-/* Modal */
 .modal {
   position: fixed;
   top: 0;
@@ -511,7 +558,7 @@ td.clickable {
   margin: 20px auto 0;
   padding: 10px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   background: #3b82f6;
   color: #ffffff;
   font-size: 0.9rem;
@@ -523,7 +570,6 @@ td.clickable {
     background: #2563eb;
   }
 
-/* Responsive design */
 @media (max-width: 767px) {
   .main-content {
     padding: 15px;
@@ -585,6 +631,11 @@ td.clickable {
 
   .actions {
     padding-left: 8px;
+    text-align: left; /* Align buttons to the left on mobile */
+  }
+
+  .action-buttons {
+    justify-content: flex-start; /* Align buttons to the left on mobile */
   }
 
   .items-table {

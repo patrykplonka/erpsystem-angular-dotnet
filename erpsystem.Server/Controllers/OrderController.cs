@@ -4,9 +4,8 @@ using erpsystem.Server.Models;
 using erpsystem.Server.Models.DTOs;
 using System.Linq;
 using System.Threading.Tasks;
-using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
-using System;
 using erpsystem.Server.Data;
+using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
 {
@@ -36,7 +35,7 @@ namespace erpsystem.Server.Controllers
                 Id = o.Id,
                 OrderNumber = o.OrderNumber,
                 ContractorId = o.ContractorId,
-                ContractorName = o.Contractor.Name,
+                ContractorName = o.Contractor != null ? o.Contractor.Name : "Brak kontrahenta",
                 OrderType = o.OrderType,
                 OrderDate = o.OrderDate,
                 TotalAmount = o.TotalAmount,
@@ -49,7 +48,7 @@ namespace erpsystem.Server.Controllers
                     Id = oi.Id,
                     OrderId = oi.OrderId,
                     WarehouseItemId = oi.WarehouseItemId,
-                    WarehouseItemName = oi.WarehouseItem.Name,
+                    WarehouseItemName = oi.WarehouseItem != null ? oi.WarehouseItem.Name : "Brak produktu",
                     Quantity = oi.Quantity,
                     UnitPrice = oi.UnitPrice,
                     VatRate = oi.VatRate,
@@ -79,7 +78,7 @@ namespace erpsystem.Server.Controllers
                 Id = order.Id,
                 OrderNumber = order.OrderNumber,
                 ContractorId = order.ContractorId,
-                ContractorName = order.Contractor.Name,
+                ContractorName = order.Contractor != null ? order.Contractor.Name : "Brak kontrahenta",
                 OrderType = order.OrderType,
                 OrderDate = order.OrderDate,
                 TotalAmount = order.TotalAmount,
@@ -92,7 +91,7 @@ namespace erpsystem.Server.Controllers
                     Id = oi.Id,
                     OrderId = oi.OrderId,
                     WarehouseItemId = oi.WarehouseItemId,
-                    WarehouseItemName = oi.WarehouseItem.Name,
+                    WarehouseItemName = oi.WarehouseItem != null ? oi.WarehouseItem.Name : "Brak produktu",
                     Quantity = oi.Quantity,
                     UnitPrice = oi.UnitPrice,
                     VatRate = oi.VatRate,
@@ -213,7 +212,7 @@ namespace erpsystem.Server.Controllers
                 .Where(o => o.OrderNumber.StartsWith($"{prefix}-{today}-") && !o.IsDeleted)
                 .CountAsync();
 
-            var sequence = (count + 1).ToString("D3"); // e.g., 001, 002
+            var sequence = (count + 1).ToString("D3");
             var orderNumber = $"{prefix}-{today}-{sequence}";
 
             return Ok(new { orderNumber });
@@ -223,39 +222,47 @@ namespace erpsystem.Server.Controllers
         public async Task<IActionResult> ConfirmOrder(int id)
         {
             var order = await _context.Orders
+                .Include(o => o.Contractor)
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.WarehouseItem)
                 .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
             if (order == null)
             {
-                return NotFound();
+                return NotFound(new { message = $"Zamówienie o ID {id} nie istnieje." });
             }
 
             if (order.Status != "Draft")
             {
-                return BadRequest("Tylko zamówienia w statusie Draft mogą być potwierdzone.");
+                return BadRequest(new { message = "Tylko zamówienia w statusie Draft mogą być potwierdzone." });
+            }
+
+            if (order.Contractor == null)
+            {
+                return BadRequest(new { message = $"Kontrahent dla zamówienia o ID {id} nie istnieje. Sprawdź ContractorId." });
             }
 
             foreach (var item in order.OrderItems)
             {
-                var warehouseItem = item.WarehouseItem;
-                if (order.OrderType == "Sale" && warehouseItem.Quantity < item.Quantity)
+                if (item.WarehouseItem == null)
                 {
-                    return BadRequest($"Niewystarczająca ilość produktu {warehouseItem.Name} w magazynie.");
+                    return BadRequest(new { message = $"Produkt o ID {item.WarehouseItemId} nie istnieje." });
                 }
 
-                // Update stock
+                if (order.OrderType == "Sale" && item.WarehouseItem.Quantity < item.Quantity)
+                {
+                    return BadRequest(new { message = $"Niewystarczająca ilość produktu {item.WarehouseItem.Name} w magazynie." });
+                }
+
                 if (order.OrderType == "Purchase")
                 {
-                    warehouseItem.Quantity += item.Quantity;
+                    item.WarehouseItem.Quantity += item.Quantity;
                 }
                 else if (order.OrderType == "Sale")
                 {
-                    warehouseItem.Quantity -= item.Quantity;
+                    item.WarehouseItem.Quantity -= item.Quantity;
                 }
 
-                // Log movement
                 var movement = new WarehouseMovements
                 {
                     WarehouseItemId = item.WarehouseItemId,
@@ -275,7 +282,7 @@ namespace erpsystem.Server.Controllers
             order.Status = "Confirmed";
             await _context.SaveChangesAsync();
 
-            return Ok();
+            return Ok(new { message = "Zamówienie zostało potwierdzone." });
         }
     }
 }

@@ -50,6 +50,7 @@ export class OrdersComponent implements OnInit {
   sortDirection: 'asc' | 'desc' = 'asc';
   pageSize = 10;
   currentPage = 1;
+  isLoadingWarehouseItems: boolean = false;
 
   private apiUrl = 'https://localhost:7224/api/orders';
   private contractorsApiUrl = 'https://localhost:7224/api/contractors';
@@ -86,12 +87,48 @@ export class OrdersComponent implements OnInit {
     });
   }
 
-  loadWarehouseItems() {
-    this.http.get<WarehouseItemDto[]>(this.warehouseItemsApiUrl).subscribe({
-      next: (data) => {
-        this.warehouseItems = data.filter(wi => !wi.isDeleted);
-      },
-      error: (error) => this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}`
+  loadWarehouseItems(): Promise<void> {
+    this.isLoadingWarehouseItems = true;
+    return new Promise((resolve, reject) => {
+      this.http.get<WarehouseItemDto[]>(this.warehouseItemsApiUrl).subscribe({
+        next: (data) => {
+          console.log('Loaded warehouse items:', data);
+          this.warehouseItems = data.map(item => ({
+            ...item,
+            id: Number(item.id) // Ensure id is a number
+          }));
+          this.isLoadingWarehouseItems = false;
+          // Reset any invalid warehouseItemId in newOrder or editOrder
+          if (this.newOrder.orderItems.length > 0) {
+            this.newOrder.orderItems.forEach(item => {
+              item.warehouseItemId = Number(item.warehouseItemId); // Ensure type consistency
+              if (!this.warehouseItems.some(wi => wi.id === item.warehouseItemId)) {
+                item.warehouseItemId = 0;
+                item.unitPrice = 0;
+                item.totalPrice = 0;
+                item.warehouseItemName = '';
+              }
+            });
+          }
+          if (this.editOrder && this.editOrder.orderItems.length > 0) {
+            this.editOrder.orderItems.forEach(item => {
+              item.warehouseItemId = Number(item.warehouseItemId); // Ensure type consistency
+              if (!this.warehouseItems.some(wi => wi.id === item.warehouseItemId)) {
+                item.warehouseItemId = 0;
+                item.unitPrice = 0;
+                item.totalPrice = 0;
+                item.warehouseItemName = '';
+              }
+            });
+          }
+          resolve();
+        },
+        error: (error) => {
+          this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}`;
+          this.isLoadingWarehouseItems = false;
+          reject(error);
+        }
+      });
     });
   }
 
@@ -167,8 +204,35 @@ export class OrdersComponent implements OnInit {
       this.errorMessage = 'Wszystkie pola i co najmniej jeden produkt są wymagane.';
       return;
     }
-    this.newOrder.createdBy = this.currentUserEmail || 'System';
-    this.http.post<OrderDto>(this.apiUrl, this.newOrder).subscribe({
+    // Ensure warehouseItemId is a number
+    this.newOrder.orderItems.forEach(item => {
+      item.warehouseItemId = Number(item.warehouseItemId);
+    });
+    console.log('Submitting order with items:', this.newOrder.orderItems.map(item => ({
+      warehouseItemId: item.warehouseItemId,
+      name: this.warehouseItems.find(wi => wi.id === item.warehouseItemId)?.name || 'Not found'
+    })));
+    console.log('Current warehouseItems IDs:', this.warehouseItems.map(wi => wi.id));
+    const invalidItems = this.newOrder.orderItems.filter(item => {
+      const isValid = this.warehouseItems.some(wi => wi.id === item.warehouseItemId);
+      if (!isValid) {
+        console.log(`Invalid WarehouseItemId: ${item.warehouseItemId}`);
+      }
+      return !isValid;
+    });
+    if (invalidItems.length > 0) {
+      this.errorMessage = 'Wybrane produkty nie istnieją w magazynie. Odśwież listę produktów i spróbuj ponownie.';
+      return;
+    }
+    const orderToSubmit: CreateOrderDto = {
+      ...this.newOrder,
+      orderItems: this.newOrder.orderItems.map(item => ({
+        ...item,
+        vatRate: item.vatRate / 100
+      }))
+    };
+    orderToSubmit.createdBy = this.currentUserEmail || 'System';
+    this.http.post<OrderDto>(this.apiUrl, orderToSubmit).subscribe({
       next: (response) => {
         this.successMessage = `Dodano zamówienie: ${response.orderNumber}`;
         this.errorMessage = null;
@@ -182,7 +246,12 @@ export class OrdersComponent implements OnInit {
   startEdit(order: OrderDto) {
     this.editOrder = {
       ...order,
-      orderDate: new Date(order.orderDate)
+      orderDate: new Date(order.orderDate),
+      orderItems: order.orderItems.map(item => ({
+        ...item,
+        vatRate: item.vatRate * 100,
+        warehouseItemId: Number(item.warehouseItemId) // Ensure type consistency
+      }))
     };
   }
 
@@ -191,7 +260,29 @@ export class OrdersComponent implements OnInit {
       this.errorMessage = 'Wszystkie pola i co najmniej jeden produkt są wymagane.';
       return;
     }
-    this.http.put(`${this.apiUrl}/${this.editOrder.id}`, this.editOrder).subscribe({
+    // Ensure warehouseItemId is a number
+    this.editOrder.orderItems.forEach(item => {
+      item.warehouseItemId = Number(item.warehouseItemId);
+    });
+    const invalidItems = this.editOrder.orderItems.filter(item => {
+      const isValid = this.warehouseItems.some(wi => wi.id === item.warehouseItemId);
+      if (!isValid) {
+        console.log(`Invalid WarehouseItemId in edit: ${item.warehouseItemId}`);
+      }
+      return !isValid;
+    });
+    if (invalidItems.length > 0) {
+      this.errorMessage = 'Wybrane produkty nie istnieją w magazynie. Odśwież listę produktów i spróbuj ponownie.';
+      return;
+    }
+    const orderToSubmit: UpdateOrderDto = {
+      ...this.editOrder,
+      orderItems: this.editOrder.orderItems.map(item => ({
+        ...item,
+        vatRate: item.vatRate / 100
+      }))
+    };
+    this.http.put(`${this.apiUrl}/${this.editOrder.id}`, orderToSubmit).subscribe({
       next: () => {
         this.successMessage = `Zaktualizowano zamówienie: ${this.editOrder!.orderNumber}`;
         this.errorMessage = null;
@@ -249,7 +340,7 @@ export class OrdersComponent implements OnInit {
       warehouseItemId: 0,
       quantity: 1,
       unitPrice: 0,
-      vatRate: 0.23,
+      vatRate: 23,
       totalPrice: 0
     });
   }
@@ -259,10 +350,17 @@ export class OrdersComponent implements OnInit {
   }
 
   updateOrderItem(orderItem: OrderItemDto) {
+    orderItem.warehouseItemId = Number(orderItem.warehouseItemId); // Ensure type consistency
     const item = this.warehouseItems.find(wi => wi.id === orderItem.warehouseItemId);
     if (item) {
       orderItem.unitPrice = item.price;
-      orderItem.totalPrice = orderItem.quantity * orderItem.unitPrice * (1 + orderItem.vatRate);
+      const vatDecimal = orderItem.vatRate / 100;
+      orderItem.totalPrice = orderItem.quantity * orderItem.unitPrice * (1 + vatDecimal);
+      orderItem.warehouseItemName = item.name;
+    } else {
+      orderItem.unitPrice = 0;
+      orderItem.totalPrice = 0;
+      orderItem.warehouseItemName = '';
     }
   }
 
@@ -344,7 +442,17 @@ export class OrdersComponent implements OnInit {
     this.showAddForm = !this.showAddForm;
     this.errorMessage = null;
     this.successMessage = null;
-    if (!this.showAddForm) {
+    if (this.showAddForm) {
+      this.newOrder = {
+        orderNumber: '',
+        contractorId: 0,
+        orderType: 'Purchase',
+        orderDate: new Date(),
+        status: 'Draft',
+        orderItems: []
+      };
+      this.generateOrderNumber();
+    } else {
       this.newOrder = {
         orderNumber: '',
         contractorId: 0,
@@ -356,12 +464,26 @@ export class OrdersComponent implements OnInit {
     }
   }
 
+  generateOrderNumber() {
+    this.http.get<{ orderNumber: string }>(`${this.apiUrl}/generate-order-number?orderType=${this.newOrder.orderType}`).subscribe({
+      next: (response) => {
+        this.newOrder.orderNumber = response.orderNumber;
+      },
+      error: (error) => this.errorMessage = `Błąd generowania numeru zamówienia: ${error.status} ${error.message}`
+    });
+  }
+
+  onOrderTypeChange() {
+    this.generateOrderNumber();
+  }
+
   cancelEdit() {
     this.editOrder = null;
   }
 
   navigateTo(page: string) {
-    this.router.navigate([page]);
+    const cleanPage = page.startsWith('/') ? page.substring(1) : page;
+    this.router.navigate([cleanPage]);
   }
 
   logout() {

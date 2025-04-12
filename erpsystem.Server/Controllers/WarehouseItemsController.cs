@@ -22,7 +22,7 @@ namespace erpsystem.Server.Controllers
         public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetWarehouseItems()
         {
             var items = await _context.WarehouseItems
-                .Include(wi => wi.Contractor)
+                .Where(wi => !wi.IsDeleted)
                 .Select(wi => new WarehouseItemDto
                 {
                     Id = wi.Id,
@@ -36,7 +36,7 @@ namespace erpsystem.Server.Controllers
                     UnitOfMeasure = wi.UnitOfMeasure,
                     MinimumStock = wi.MinimumStock,
                     ContractorId = wi.ContractorId,
-                    ContractorName = wi.Contractor != null ? wi.Contractor.Name : "",
+                    ContractorName = wi.Contractor != null ? wi.Contractor.Name : null,
                     BatchNumber = wi.BatchNumber,
                     ExpirationDate = wi.ExpirationDate,
                     PurchaseCost = wi.PurchaseCost,
@@ -45,6 +45,7 @@ namespace erpsystem.Server.Controllers
                 })
                 .ToListAsync();
 
+            Console.WriteLine($"Returning {items.Count} warehouse items: {string.Join(", ", items.Select(i => $"{{Id: {i.Id}, Name: {i.Name}}}"))}");
             return Ok(items);
         }
     }
