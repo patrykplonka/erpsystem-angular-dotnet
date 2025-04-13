@@ -18,6 +18,32 @@ export enum WarehouseMovementType {
   INW = 'INW'
 }
 
+interface OrderDto {
+  id: number;
+  orderNumber: string;
+  contractorId: number;
+  contractorName: string;
+  orderType: string;
+  orderDate: string;
+  totalAmount: number;
+  status: string;
+  createdBy: string;
+  createdDate: string;
+  isDeleted: boolean;
+  orderItems: OrderItemDto[];
+}
+
+interface OrderItemDto {
+  id: number;
+  orderId: number;
+  warehouseItemId: number;
+  warehouseItemName: string;
+  quantity: number;
+  unitPrice: number;
+  vatRate: number;
+  totalPrice: number;
+}
+
 @Component({
   selector: 'app-warehouse-movements',
   standalone: true,
@@ -28,6 +54,7 @@ export enum WarehouseMovementType {
 export class WarehouseMovementsComponent implements OnInit {
   movements: WarehouseMovement[] = [];
   products: Product[] = [];
+  ordersToReceive: OrderDto[] = [];
   newMovement: WarehouseMovement = {
     id: 0,
     warehouseItemId: 0,
@@ -68,8 +95,59 @@ export class WarehouseMovementsComponent implements OnInit {
   ngOnInit() {
     this.loadMovements();
     this.loadProducts();
+    this.loadOrdersToReceive();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
     this.currentUserFullName = this.authService.getCurrentUserFullName();
+  }
+
+  loadOrdersToReceive() {
+    this.http.get<OrderDto[]>('https://localhost:7224/api/orders').subscribe({
+      next: (data) => {
+        this.ordersToReceive = data.filter(order =>
+          order.orderType === 'Purchase' && order.status === 'Confirmed' && !order.isDeleted
+        );
+      },
+      error: (error) => {
+        this.errorMessage = `Błąd ładowania zamówień do przyjęcia: ${error.message}`;
+      }
+    });
+  }
+
+  receiveOrder(order: OrderDto) {
+    const movements = order.orderItems.map(item => ({
+      warehouseItemId: item.warehouseItemId,
+      movementType: 'PZ',
+      quantity: item.quantity,
+      supplier: order.contractorName || '',
+      documentNumber: `PZ/${order.orderNumber}`,
+      description: `Przyjęcie zamówienia ${order.orderNumber}`,
+      createdBy: this.currentUserFullName || 'Unknown',
+      date: this.formatDateForApi(new Date()),
+      status: 'Completed',
+      comment: ''
+    }));
+
+    movements.forEach(movement => {
+      this.movementService.createMovement(movement).subscribe({
+        next: () => {
+          console.log(`Ruch magazynowy dla produktu ${movement.warehouseItemId} utworzony.`);
+        },
+        error: (error) => {
+          this.errorMessage = `Błąd podczas tworzenia ruchu magazynowego: ${error.message}`;
+        }
+      });
+    });
+
+    this.http.post(`https://localhost:7224/api/orders/${order.id}/receive`, {}).subscribe({
+      next: () => {
+        this.successMessage = `Zamówienie ${order.orderNumber} zostało przyjęte.`;
+        this.loadOrdersToReceive();
+        this.loadMovements();
+      },
+      error: (error) => {
+        this.errorMessage = `Błąd podczas aktualizacji statusu zamówienia: ${error.status} ${error.statusText}`;
+      }
+    });
   }
 
   loadProducts() {

@@ -34,6 +34,10 @@ export class SidebarComponent {
     this.navigate.emit('/contractors');
   }
 
+  goToOrders() {
+    this.navigate.emit('/orders');
+  }
+
   logout() {
     this.logoutEvent.emit();
   }
