@@ -17,6 +17,41 @@
           <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
         </div>
         <div class="movements-container">
+          <div class="orders-to-receive-section">
+            <h4>Zamówienia do przyjęcia</h4>
+            <table *ngIf="ordersToReceive.length > 0; else noOrders">
+              <thead>
+                <tr>
+                  <th>Numer zamówienia</th>
+                  <th>Kontrahent</th>
+                  <th>Data zamówienia</th>
+                  <th>Produkty</th>
+                  <th>Akcje</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let order of ordersToReceive">
+                  <td>{{ order.orderNumber }}</td>
+                  <td>{{ order.contractorName }}</td>
+                  <td>{{ order.orderDate | date:'dd.MM.yyyy' }}</td>
+                  <td>
+                    <ul>
+                      <li *ngFor="let item of order.orderItems">
+                        {{ item.warehouseItemName }} (Ilość: {{ item.quantity }})
+                      </li>
+                    </ul>
+                  </td>
+                  <td>
+                    <button class="action-button add-button" (click)="receiveOrder(order)">Przyjmij</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <ng-template #noOrders>
+              <p>Brak zamówień do przyjęcia.</p>
+            </ng-template>
+          </div>
+
           <div class="action-buttons">
             <button class="action-button add-button" (click)="toggleAddForm()">Dodaj ruch magazynowy</button>
           </div>

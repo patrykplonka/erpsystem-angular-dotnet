@@ -6,8 +6,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using erpsystem.Server.Data;
 using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
-// Remove duplicate namespace reference
-// using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
 {
@@ -80,7 +78,7 @@ namespace erpsystem.Server.Controllers
                 Id = order.Id,
                 OrderNumber = order.OrderNumber,
                 ContractorId = order.ContractorId,
-                ContractorName = order.Contractor != null ? order.Contractor.Name : "Brak kontrahenta", // Fixed 'o' to 'order'
+                ContractorName = order.Contractor != null ? order.Contractor.Name : "Brak kontrahenta",
                 OrderType = order.OrderType,
                 OrderDate = order.OrderDate,
                 TotalAmount = order.TotalAmount,
@@ -112,7 +110,6 @@ namespace erpsystem.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Fetch warehouse items to get the correct UnitPrice
             var warehouseItemIds = orderDto.OrderItems.Select(oi => oi.WarehouseItemId).Distinct().ToList();
             var warehouseItems = await _context.WarehouseItems
                 .Where(wi => warehouseItemIds.Contains(wi.Id) && !wi.IsDeleted)
@@ -142,9 +139,9 @@ namespace erpsystem.Server.Controllers
                     {
                         WarehouseItemId = oi.WarehouseItemId,
                         Quantity = oi.Quantity,
-                        UnitPrice = unitPrice, // Use the price from the database
+                        UnitPrice = unitPrice,
                         VatRate = oi.VatRate,
-                        TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate / 100) // Adjusted for VAT
+                        TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate / 100)
                     };
                 }).ToList()
             };
@@ -189,7 +186,6 @@ namespace erpsystem.Server.Controllers
                 return NotFound();
             }
 
-            // Fetch warehouse items to get the correct UnitPrice
             var warehouseItemIds = orderDto.OrderItems.Select(oi => oi.WarehouseItemId).Distinct().ToList();
             var warehouseItems = await _context.WarehouseItems
                 .Where(wi => warehouseItemIds.Contains(wi.Id) && !wi.IsDeleted)
@@ -219,9 +215,9 @@ namespace erpsystem.Server.Controllers
                     OrderId = order.Id,
                     WarehouseItemId = oi.WarehouseItemId,
                     Quantity = oi.Quantity,
-                    UnitPrice = unitPrice, // Use the price from the database
+                    UnitPrice = unitPrice,
                     VatRate = oi.VatRate,
-                    TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate / 100) // Adjusted for VAT
+                    TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate / 100)
                 };
             }).ToList();
 
@@ -290,7 +286,7 @@ namespace erpsystem.Server.Controllers
             return Ok(new { orderNumber });
         }
 
-        [HttpPost("{id}/confirm")]
+        [HttpPost("confirm/{id}")]
         public async Task<IActionResult> ConfirmOrder(int id)
         {
             var order = await _context.Orders
@@ -326,11 +322,7 @@ namespace erpsystem.Server.Controllers
                     return BadRequest(new { message = $"Niewystarczająca ilość produktu {item.WarehouseItem.Name} w magazynie." });
                 }
 
-                if (order.OrderType == "Purchase")
-                {
-                    item.WarehouseItem.Quantity += item.Quantity;
-                }
-                else if (order.OrderType == "Sale")
+                if (order.OrderType == "Sale")
                 {
                     item.WarehouseItem.Quantity -= item.Quantity;
                 }
@@ -366,6 +358,61 @@ namespace erpsystem.Server.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Zamówienie zostało potwierdzone." });
+        }
+
+        [HttpPost("{id}/receive")]
+        public async Task<IActionResult> ReceiveOrder(int id)
+        {
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.WarehouseItem)
+                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+
+            if (order == null)
+            {
+                return NotFound(new { message = $"Zamówienie o ID {id} nie istnieje." });
+            }
+
+            if (order.OrderType != "Purchase")
+            {
+                return BadRequest(new { message = "Tylko zamówienia typu Purchase mogą być przyjęte." });
+            }
+
+            if (order.Status != "Confirmed")
+            {
+                return BadRequest(new { message = "Tylko zamówienia w statusie Confirmed mogą być przyjęte." });
+            }
+
+            if (order.Status == "Received")
+            {
+                return BadRequest(new { message = "Zamówienie zostało już przyjęte." });
+            }
+
+            foreach (var item in order.OrderItems)
+            {
+                if (item.WarehouseItem == null)
+                {
+                    return BadRequest(new { message = $"Produkt o ID {item.WarehouseItemId} nie istnieje." });
+                }
+
+                item.WarehouseItem.Quantity += item.Quantity;
+            }
+
+            order.Status = "Received";
+
+            var history = new OrderHistory
+            {
+                OrderId = order.Id,
+                Action = "Received",
+                ModifiedBy = "System",
+                ModifiedDate = DateTime.UtcNow,
+                Details = $"Order {order.OrderNumber} received."
+            };
+            _context.OrderHistory.Add(history);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Zamówienie zostało przyjęte." });
         }
 
         [HttpGet("{id}/history")]

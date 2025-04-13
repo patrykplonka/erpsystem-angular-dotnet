@@ -5,7 +5,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 
-// Define interfaces directly in this file
 interface OrderDto {
   id: number;
   orderNumber: string;
@@ -28,7 +27,7 @@ interface OrderItemDto {
   warehouseItemName: string;
   quantity: number;
   unitPrice: number;
-  vatRate: number; // This will be in percentage form (e.g., 23) in the frontend
+  vatRate: number;
   totalPrice: number;
 }
 
@@ -76,7 +75,8 @@ export class OrdersComponent implements OnInit {
     { value: 'InProgress', display: 'W trakcie' },
     { value: 'Shipped', display: 'Wysłane' },
     { value: 'Completed', display: 'Zakończone' },
-    { value: 'Cancelled', display: 'Anulowane' }
+    { value: 'Cancelled', display: 'Anulowane' },
+    { value: 'Received', display: 'Przyjęte' }
   ];
   newOrder: OrderDto = this.createEmptyOrder();
   editOrder: OrderDto | null = null;
@@ -121,7 +121,7 @@ export class OrdersComponent implements OnInit {
       totalAmount: 0,
       status: 'Draft',
       createdBy: 'System',
-      createdDate: new Date().toISOString().split('T')[0], // Use yyyy-MM-dd format
+      createdDate: new Date().toISOString().split('T')[0],
       isDeleted: false,
       orderItems: []
     };
@@ -148,13 +148,11 @@ export class OrdersComponent implements OnInit {
     this.isLoadingWarehouseItems = true;
     this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouseitems').subscribe({
       next: (data) => {
-        console.log('Raw API response:', data);
         this.warehouseItems = data.map(item => ({
           ...item,
           id: Number(item.id),
           unitPrice: Number(item.unitPrice)
         }));
-        console.log('Mapped warehouse items:', this.warehouseItems);
         this.isLoadingWarehouseItems = false;
       },
       error: (error) => {
@@ -238,7 +236,7 @@ export class OrdersComponent implements OnInit {
       warehouseItemName: '',
       quantity: 1,
       unitPrice: 0,
-      vatRate: 23, // Percentage form (will be converted to decimal when sending to backend)
+      vatRate: 23,
       totalPrice: 0
     });
   }
@@ -260,7 +258,6 @@ export class OrdersComponent implements OnInit {
         item.totalPrice = 0;
         return;
       }
-      // Calculate totalPrice using vatRate as a percentage
       item.totalPrice = Number((item.quantity * item.unitPrice * (1 + item.vatRate / 100)).toFixed(2));
     } else {
       item.warehouseItemId = 0;
@@ -328,7 +325,7 @@ export class OrdersComponent implements OnInit {
     this.updateTotalAmount(this.newOrder.orderItems);
 
     this.newOrder.orderDate = new Date(this.newOrder.orderDate).toISOString().split('T')[0];
-    this.newOrder.createdDate = new Date().toISOString().split('T')[0]; // Use yyyy-MM-dd format
+    this.newOrder.createdDate = new Date().toISOString().split('T')[0];
 
     const payload = {
       id: this.newOrder.id,
@@ -349,13 +346,10 @@ export class OrdersComponent implements OnInit {
         warehouseItemName: item.warehouseItemName,
         quantity: Number(item.quantity),
         unitPrice: Number(item.unitPrice.toFixed(2)),
-        vatRate: Number((item.vatRate / 100).toFixed(2)), // Convert percentage to decimal (e.g., 23 -> 0.23)
+        vatRate: Number((item.vatRate / 100).toFixed(2)),
         totalPrice: Number(item.totalPrice.toFixed(2))
       }))
     };
-
-    // Log the payload for debugging
-    console.log('Payload being sent:', payload);
 
     this.http.post<OrderDto>(this.apiUrl, payload).subscribe({
       next: (response) => {
@@ -367,10 +361,7 @@ export class OrdersComponent implements OnInit {
       error: (error) => {
         let errorMsg = 'Błąd dodawania zamówienia';
         if (error.error) {
-          // Log the full error response to see ModelState errors
-          console.error('Backend error response:', error.error);
           if (error.error.errors) {
-            // Extract ModelState validation errors
             const validationErrors = Object.keys(error.error.errors)
               .map(key => `${key}: ${error.error.errors[key].join(', ')}`)
               .join('; ');
@@ -426,7 +417,7 @@ export class OrdersComponent implements OnInit {
         warehouseItemName: item.warehouseItemName,
         quantity: Number(item.quantity),
         unitPrice: Number(item.unitPrice.toFixed(2)),
-        vatRate: Number((item.vatRate / 100).toFixed(2)), // Convert percentage to decimal
+        vatRate: Number((item.vatRate / 100).toFixed(2)),
         totalPrice: Number(item.totalPrice.toFixed(2))
       }))
     };
@@ -484,14 +475,70 @@ export class OrdersComponent implements OnInit {
     }
   }
 
-  confirmOrder(id: number) {
-    this.http.post(`${this.apiUrl}/${id}/confirm`, {}).subscribe({
-      next: () => {
-        this.setSuccess('Zamówienie potwierdzone.');
-        this.notificationMessage = 'Zamówienie zostało potwierdzone i powiadomienie wysłane.';
-        this.loadOrders();
-      },
-      error: (error) => this.setError(`Błąd potwierdzania zamówienia: ${error.message}`)
+  confirmOrder(orderId: number) {
+    const order = this.orders.find(o => o.id === orderId);
+    if (order) {
+      this.http.post(`${this.apiUrl}/confirm/${orderId}`, {}).subscribe({
+        next: () => {
+          this.loadOrders();
+          if (order.orderType === 'Sale') {
+            this.updateStock(order);
+            this.loadWarehouseItems();
+          }
+          this.notificationMessage = 'Zamówienie zostało potwierdzone.';
+        },
+        error: (error) => this.setError(`Błąd potwierdzania zamówienia: ${error.message}`)
+      });
+    }
+  }
+
+  receiveOrder(orderId: number) {
+    const order = this.orders.find(o => o.id === orderId);
+    if (order && order.orderType === 'Purchase') {
+      this.http.post(`${this.apiUrl}/${orderId}/receive`, {}).subscribe({
+        next: () => {
+          const movement = {
+            warehouseItemId: 0,
+            movementType: 'PZ',
+            quantity: 0,
+            supplier: order.contractorName || '',
+            documentNumber: `PZ/${order.orderNumber}`,
+            description: `Przyjęcie zamówienia ${order.orderNumber}`,
+            createdBy: this.currentUserEmail || 'System',
+            date: new Date().toISOString(),
+            status: 'Completed',
+            comment: ''
+          };
+
+          order.orderItems.forEach(item => {
+            movement.warehouseItemId = item.warehouseItemId;
+            movement.quantity = item.quantity;
+            this.http.post('https://localhost:7224/api/warehouse/movements', movement).subscribe({
+              next: () => {
+                this.updateStock(order);
+                this.loadOrders();
+                this.loadWarehouseItems();
+                this.notificationMessage = 'Zamówienie zostało przyjęte, ruch magazynowy utworzony.';
+              },
+              error: (error) => this.setError(`Błąd podczas tworzenia ruchu magazynowego: ${error.message}`)
+            });
+          });
+        },
+        error: (error) => this.setError(`Błąd podczas przyjęcia zamówienia: ${error.message}`)
+      });
+    }
+  }
+
+  updateStock(order: OrderDto) {
+    order.orderItems.forEach(item => {
+      const updateData = {
+        warehouseItemId: item.warehouseItemId,
+        quantity: order.orderType === 'Sale' ? -item.quantity : item.quantity
+      };
+      this.http.put('https://localhost:7224/api/warehouse/update-stock', updateData).subscribe({
+        next: () => this.loadWarehouseItems(),
+        error: (error) => this.setError(`Błąd aktualizacji stanu: ${error.message}`)
+      });
     });
   }
 
@@ -558,7 +605,11 @@ export class OrdersComponent implements OnInit {
       const file = input.files[0];
       const reader = new FileReader();
       reader.onload = () => {
-        const text = reader.result as string;
+        if (typeof reader.result !== 'string') {
+          this.setError('Błąd odczytu pliku CSV.');
+          return;
+        }
+        const text = reader.result;
         const lines = text.split('\n').map(line => line.split(','));
         const headers = lines[0];
         const orders = lines.slice(1).map(row => {

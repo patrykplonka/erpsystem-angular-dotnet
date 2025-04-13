@@ -241,12 +241,12 @@
         <div class="modal" *ngIf="selectedOrder">
           <div class="modal-content">
             <h3>Szczegóły zamówienia</h3>
-            <p><strong>Numer:</strong> {{ selectedOrder?.orderNumber }}</p>
-            <p><strong>Kontrahent:</strong> {{ selectedOrder?.contractorName }}</p>
-            <p><strong>Typ:</strong> {{ getTypeDisplay(selectedOrder?.orderType || '') }}</p>
-            <p><strong>Data:</strong> {{ selectedOrder?.orderDate | date:'shortDate' }}</p>
-            <p><strong>Kwota:</strong> {{ selectedOrder?.totalAmount | currency:'PLN' }}</p>
-            <p><strong>Status:</strong> {{ getStatusDisplay(selectedOrder?.status || '') }}</p>
+            <p><strong>Numer:</strong> {{ selectedOrder.orderNumber }}</p>
+            <p><strong>Kontrahent:</strong> {{ selectedOrder.contractorName }}</p>
+            <p><strong>Typ:</strong> {{ getTypeDisplay(selectedOrder.orderType || '') }}</p>
+            <p><strong>Data:</strong> {{ selectedOrder.orderDate | date:'shortDate' }}</p>
+            <p><strong>Kwota:</strong> {{ selectedOrder.totalAmount | currency:'PLN' }}</p>
+            <p><strong>Status:</strong> {{ getStatusDisplay(selectedOrder.status || '') }}</p>
             <div class="status-update">
               <label for="updateStatus">Zmień status:</label>
               <select id="updateStatus" [(ngModel)]="selectedOrder.status" (ngModelChange)="updateStatus(selectedOrder)">
