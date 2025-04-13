@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using erpsystem.Server.Data;
 using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
+// Remove duplicate namespace reference
+// using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
 {
@@ -78,7 +80,7 @@ namespace erpsystem.Server.Controllers
                 Id = order.Id,
                 OrderNumber = order.OrderNumber,
                 ContractorId = order.ContractorId,
-                ContractorName = order.Contractor != null ? order.Contractor.Name : "Brak kontrahenta",
+                ContractorName = order.Contractor != null ? order.Contractor.Name : "Brak kontrahenta", // Fixed 'o' to 'order'
                 OrderType = order.OrderType,
                 OrderDate = order.OrderDate,
                 TotalAmount = order.TotalAmount,
@@ -110,6 +112,12 @@ namespace erpsystem.Server.Controllers
                 return BadRequest(ModelState);
             }
 
+            // Fetch warehouse items to get the correct UnitPrice
+            var warehouseItemIds = orderDto.OrderItems.Select(oi => oi.WarehouseItemId).Distinct().ToList();
+            var warehouseItems = await _context.WarehouseItems
+                .Where(wi => warehouseItemIds.Contains(wi.Id) && !wi.IsDeleted)
+                .ToDictionaryAsync(wi => wi.Id, wi => wi.Price);
+
             var order = new Order
             {
                 OrderNumber = orderDto.OrderNumber,
@@ -118,13 +126,26 @@ namespace erpsystem.Server.Controllers
                 OrderDate = orderDto.OrderDate,
                 Status = orderDto.Status,
                 CreatedBy = orderDto.CreatedBy,
-                OrderItems = orderDto.OrderItems.Select(oi => new OrderItem
+                OrderItems = orderDto.OrderItems.Select(oi =>
                 {
-                    WarehouseItemId = oi.WarehouseItemId,
-                    Quantity = oi.Quantity,
-                    UnitPrice = oi.UnitPrice,
-                    VatRate = oi.VatRate,
-                    TotalPrice = oi.Quantity * oi.UnitPrice * (1 + oi.VatRate)
+                    if (!warehouseItems.TryGetValue(oi.WarehouseItemId, out var unitPrice))
+                    {
+                        throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} nie istnieje lub jest usunięty.");
+                    }
+
+                    if (unitPrice <= 0)
+                    {
+                        throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} ma cenę 0. Zaktualizuj cenę w bazie danych.");
+                    }
+
+                    return new OrderItem
+                    {
+                        WarehouseItemId = oi.WarehouseItemId,
+                        Quantity = oi.Quantity,
+                        UnitPrice = unitPrice, // Use the price from the database
+                        VatRate = oi.VatRate,
+                        TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate / 100) // Adjusted for VAT
+                    };
                 }).ToList()
             };
 
@@ -168,6 +189,12 @@ namespace erpsystem.Server.Controllers
                 return NotFound();
             }
 
+            // Fetch warehouse items to get the correct UnitPrice
+            var warehouseItemIds = orderDto.OrderItems.Select(oi => oi.WarehouseItemId).Distinct().ToList();
+            var warehouseItems = await _context.WarehouseItems
+                .Where(wi => warehouseItemIds.Contains(wi.Id) && !wi.IsDeleted)
+                .ToDictionaryAsync(wi => wi.Id, wi => wi.Price);
+
             order.OrderNumber = orderDto.OrderNumber;
             order.ContractorId = orderDto.ContractorId;
             order.OrderType = orderDto.OrderType;
@@ -175,14 +202,27 @@ namespace erpsystem.Server.Controllers
             order.Status = orderDto.Status;
 
             _context.OrderItems.RemoveRange(order.OrderItems);
-            order.OrderItems = orderDto.OrderItems.Select(oi => new OrderItem
+            order.OrderItems = orderDto.OrderItems.Select(oi =>
             {
-                OrderId = order.Id,
-                WarehouseItemId = oi.WarehouseItemId,
-                Quantity = oi.Quantity,
-                UnitPrice = oi.UnitPrice,
-                VatRate = oi.VatRate,
-                TotalPrice = oi.Quantity * oi.UnitPrice * (1 + oi.VatRate)
+                if (!warehouseItems.TryGetValue(oi.WarehouseItemId, out var unitPrice))
+                {
+                    throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} nie istnieje lub jest usunięty.");
+                }
+
+                if (unitPrice <= 0)
+                {
+                    throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} ma cenę 0. Zaktualizuj cenę w bazie danych.");
+                }
+
+                return new OrderItem
+                {
+                    OrderId = order.Id,
+                    WarehouseItemId = oi.WarehouseItemId,
+                    Quantity = oi.Quantity,
+                    UnitPrice = unitPrice, // Use the price from the database
+                    VatRate = oi.VatRate,
+                    TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate / 100) // Adjusted for VAT
+                };
             }).ToList();
 
             order.TotalAmount = order.OrderItems.Sum(oi => oi.TotalPrice);
@@ -217,7 +257,7 @@ namespace erpsystem.Server.Controllers
             {
                 OrderId = order.Id,
                 Action = "Deleted",
-                ModifiedBy = "System", 
+                ModifiedBy = "System",
                 ModifiedDate = DateTime.UtcNow,
                 Details = $"Order {order.OrderNumber} marked as deleted."
             };

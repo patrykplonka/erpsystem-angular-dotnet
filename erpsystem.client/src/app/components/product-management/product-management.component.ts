@@ -16,7 +16,7 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 export class ProductManagementComponent implements OnInit {
   warehouseItems: WarehouseItemDto[] = [];
   deletedItems: WarehouseItemDto[] = [];
-  newItem: CreateWarehouseItemDto = { name: '', code: '', quantity: null, price: null, category: '', location: '', warehouse: '', unitOfMeasure: '', minimumStock: null, contractorId: null, batchNumber: '', expirationDate: null, purchaseCost: null, vatRate: null };
+  newItem: CreateWarehouseItemDto = { name: '', code: '', quantity: null, unitPrice: null, category: '', location: '', warehouse: '', unitOfMeasure: '', minimumStock: null, contractorId: null, batchNumber: '', expirationDate: null, purchaseCost: null, vatRate: null };
   editItem: UpdateWarehouseItemDto | null = null;
   currentUserEmail: string | null = null;
   currentUserFullName: string = 'Unknown';
@@ -25,8 +25,8 @@ export class ProductManagementComponent implements OnInit {
   nameFilter: string = '';
   minQuantityFilter: number | null = null;
   maxQuantityFilter: number | null = null;
-  minPriceFilter: number | null = null;
-  maxPriceFilter: number | null = null;
+  minUnitPriceFilter: number | null = null; // Renamed from minPriceFilter
+  maxUnitPriceFilter: number | null = null; // Renamed from maxPriceFilter
   categoryFilter: string = '';
   locationFilter: string = '';
   warehouseFilter: string = '';
@@ -140,18 +140,18 @@ export class ProductManagementComponent implements OnInit {
   }
 
   addItem() {
-    if (!this.newItem.name || !this.newItem.code || this.newItem.quantity === null || this.newItem.price === null || !this.newItem.category || !this.newItem.location || !this.newItem.warehouse || !this.newItem.unitOfMeasure || this.newItem.minimumStock === null || this.newItem.purchaseCost === null || this.newItem.vatRate === null) {
+    if (!this.newItem.name || !this.newItem.code || this.newItem.quantity === null || this.newItem.unitPrice === null || !this.newItem.category || !this.newItem.location || !this.newItem.warehouse || !this.newItem.unitOfMeasure || this.newItem.minimumStock === null || this.newItem.purchaseCost === null || this.newItem.vatRate === null) {
       this.errorMessage = 'Wszystkie pola produktu są wymagane.';
       return;
     }
-    if (this.newItem.quantity < 0 || this.newItem.price < 0 || this.newItem.minimumStock < 0 || this.newItem.purchaseCost < 0 || this.newItem.vatRate < 0) {
-      this.errorMessage = 'Ilość, cena, minimalny stan, koszt zakupu i stawka VAT nie mogą być ujemne.';
+    if (this.newItem.quantity < 0 || this.newItem.unitPrice < 0 || this.newItem.minimumStock < 0 || this.newItem.purchaseCost < 0 || this.newItem.vatRate < 0) {
+      this.errorMessage = 'Ilość, cena jednostkowa, minimalny stan, koszt zakupu i stawka VAT nie mogą być ujemne.';
       return;
     }
     const itemToSend: CreateWarehouseItemDto = {
       ...this.newItem,
       quantity: this.newItem.quantity ?? 0,
-      price: this.newItem.price ?? 0,
+      unitPrice: this.newItem.unitPrice ?? 0,
       location: this.newItem.location || 'Brak',
       warehouse: this.newItem.warehouse,
       unitOfMeasure: this.newItem.unitOfMeasure,
@@ -199,12 +199,12 @@ export class ProductManagementComponent implements OnInit {
 
   updateItem() {
     if (this.editItem) {
-      if (!this.editItem.name || !this.editItem.code || this.editItem.quantity === null || this.editItem.price === null || !this.editItem.category || !this.editItem.location || !this.editItem.warehouse || !this.editItem.unitOfMeasure || this.editItem.minimumStock === null || this.editItem.purchaseCost === null || this.editItem.vatRate === null) {
+      if (!this.editItem.name || !this.editItem.code || this.editItem.quantity === null || this.editItem.unitPrice === null || !this.editItem.category || !this.editItem.location || !this.editItem.warehouse || !this.editItem.unitOfMeasure || this.editItem.minimumStock === null || this.editItem.purchaseCost === null || this.editItem.vatRate === null) {
         this.errorMessage = 'Wszystkie pola są wymagane.';
         return;
       }
-      if (this.editItem.quantity < 0 || this.editItem.price < 0 || this.editItem.minimumStock < 0 || this.editItem.purchaseCost < 0 || this.editItem.vatRate < 0) {
-        this.errorMessage = 'Ilość, cena, minimalny stan, koszt zakupu i stawka VAT nie mogą być ujemne.';
+      if (this.editItem.quantity < 0 || this.editItem.unitPrice < 0 || this.editItem.minimumStock < 0 || this.editItem.purchaseCost < 0 || this.editItem.vatRate < 0) {
+        this.errorMessage = 'Ilość, cena jednostkowa, minimalny stan, koszt zakupu i stawka VAT nie mogą być ujemne.';
         return;
       }
       const updatedItem = { ...this.editItem };
@@ -238,7 +238,7 @@ export class ProductManagementComponent implements OnInit {
     this.errorMessage = null;
     this.successMessage = null;
     if (!this.showAddForm) {
-      this.newItem = { name: '', code: '', quantity: null, price: null, category: '', location: '', warehouse: '', unitOfMeasure: '', minimumStock: null, contractorId: null, batchNumber: '', expirationDate: null, purchaseCost: null, vatRate: null };
+      this.newItem = { name: '', code: '', quantity: null, unitPrice: null, category: '', location: '', warehouse: '', unitOfMeasure: '', minimumStock: null, contractorId: null, batchNumber: '', expirationDate: null, purchaseCost: null, vatRate: null };
       this.generateBatchNumber();
     }
   }
@@ -261,13 +261,13 @@ export class ProductManagementComponent implements OnInit {
         item.code.toLowerCase().includes(this.nameFilter.toLowerCase());
       const matchesMinQuantity = this.minQuantityFilter === null || item.quantity >= this.minQuantityFilter;
       const matchesMaxQuantity = this.maxQuantityFilter === null || item.quantity <= this.maxQuantityFilter;
-      const matchesMinPrice = this.minPriceFilter === null || item.price >= this.minPriceFilter;
-      const matchesMaxPrice = this.maxPriceFilter === null || item.price <= this.maxPriceFilter;
+      const matchesMinUnitPrice = this.minUnitPriceFilter === null || item.unitPrice >= this.minUnitPriceFilter; // Updated
+      const matchesMaxUnitPrice = this.maxUnitPriceFilter === null || item.unitPrice <= this.maxUnitPriceFilter; // Updated
       const matchesCategory = !this.categoryFilter || item.category === this.categoryFilter;
       const matchesLocation = !this.locationFilter || item.location === this.locationFilter;
       const matchesWarehouse = !this.warehouseFilter || item.warehouse === this.warehouseFilter;
       const matchesLowStock = !this.lowStockFilter || item.quantity <= item.minimumStock;
-      return matchesNameOrCode && matchesMinQuantity && matchesMaxQuantity && matchesMinPrice && matchesMaxPrice && matchesCategory && matchesLocation && matchesWarehouse && matchesLowStock;
+      return matchesNameOrCode && matchesMinQuantity && matchesMaxQuantity && matchesMinUnitPrice && matchesMaxUnitPrice && matchesCategory && matchesLocation && matchesWarehouse && matchesLowStock;
     });
 
     if (this.sortField) {
@@ -311,7 +311,7 @@ interface WarehouseItemDto {
   name: string;
   code: string;
   quantity: number;
-  price: number;
+  unitPrice: number; // Changed from price to unitPrice
   category: string;
   location: string;
   warehouse: string;
@@ -329,7 +329,7 @@ interface CreateWarehouseItemDto {
   name: string;
   code: string;
   quantity: number | null;
-  price: number | null;
+  unitPrice: number | null; // Changed from price to unitPrice
   category: string;
   location: string;
   warehouse: string;
@@ -347,7 +347,7 @@ interface UpdateWarehouseItemDto {
   name: string;
   code: string;
   quantity: number;
-  price: number;
+  unitPrice: number; 
   category: string;
   location: string;
   warehouse: string;

@@ -1,145 +1,167 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 
+// Define interfaces directly in this file
+interface OrderDto {
+  id: number;
+  orderNumber: string;
+  contractorId: number;
+  contractorName: string;
+  orderType: string;
+  orderDate: string;
+  totalAmount: number;
+  status: string;
+  createdBy: string;
+  createdDate: string;
+  isDeleted: boolean;
+  orderItems: OrderItemDto[];
+}
+
+interface OrderItemDto {
+  id: number;
+  orderId: number;
+  warehouseItemId: number;
+  warehouseItemName: string;
+  quantity: number;
+  unitPrice: number;
+  vatRate: number; // This will be in percentage form (e.g., 23) in the frontend
+  totalPrice: number;
+}
+
+interface ContractorDto {
+  id: number;
+  name: string;
+}
+
+interface WarehouseItemDto {
+  id: number;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+interface OrderHistoryDto {
+  id: number;
+  orderId: number;
+  action: string;
+  modifiedBy: string;
+  modifiedDate: Date;
+  details: string;
+}
+
 @Component({
   selector: 'app-orders',
-  standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './orders.component.html',
-  styleUrls: ['./orders.component.css']
+  styleUrls: ['./orders.component.css'],
+  imports: [CommonModule, FormsModule, SidebarComponent],
+  standalone: true
 })
 export class OrdersComponent implements OnInit {
+  apiUrl = 'https://localhost:7224/api/orders';
   orders: OrderDto[] = [];
+  filteredOrders: OrderDto[] = [];
   contractors: ContractorDto[] = [];
   warehouseItems: WarehouseItemDto[] = [];
-  newOrder: CreateOrderDto = {
-    orderNumber: '',
-    contractorId: 0,
-    orderType: 'Purchase',
-    orderDate: new Date(),
-    status: 'Draft',
-    orderItems: []
-  };
-  editOrder: UpdateOrderDto | null = null;
-  selectedOrder: OrderDto | null = null;
-  orderToDelete: number | null = null;
-  currentUserEmail: string | null = null;
-  showAddForm: boolean = false;
-  showDeleted: boolean = false;
-  nameFilter: string = '';
-  typeFilter: string = '';
-  statusFilter: string = '';
-  errorMessage: string | null = null;
-  successMessage: string | null = null;
   orderTypes = [
-    { display: 'Zakup', value: 'Purchase' },
-    { display: 'Sprzedaż', value: 'Sale' }
+    { value: 'Purchase', display: 'Zakup' },
+    { value: 'Sale', display: 'Sprzedaż' }
   ];
   orderStatuses = [
-    { display: 'Szkic', value: 'Draft' },
-    { display: 'Potwierdzone', value: 'Confirmed' },
-    { display: 'Zrealizowane', value: 'Completed' },
-    { display: 'Anulowane', value: 'Cancelled' }
+    { value: 'Draft', display: 'Szkic' },
+    { value: 'Confirmed', display: 'Potwierdzone' },
+    { value: 'InProgress', display: 'W trakcie' },
+    { value: 'Shipped', display: 'Wysłane' },
+    { value: 'Completed', display: 'Zakończone' },
+    { value: 'Cancelled', display: 'Anulowane' }
   ];
-  sortColumn: keyof OrderDto | null = null;
+  newOrder: OrderDto = this.createEmptyOrder();
+  editOrder: OrderDto | null = null;
+  selectedOrder: OrderDto | null = null;
+  orderToDelete: number | null = null;
+  orderHistory: OrderHistoryDto[] = [];
+  showAddForm = false;
+  showDeleted = false;
+  successMessage: string | null = null;
+  errorMessage: string | null = null;
+  notificationMessage: string | null = null;
+  isLoadingWarehouseItems = false;
+  nameFilter = '';
+  typeFilter = '';
+  statusFilter = '';
+  startDate: string | null = null;
+  endDate: string | null = null;
+  reportData: any[] = [];
+  sortColumn: keyof OrderDto = 'orderNumber';
   sortDirection: 'asc' | 'desc' = 'asc';
-  pageSize = 10;
   currentPage = 1;
-  isLoadingWarehouseItems: boolean = false;
+  pageSize = 10;
+  totalPages = 1;
+  currentUserEmail = 'test@example.com';
 
-  private apiUrl = 'https://localhost:7224/api/orders';
-  private contractorsApiUrl = 'https://localhost:7224/api/contractors';
-  private warehouseItemsApiUrl = 'https://localhost:7224/api/warehouseitems';
-
-  constructor(
-    private http: HttpClient,
-    private authService: AuthService,
-    private router: Router
-  ) { }
+  constructor(private http: HttpClient, private router: Router) { }
 
   ngOnInit() {
-    this.loadOrders();
     this.loadContractors();
     this.loadWarehouseItems();
-    this.currentUserEmail = this.authService.getCurrentUserEmail();
+    this.loadOrders();
+  }
+
+  private createEmptyOrder(): OrderDto {
+    return {
+      id: 0,
+      orderNumber: '',
+      contractorId: 0,
+      contractorName: '',
+      orderType: 'Purchase',
+      orderDate: new Date().toISOString().split('T')[0],
+      totalAmount: 0,
+      status: 'Draft',
+      createdBy: 'System',
+      createdDate: new Date().toISOString().split('T')[0], // Use yyyy-MM-dd format
+      isDeleted: false,
+      orderItems: []
+    };
   }
 
   loadOrders() {
     this.http.get<OrderDto[]>(this.apiUrl).subscribe({
       next: (data) => {
         this.orders = data;
+        this.applyFilters();
       },
-      error: (error) => this.errorMessage = `Błąd ładowania zamówień: ${error.status} ${error.message}`
+      error: (error) => this.setError(`Błąd ładowania zamówień: ${error.message}`)
     });
   }
 
   loadContractors() {
-    this.http.get<ContractorDto[]>(this.contractorsApiUrl).subscribe({
-      next: (data) => {
-        this.contractors = data.filter(c => !c.isDeleted);
-      },
-      error: (error) => this.errorMessage = `Błąd ładowania kontrahentów: ${error.status} ${error.message}`
+    this.http.get<ContractorDto[]>('https://localhost:7224/api/contractors').subscribe({
+      next: (data) => this.contractors = data,
+      error: (error) => this.setError(`Błąd ładowania kontrahentów: ${error.message}`)
     });
   }
 
-  loadWarehouseItems(): Promise<void> {
+  loadWarehouseItems() {
     this.isLoadingWarehouseItems = true;
-    return new Promise((resolve, reject) => {
-      this.http.get<WarehouseItemDto[]>(this.warehouseItemsApiUrl).subscribe({
-        next: (data) => {
-          console.log('Loaded warehouse items:', data);
-          this.warehouseItems = data.map(item => ({
-            ...item,
-            id: Number(item.id) // Ensure id is a number
-          }));
-          this.isLoadingWarehouseItems = false;
-          // Reset any invalid warehouseItemId in newOrder or editOrder
-          if (this.newOrder.orderItems.length > 0) {
-            this.newOrder.orderItems.forEach(item => {
-              item.warehouseItemId = Number(item.warehouseItemId); // Ensure type consistency
-              if (!this.warehouseItems.some(wi => wi.id === item.warehouseItemId)) {
-                item.warehouseItemId = 0;
-                item.unitPrice = 0;
-                item.totalPrice = 0;
-                item.warehouseItemName = '';
-              }
-            });
-          }
-          if (this.editOrder && this.editOrder.orderItems.length > 0) {
-            this.editOrder.orderItems.forEach(item => {
-              item.warehouseItemId = Number(item.warehouseItemId); // Ensure type consistency
-              if (!this.warehouseItems.some(wi => wi.id === item.warehouseItemId)) {
-                item.warehouseItemId = 0;
-                item.unitPrice = 0;
-                item.totalPrice = 0;
-                item.warehouseItemName = '';
-              }
-            });
-          }
-          resolve();
-        },
-        error: (error) => {
-          this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}`;
-          this.isLoadingWarehouseItems = false;
-          reject(error);
-        }
-      });
+    this.http.get<WarehouseItemDto[]>('https://localhost:7224/api/warehouseitems').subscribe({
+      next: (data) => {
+        console.log('Raw API response:', data);
+        this.warehouseItems = data.map(item => ({
+          ...item,
+          id: Number(item.id),
+          unitPrice: Number(item.unitPrice)
+        }));
+        console.log('Mapped warehouse items:', this.warehouseItems);
+        this.isLoadingWarehouseItems = false;
+      },
+      error: (error) => {
+        this.setError(`Błąd ładowania produktów: ${error.message}`);
+        this.isLoadingWarehouseItems = false;
+      }
     });
-  }
-
-  getTypeDisplay(type: string): string {
-    const typeObj = this.orderTypes.find(t => t.value === type);
-    return typeObj ? typeObj.display : type;
-  }
-
-  getStatusDisplay(status: string): string {
-    const statusObj = this.orderStatuses.find(s => s.value === status);
-    return statusObj ? statusObj.display : status;
   }
 
   applyFilters() {
@@ -148,33 +170,24 @@ export class OrdersComponent implements OnInit {
       const matchesName = !this.nameFilter || o.contractorName.toLowerCase().includes(this.nameFilter.toLowerCase());
       const matchesType = !this.typeFilter || o.orderType === this.typeFilter;
       const matchesStatus = !this.statusFilter || o.status === this.statusFilter;
-      return matchesName && matchesType && matchesStatus;
+      const matchesStartDate = !this.startDate || new Date(o.orderDate) >= new Date(this.startDate);
+      const matchesEndDate = !this.endDate || new Date(o.orderDate) <= new Date(this.endDate);
+      return matchesName && matchesType && matchesStatus && matchesStartDate && matchesEndDate;
     });
-    if (this.sortColumn) {
-      filtered.sort((a, b) => {
-        const valueA = a[this.sortColumn!];
-        const valueB = b[this.sortColumn!];
-        if (typeof valueA === 'string' && typeof valueB === 'string') {
-          return this.sortDirection === 'asc'
-            ? valueA.localeCompare(valueB)
-            : valueB.localeCompare(valueA);
-        }
-        return this.sortDirection === 'asc'
-          ? (valueA as number) - (valueB as number)
-          : (valueB as number) - (valueA as number);
-      });
-    }
-    return filtered;
-  }
 
-  get filteredOrders(): OrderDto[] {
-    const filtered = this.applyFilters();
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    return filtered.slice(startIndex, startIndex + this.pageSize);
-  }
+    filtered.sort((a, b) => {
+      const valueA = a[this.sortColumn];
+      const valueB = b[this.sortColumn];
+      if (typeof valueA === 'string' && typeof valueB === 'string') {
+        return this.sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+      }
+      return this.sortDirection === 'asc' ? (valueA as number) - (valueB as number) : (valueB as number) - (valueA as number);
+    });
 
-  get totalPages(): number {
-    return Math.ceil(this.applyFilters().length / this.pageSize);
+    this.totalPages = Math.ceil(filtered.length / this.pageSize);
+    this.currentPage = Math.min(this.currentPage, this.totalPages || 1);
+    const start = (this.currentPage - 1) * this.pageSize;
+    this.filteredOrders = filtered.slice(start, start + this.pageSize);
   }
 
   sortTable(column: keyof OrderDto) {
@@ -184,387 +197,430 @@ export class OrdersComponent implements OnInit {
       this.sortColumn = column;
       this.sortDirection = 'asc';
     }
-    this.currentPage = 1;
-  }
-
-  nextPage() {
-    if (this.currentPage < this.totalPages) {
-      this.currentPage++;
-    }
+    this.applyFilters();
   }
 
   prevPage() {
     if (this.currentPage > 1) {
       this.currentPage--;
+      this.applyFilters();
     }
   }
 
-  addOrder() {
-    if (!this.newOrder.orderNumber || !this.newOrder.contractorId || !this.newOrder.orderType || !this.newOrder.orderItems.length) {
-      this.errorMessage = 'Wszystkie pola i co najmniej jeden produkt są wymagane.';
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.applyFilters();
+    }
+  }
+
+  toggleAddForm() {
+    if (this.warehouseItems.length === 0) {
+      this.setError('Najpierw załaduj produkty z magazynu.');
       return;
     }
-    // Ensure warehouseItemId is a number
-    this.newOrder.orderItems.forEach(item => {
-      item.warehouseItemId = Number(item.warehouseItemId);
-    });
-    console.log('Submitting order with items:', this.newOrder.orderItems.map(item => ({
-      warehouseItemId: item.warehouseItemId,
-      name: this.warehouseItems.find(wi => wi.id === item.warehouseItemId)?.name || 'Not found'
-    })));
-    console.log('Current warehouseItems IDs:', this.warehouseItems.map(wi => wi.id));
-    const invalidItems = this.newOrder.orderItems.filter(item => {
-      const isValid = this.warehouseItems.some(wi => wi.id === item.warehouseItemId);
-      if (!isValid) {
-        console.log(`Invalid WarehouseItemId: ${item.warehouseItemId}`);
-      }
-      return !isValid;
-    });
-    if (invalidItems.length > 0) {
-      this.errorMessage = 'Wybrane produkty nie istnieją w magazynie. Odśwież listę produktów i spróbuj ponownie.';
-      return;
+    this.showAddForm = !this.showAddForm;
+    if (this.showAddForm) {
+      this.newOrder = this.createEmptyOrder();
+      this.http.get<{ orderNumber: string }>(`${this.apiUrl}/generate-order-number?orderType=${this.newOrder.orderType}`).subscribe({
+        next: (data) => this.newOrder.orderNumber = data.orderNumber,
+        error: (error) => this.setError(`Błąd generowania numeru: ${error.message}`)
+      });
+      this.addOrderItem(this.newOrder.orderItems);
     }
-    const orderToSubmit: CreateOrderDto = {
-      ...this.newOrder,
-      orderItems: this.newOrder.orderItems.map(item => ({
-        ...item,
-        vatRate: item.vatRate / 100
-      }))
-    };
-    orderToSubmit.createdBy = this.currentUserEmail || 'System';
-    this.http.post<OrderDto>(this.apiUrl, orderToSubmit).subscribe({
-      next: (response) => {
-        this.successMessage = `Dodano zamówienie: ${response.orderNumber}`;
-        this.errorMessage = null;
-        this.loadOrders();
-        this.toggleAddForm();
-      },
-      error: (error) => this.errorMessage = `Błąd dodawania zamówienia: ${error.status} ${error.message}`
-    });
   }
 
-  startEdit(order: OrderDto) {
-    this.editOrder = {
-      ...order,
-      orderDate: new Date(order.orderDate),
-      orderItems: order.orderItems.map(item => ({
-        ...item,
-        vatRate: item.vatRate * 100,
-        warehouseItemId: Number(item.warehouseItemId) // Ensure type consistency
-      }))
-    };
-  }
-
-  updateOrder() {
-    if (!this.editOrder || !this.editOrder.orderNumber || !this.editOrder.contractorId || !this.editOrder.orderType || !this.editOrder.orderItems.length) {
-      this.errorMessage = 'Wszystkie pola i co najmniej jeden produkt są wymagane.';
-      return;
-    }
-    // Ensure warehouseItemId is a number
-    this.editOrder.orderItems.forEach(item => {
-      item.warehouseItemId = Number(item.warehouseItemId);
-    });
-    const invalidItems = this.editOrder.orderItems.filter(item => {
-      const isValid = this.warehouseItems.some(wi => wi.id === item.warehouseItemId);
-      if (!isValid) {
-        console.log(`Invalid WarehouseItemId in edit: ${item.warehouseItemId}`);
-      }
-      return !isValid;
-    });
-    if (invalidItems.length > 0) {
-      this.errorMessage = 'Wybrane produkty nie istnieją w magazynie. Odśwież listę produktów i spróbuj ponownie.';
-      return;
-    }
-    const orderToSubmit: UpdateOrderDto = {
-      ...this.editOrder,
-      orderItems: this.editOrder.orderItems.map(item => ({
-        ...item,
-        vatRate: item.vatRate / 100
-      }))
-    };
-    this.http.put(`${this.apiUrl}/${this.editOrder.id}`, orderToSubmit).subscribe({
-      next: () => {
-        this.successMessage = `Zaktualizowano zamówienie: ${this.editOrder!.orderNumber}`;
-        this.errorMessage = null;
-        this.loadOrders();
-        this.editOrder = null;
-      },
-      error: (error) => this.errorMessage = `Błąd aktualizacji zamówienia: ${error.status} ${error.message}`
-    });
-  }
-
-  confirmDelete(id: number) {
-    this.orderToDelete = id;
-  }
-
-  cancelDelete() {
-    this.orderToDelete = null;
-  }
-
-  deleteOrder(id: number) {
-    this.http.delete(`${this.apiUrl}/${id}`).subscribe({
-      next: () => {
-        this.successMessage = 'Zamówienie usunięte.';
-        this.errorMessage = null;
-        this.loadOrders();
-        this.orderToDelete = null;
-      },
-      error: (error) => this.errorMessage = `Błąd usuwania zamówienia: ${error.status} ${error.message}`
-    });
-  }
-
-  confirmOrder(id: number) {
-    this.http.post(`${this.apiUrl}/${id}/confirm`, {}).subscribe({
-      next: () => {
-        this.successMessage = 'Zamówienie potwierdzone.';
-        this.errorMessage = null;
-        this.loadOrders();
-      },
-      error: (error) => this.errorMessage = `Błąd potwierdzania zamówienia: ${error.status} ${error.message}`
-    });
-  }
-
-  restoreOrder(id: number) {
-    this.http.post(`${this.apiUrl}/restore/${id}`, {}).subscribe({
-      next: () => {
-        this.successMessage = 'Zamówienie przywrócone.';
-        this.errorMessage = null;
-        this.loadOrders();
-      },
-      error: (error) => this.errorMessage = `Błąd przywracania zamówienia: ${error.status} ${error.message}`
-    });
-  }
-
-  addOrderItem(orderItems: OrderItemDto[]) {
-    orderItems.push({
+  addOrderItem(items: OrderItemDto[]) {
+    items.push({
+      id: 0,
+      orderId: 0,
       warehouseItemId: 0,
+      warehouseItemName: '',
       quantity: 1,
       unitPrice: 0,
-      vatRate: 23,
+      vatRate: 23, // Percentage form (will be converted to decimal when sending to backend)
       totalPrice: 0
     });
   }
 
-  removeOrderItem(orderItems: OrderItemDto[], index: number) {
-    orderItems.splice(index, 1);
+  removeOrderItem(items: OrderItemDto[], index: number) {
+    items.splice(index, 1);
+    this.updateTotalAmount(items);
   }
 
-  updateOrderItem(orderItem: OrderItemDto) {
-    orderItem.warehouseItemId = Number(orderItem.warehouseItemId); // Ensure type consistency
-    const item = this.warehouseItems.find(wi => wi.id === orderItem.warehouseItemId);
-    if (item) {
-      orderItem.unitPrice = item.price;
-      const vatDecimal = orderItem.vatRate / 100;
-      orderItem.totalPrice = orderItem.quantity * orderItem.unitPrice * (1 + vatDecimal);
-      orderItem.warehouseItemName = item.name;
-    } else {
-      orderItem.unitPrice = 0;
-      orderItem.totalPrice = 0;
-      orderItem.warehouseItemName = '';
-    }
-  }
-
-  exportToCsv() {
-    const headers = ['ID,Numer,Kontrahent,Typ,Data,Kwota,Status,Usunięty\n'];
-    const rows = this.applyFilters().map(o =>
-      `${o.id},${o.orderNumber},${o.contractorName},${o.orderType},${o.orderDate.toISOString().split('T')[0]},${o.totalAmount},${o.status},${o.isDeleted ? 'Tak' : 'Nie'}`
-    );
-    const csvContent = headers.concat(rows).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `zamowienia_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-  }
-
-  importFromCsv(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-
-    const file = input.files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-      const orders: CreateOrderDto[] = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const [orderNumber, contractorId, orderType, orderDate] = lines[i].split(',').map(val => val.trim());
-        if (orderNumber && contractorId && orderType && orderDate) {
-          orders.push({
-            orderNumber,
-            contractorId: parseInt(contractorId),
-            orderType: orderType as 'Purchase' | 'Sale',
-            orderDate: new Date(orderDate),
-            status: 'Draft',
-            orderItems: []
-          });
-        }
-      }
-
-      if (orders.length === 0) {
-        this.errorMessage = 'Brak poprawnych danych w pliku CSV.';
+  updateOrderItem(item: OrderItemDto) {
+    const warehouseItemId = Number(item.warehouseItemId);
+    const selectedItem = this.warehouseItems.find(wi => wi.id === warehouseItemId);
+    if (selectedItem) {
+      item.warehouseItemId = warehouseItemId;
+      item.warehouseItemName = selectedItem.name;
+      item.unitPrice = Number(selectedItem.unitPrice);
+      if (item.unitPrice <= 0) {
+        this.setError(`Produkt ${selectedItem.name} ma cenę 0. Zaktualizuj cenę w bazie danych.`);
+        item.totalPrice = 0;
         return;
       }
-
-      this.http.post(`${this.apiUrl}/import`, orders).subscribe({
-        next: (response: any) => {
-          this.successMessage = response.message || 'Import zakończony sukcesem.';
-          this.errorMessage = null;
-          this.loadOrders();
-          input.value = '';
-        },
-        error: (error) => {
-          this.errorMessage = error.error.message || 'Błąd importu zamówień.';
-          if (error.error.errors) {
-            this.errorMessage += ' ' + error.error.errors.join(' ');
-          }
-        }
-      });
-    };
-    reader.readAsText(file);
-  }
-
-  showDetails(order: OrderDto) {
-    this.selectedOrder = order;
-  }
-
-  closeDetails() {
-    this.selectedOrder = null;
-  }
-
-  toggleDeletedView() {
-    this.showDeleted = !this.showDeleted;
-    this.currentPage = 1;
-  }
-
-  toggleAddForm() {
-    this.showAddForm = !this.showAddForm;
-    this.errorMessage = null;
-    this.successMessage = null;
-    if (this.showAddForm) {
-      this.newOrder = {
-        orderNumber: '',
-        contractorId: 0,
-        orderType: 'Purchase',
-        orderDate: new Date(),
-        status: 'Draft',
-        orderItems: []
-      };
-      this.generateOrderNumber();
+      // Calculate totalPrice using vatRate as a percentage
+      item.totalPrice = Number((item.quantity * item.unitPrice * (1 + item.vatRate / 100)).toFixed(2));
     } else {
-      this.newOrder = {
-        orderNumber: '',
-        contractorId: 0,
-        orderType: 'Purchase',
-        orderDate: new Date(),
-        status: 'Draft',
-        orderItems: []
-      };
+      item.warehouseItemId = 0;
+      item.warehouseItemName = '';
+      item.unitPrice = 0;
+      item.totalPrice = 0;
+    }
+    this.updateTotalAmount(this.newOrder.orderItems);
+    if (this.editOrder) {
+      this.updateTotalAmount(this.editOrder.orderItems);
     }
   }
 
-  generateOrderNumber() {
-    this.http.get<{ orderNumber: string }>(`${this.apiUrl}/generate-order-number?orderType=${this.newOrder.orderType}`).subscribe({
-      next: (response) => {
-        this.newOrder.orderNumber = response.orderNumber;
-      },
-      error: (error) => this.errorMessage = `Błąd generowania numeru zamówienia: ${error.status} ${error.message}`
-    });
+  updateTotalAmount(items: OrderItemDto[]) {
+    const total = Number(items.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2));
+    if (this.editOrder) {
+      this.editOrder.totalAmount = total;
+    } else {
+      this.newOrder.totalAmount = total;
+    }
   }
 
   onOrderTypeChange() {
-    this.generateOrderNumber();
+    this.http.get<{ orderNumber: string }>(`${this.apiUrl}/generate-order-number?orderType=${this.newOrder.orderType}`).subscribe({
+      next: (data) => this.newOrder.orderNumber = data.orderNumber,
+      error: (error) => this.setError(`Błąd generowania numeru: ${error.message}`)
+    });
+  }
+
+  addOrder() {
+    if (this.newOrder.contractorId === 0) {
+      this.setError('Wybierz kontrahenta.');
+      return;
+    }
+    if (this.newOrder.orderItems.length === 0 || this.newOrder.orderItems.some((item: OrderItemDto) => item.warehouseItemId === 0)) {
+      this.setError('Dodaj co najmniej jeden produkt i wybierz produkt dla każdego elementu.');
+      return;
+    }
+    if (!this.newOrder.orderDate || !this.newOrder.orderType) {
+      this.setError('Data i typ zamówienia są wymagane.');
+      return;
+    }
+    if (this.newOrder.orderItems.some((item: OrderItemDto) => item.unitPrice <= 0)) {
+      this.setError('Wszystkie produkty muszą mieć cenę jednostkową większą od 0. Zaktualizuj ceny w bazie danych.');
+      return;
+    }
+
+    const contractor = this.contractors.find(c => c.id === Number(this.newOrder.contractorId));
+    if (!contractor) {
+      this.setError('Wybrany kontrahent nie istnieje.');
+      return;
+    }
+    this.newOrder.contractorName = contractor.name;
+    this.newOrder.contractorId = Number(this.newOrder.contractorId);
+    this.newOrder.orderItems.forEach((item: OrderItemDto) => {
+      item.warehouseItemId = Number(item.warehouseItemId);
+      const warehouseItem = this.warehouseItems.find(wi => wi.id === item.warehouseItemId);
+      if (warehouseItem) {
+        item.warehouseItemName = warehouseItem.name;
+        item.unitPrice = Number(warehouseItem.unitPrice);
+        item.totalPrice = Number((item.quantity * item.unitPrice * (1 + item.vatRate / 100)).toFixed(2));
+        item.orderId = 0;
+      }
+    });
+    this.updateTotalAmount(this.newOrder.orderItems);
+
+    this.newOrder.orderDate = new Date(this.newOrder.orderDate).toISOString().split('T')[0];
+    this.newOrder.createdDate = new Date().toISOString().split('T')[0]; // Use yyyy-MM-dd format
+
+    const payload = {
+      id: this.newOrder.id,
+      orderNumber: this.newOrder.orderNumber,
+      contractorId: this.newOrder.contractorId,
+      contractorName: this.newOrder.contractorName,
+      orderType: this.newOrder.orderType,
+      orderDate: this.newOrder.orderDate,
+      totalAmount: Number(this.newOrder.totalAmount.toFixed(2)),
+      status: this.newOrder.status,
+      createdBy: this.newOrder.createdBy,
+      createdDate: this.newOrder.createdDate,
+      isDeleted: this.newOrder.isDeleted,
+      orderItems: this.newOrder.orderItems.map((item: OrderItemDto) => ({
+        id: item.id,
+        orderId: item.orderId,
+        warehouseItemId: Number(item.warehouseItemId),
+        warehouseItemName: item.warehouseItemName,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice.toFixed(2)),
+        vatRate: Number((item.vatRate / 100).toFixed(2)), // Convert percentage to decimal (e.g., 23 -> 0.23)
+        totalPrice: Number(item.totalPrice.toFixed(2))
+      }))
+    };
+
+    // Log the payload for debugging
+    console.log('Payload being sent:', payload);
+
+    this.http.post<OrderDto>(this.apiUrl, payload).subscribe({
+      next: (response) => {
+        this.setSuccess('Zamówienie dodane.');
+        this.showAddForm = false;
+        this.loadOrders();
+        this.newOrder = this.createEmptyOrder();
+      },
+      error: (error) => {
+        let errorMsg = 'Błąd dodawania zamówienia';
+        if (error.error) {
+          // Log the full error response to see ModelState errors
+          console.error('Backend error response:', error.error);
+          if (error.error.errors) {
+            // Extract ModelState validation errors
+            const validationErrors = Object.keys(error.error.errors)
+              .map(key => `${key}: ${error.error.errors[key].join(', ')}`)
+              .join('; ');
+            errorMsg += `: ${validationErrors}`;
+          } else if (error.error.message) {
+            errorMsg += `: ${error.error.message}`;
+          }
+        } else if (error.message) {
+          errorMsg += `: ${error.message}`;
+        }
+        this.setError(errorMsg);
+      }
+    });
+  }
+
+  startEdit(order: OrderDto) {
+    this.editOrder = { ...order, orderDate: new Date(order.orderDate).toISOString().split('T')[0] };
+  }
+
+  updateOrder() {
+    if (!this.editOrder) {
+      this.setError('Brak zamówienia do edycji.');
+      return;
+    }
+    const editOrder = this.editOrder;
+    if (editOrder.contractorId === 0 || editOrder.orderItems.some((item: OrderItemDto) => item.warehouseItemId === 0)) {
+      this.setError('Wypełnij wszystkie wymagane pola.');
+      return;
+    }
+    if (editOrder.orderItems.some((item: OrderItemDto) => item.unitPrice <= 0)) {
+      this.setError('Wszystkie produkty muszą mieć cenę jednostkową większą od 0. Zaktualizuj ceny w bazie danych.');
+      return;
+    }
+    const contractor = this.contractors.find(c => c.id === editOrder.contractorId);
+    editOrder.contractorName = contractor ? contractor.name : '';
+    editOrder.orderItems.forEach((item: OrderItemDto) => {
+      item.warehouseItemId = Number(item.warehouseItemId);
+      const warehouseItem = this.warehouseItems.find(wi => wi.id === item.warehouseItemId);
+      if (warehouseItem) {
+        item.warehouseItemName = warehouseItem.name;
+        item.unitPrice = Number(warehouseItem.unitPrice);
+        item.totalPrice = Number((item.quantity * item.unitPrice * (1 + item.vatRate / 100)).toFixed(2));
+      }
+    });
+    this.updateTotalAmount(editOrder.orderItems);
+    const payload = {
+      ...editOrder,
+      totalAmount: Number(editOrder.totalAmount.toFixed(2)),
+      orderItems: editOrder.orderItems.map((item: OrderItemDto) => ({
+        id: item.id,
+        orderId: item.orderId,
+        warehouseItemId: Number(item.warehouseItemId),
+        warehouseItemName: item.warehouseItemName,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice.toFixed(2)),
+        vatRate: Number((item.vatRate / 100).toFixed(2)), // Convert percentage to decimal
+        totalPrice: Number(item.totalPrice.toFixed(2))
+      }))
+    };
+    this.http.put(`${this.apiUrl}/${editOrder.id}`, payload).subscribe({
+      next: () => {
+        this.setSuccess('Zamówienie zaktualizowane.');
+        this.editOrder = null;
+        this.loadOrders();
+      },
+      error: (error) => {
+        let errorMsg = 'Błąd aktualizacji zamówienia';
+        if (error.error && error.error.message) {
+          errorMsg += ': ' + error.error.message;
+        } else if (error.message) {
+          errorMsg += ': ' + error.message;
+        }
+        this.setError(errorMsg);
+      }
+    });
   }
 
   cancelEdit() {
     this.editOrder = null;
   }
 
+  confirmDelete(id: number) {
+    this.orderToDelete = id;
+  }
+
+  deleteOrder(id: number) {
+    this.http.delete(`${this.apiUrl}/${id}`).subscribe({
+      next: () => {
+        this.setSuccess('Zamówienie usunięte.');
+        this.orderToDelete = null;
+        this.loadOrders();
+      },
+      error: (error) => this.setError(`Błąd usuwania zamówienia: ${error.message}`)
+    });
+  }
+
+  cancelDelete() {
+    this.orderToDelete = null;
+  }
+
+  restoreOrder(id: number) {
+    const order = this.orders.find(o => o.id === id);
+    if (order) {
+      this.http.put(`${this.apiUrl}/${id}`, { ...order, isDeleted: false }).subscribe({
+        next: () => {
+          this.setSuccess('Zamówienie przywrócone.');
+          this.loadOrders();
+        },
+        error: (error) => this.setError(`Błąd przywracania zamówienia: ${error.message}`)
+      });
+    }
+  }
+
+  confirmOrder(id: number) {
+    this.http.post(`${this.apiUrl}/${id}/confirm`, {}).subscribe({
+      next: () => {
+        this.setSuccess('Zamówienie potwierdzone.');
+        this.notificationMessage = 'Zamówienie zostało potwierdzone i powiadomienie wysłane.';
+        this.loadOrders();
+      },
+      error: (error) => this.setError(`Błąd potwierdzania zamówienia: ${error.message}`)
+    });
+  }
+
+  updateStatus(order: OrderDto) {
+    this.http.post(`${this.apiUrl}/${order.id}/update-status`, { status: order.status }).subscribe({
+      next: () => {
+        this.setSuccess(`Status zmieniony na ${this.getStatusDisplay(order.status)}.`);
+        this.loadOrders();
+      },
+      error: (error) => this.setError(`Błąd zmiany statusu: ${error.message}`)
+    });
+  }
+
+  toggleDeletedView() {
+    this.showDeleted = !this.showDeleted;
+    this.currentPage = 1;
+    this.applyFilters();
+  }
+
+  showDetails(order: OrderDto) {
+    this.selectedOrder = order;
+    this.http.get<OrderHistoryDto[]>(`${this.apiUrl}/${order.id}/history`).subscribe({
+      next: (data) => this.orderHistory = data,
+      error: (error) => this.setError(`Błąd ładowania historii: ${error.message}`)
+    });
+  }
+
+  closeDetails() {
+    this.selectedOrder = null;
+    this.orderHistory = [];
+  }
+
+  getTypeDisplay(type: string): string {
+    return this.orderTypes.find(t => t.value === type)?.display || type;
+  }
+
+  getStatusDisplay(status: string): string {
+    return this.orderStatuses.find(s => s.value === status)?.display || status;
+  }
+
+  exportToCsv() {
+    const headers = ['Numer', 'Kontrahent', 'Typ', 'Data', 'Kwota', 'Status'];
+    const rows = this.filteredOrders.map(o => [
+      o.orderNumber,
+      o.contractorName,
+      this.getTypeDisplay(o.orderType),
+      new Date(o.orderDate).toLocaleDateString(),
+      o.totalAmount.toFixed(2),
+      this.getStatusDisplay(o.status)
+    ]);
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'orders.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  importFromCsv(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files?.length) {
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = reader.result as string;
+        const lines = text.split('\n').map(line => line.split(','));
+        const headers = lines[0];
+        const orders = lines.slice(1).map(row => {
+          const order: any = {};
+          headers.forEach((header, index) => {
+            order[header.trim()] = row[index]?.trim();
+          });
+          return order;
+        }).filter(o => o.Numer);
+
+        orders.forEach((o: any) => {
+          const orderDto: OrderDto = {
+            id: 0,
+            orderNumber: o.Numer,
+            contractorId: this.contractors.find(c => c.name === o.Kontrahent)?.id || 0,
+            contractorName: o.Kontrahent,
+            orderType: this.orderTypes.find(t => t.display === o.Typ)?.value || 'Purchase',
+            orderDate: new Date(o.Data).toISOString().split('T')[0],
+            totalAmount: parseFloat(o.Kwota) || 0,
+            status: this.orderStatuses.find(s => s.display === o.Status)?.value || 'Draft',
+            createdBy: 'System',
+            createdDate: new Date().toISOString().split('T')[0],
+            isDeleted: false,
+            orderItems: []
+          };
+          this.http.post(this.apiUrl, orderDto).subscribe({
+            next: () => this.loadOrders(),
+            error: (error) => this.setError(`Błąd importu: ${error.message}`)
+          });
+        });
+        this.setSuccess('Zamówienia zaimportowane.');
+      };
+      reader.readAsText(file);
+    }
+  }
+
+  generateReport() {
+    const params = new URLSearchParams();
+    if (this.startDate) params.append('startDate', this.startDate);
+    if (this.endDate) params.append('endDate', this.endDate);
+    this.http.get<any[]>(`${this.apiUrl}/report?${params.toString()}`).subscribe({
+      next: (data) => this.reportData = data,
+      error: (error) => this.setError(`Błąd generowania raportu: ${error.message}`)
+    });
+  }
+
   navigateTo(page: string) {
-    const cleanPage = page.startsWith('/') ? page.substring(1) : page;
-    this.router.navigate([cleanPage]);
+    this.router.navigate([page]);
   }
 
   logout() {
-    this.authService.logout();
     this.router.navigate(['/login']);
   }
-}
 
-interface OrderDto {
-  id: number;
-  orderNumber: string;
-  contractorId: number;
-  contractorName: string;
-  orderType: 'Purchase' | 'Sale';
-  orderDate: Date;
-  totalAmount: number;
-  status: 'Draft' | 'Confirmed' | 'Completed' | 'Cancelled';
-  createdBy: string;
-  createdDate: Date;
-  isDeleted: boolean;
-  orderItems: OrderItemDto[];
-}
+  private setError(message: string) {
+    this.errorMessage = message;
+    this.successMessage = null;
+    this.notificationMessage = null;
+  }
 
-interface CreateOrderDto {
-  orderNumber: string;
-  contractorId: number;
-  orderType: 'Purchase' | 'Sale';
-  orderDate: Date;
-  status: 'Draft' | 'Confirmed' | 'Completed' | 'Cancelled';
-  createdBy?: string;
-  orderItems: OrderItemDto[];
-}
-
-interface UpdateOrderDto {
-  id: number;
-  orderNumber: string;
-  contractorId: number;
-  orderType: 'Purchase' | 'Sale';
-  orderDate: Date;
-  status: 'Draft' | 'Confirmed' | 'Completed' | 'Cancelled';
-  orderItems: OrderItemDto[];
-}
-
-interface OrderItemDto {
-  id?: number;
-  orderId?: number;
-  warehouseItemId: number;
-  warehouseItemName?: string;
-  quantity: number;
-  unitPrice: number;
-  vatRate: number;
-  totalPrice: number;
-}
-
-interface ContractorDto {
-  id: number;
-  name: string;
-  type: string;
-  email: string;
-  phone: string;
-  address: string;
-  taxId: string;
-  isDeleted: boolean;
-}
-
-interface WarehouseItemDto {
-  id: number;
-  name: string;
-  code: string;
-  quantity: number;
-  price: number;
-  category: string;
-  location: string;
-  warehouse: string;
-  unitOfMeasure: string;
-  minimumStock: number;
-  contractorId?: number;
-  contractorName: string;
-  batchNumber: string;
-  expirationDate?: Date;
-  purchaseCost: number;
-  vatRate: number;
-  isDeleted: boolean;
+  private setSuccess(message: string) {
+    this.successMessage = message;
+    this.errorMessage = null;
+  }
 }

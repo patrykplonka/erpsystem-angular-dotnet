@@ -70,6 +70,24 @@ header {
   color: #991b1b;
 }
 
+.notification {
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fefcbf;
+  color: #744210;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+  .notification button {
+    background: none;
+    border: none;
+    color: #744210;
+    cursor: pointer;
+  }
+
 .forms-container {
   background: #ffffff;
   padding: 20px;
@@ -344,7 +362,8 @@ header {
 }
 
   .advanced-filters input,
-  .advanced-filters select {
+  .advanced-filters select,
+  .advanced-filters button {
     padding: 8px 12px;
     border: 1px solid #d1d5db;
     border-radius: 4px;
@@ -355,12 +374,34 @@ header {
     min-width: 150px;
   }
 
-    .advanced-filters input:focus,
-    .advanced-filters select:focus {
-      outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  .advanced-filters button {
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+  }
+
+    .advanced-filters button:hover {
+      background: #2563eb;
     }
+
+  .advanced-filters input:focus,
+  .advanced-filters select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+
+.report-section {
+  margin-bottom: 20px;
+}
+
+  .report-section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 15px;
+  }
 
 table {
   width: 100%;
@@ -389,7 +430,7 @@ th {
 .actions-header {
   background: #f3f4f6;
   font-weight: 600;
-  text-align: center; 
+  text-align: center;
 }
 
 td.clickable {
@@ -402,12 +443,12 @@ td.clickable {
   }
 
 .actions {
-  text-align: center; 
+  text-align: center;
 }
 
 .action-buttons {
   display: flex;
-  justify-content: center; 
+  justify-content: center;
   gap: 5px;
   flex-wrap: wrap;
 }
@@ -457,24 +498,55 @@ td.clickable {
     background: #5a6268;
   }
 
-.items-table {
+.items-table,
+.history-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
 }
 
   .items-table th,
-  .items-table td {
+  .items-table td,
+  .history-table th,
+  .history-table td {
     padding: 8px;
     border-bottom: 1px solid #e5e7eb;
     text-align: left;
     font-size: 0.85rem;
   }
 
-  .items-table th {
+  .items-table th,
+  .history-table th {
     background: #f3f4f6;
     font-weight: 600;
   }
+
+.status-update {
+  margin: 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+  .status-update label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #4b5563;
+  }
+
+  .status-update select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #1f2937;
+  }
+
+    .status-update select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
 
 .pagination {
   display: flex;
@@ -631,36 +703,43 @@ td.clickable {
 
   .actions {
     padding-left: 8px;
-    text-align: left; /* Align buttons to the left on mobile */
+    text-align: left;
   }
 
   .action-buttons {
-    justify-content: flex-start; /* Align buttons to the left on mobile */
+    justify-content: flex-start;
   }
 
-  .items-table {
+  .items-table,
+  .history-table {
     display: block;
   }
 
-    .items-table thead {
+    .items-table thead,
+    .history-table thead {
       display: none;
     }
 
     .items-table tbody,
     .items-table tr,
-    .items-table td {
+    .items-table td,
+    .history-table tbody,
+    .history-table tr,
+    .history-table td {
       display: block;
       width: 100%;
     }
 
-    .items-table td {
+    .items-table td,
+    .history-table td {
       padding: 8px;
       position: relative;
       padding-left: 50%;
       border-bottom: none;
     }
 
-      .items-table td:before {
+      .items-table td:before,
+      .history-table td:before {
         content: attr(data-label);
         position: absolute;
         left: 8px;
@@ -671,7 +750,8 @@ td.clickable {
         color: #4b5563;
       }
 
-    .items-table tr {
+    .items-table tr,
+    .history-table tr {
       border-bottom: 1px solid #e5e7eb;
       margin-bottom: 10px;
     }

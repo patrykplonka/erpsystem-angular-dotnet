@@ -64,9 +64,9 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label for="price">Cena zakupu (netto)</label>
+                  <label for="unitPrice">Cena jednostkowa (netto)</label>
                   <div class="input-with-unit">
-                    <input [(ngModel)]="newItem.price" id="price" type="number" placeholder="Cena zakupu (netto)" name="price" required min="0" step="0.01">
+                    <input [(ngModel)]="newItem.unitPrice" id="unitPrice" type="number" placeholder="Cena jednostkowa (netto)" name="unitPrice" required min="0" step="0.01">
                     <span class="unit">zł</span>
                   </div>
                 </div>
@@ -155,9 +155,9 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label for="editPrice">Cena zakupu (netto)</label>
+                  <label for="editUnitPrice">Cena jednostkowa (netto)</label>
                   <div class="input-with-unit">
-                    <input [(ngModel)]="editItem.price" id="editPrice" type="number" placeholder="Cena zakupu (netto)" name="editPrice" required min="0" step="0.01">
+                    <input [(ngModel)]="editItem.unitPrice" id="editUnitPrice" type="number" placeholder="Cena jednostkowa (netto)" name="editUnitPrice" required min="0" step="0.01">
                     <span class="unit">zł</span>
                   </div>
                 </div>
@@ -236,7 +236,7 @@
                 <th (click)="sortItems('warehouse')">Magazyn <span [ngClass]="{'sort-asc': sortField === 'warehouse' && sortDirection === 'asc', 'sort-desc': sortField === 'warehouse' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('quantity')">Ilość <span [ngClass]="{'sort-asc': sortField === 'quantity' && sortDirection === 'asc', 'sort-desc': sortField === 'quantity' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('unitOfMeasure')">Jednostka miary <span [ngClass]="{'sort-asc': sortField === 'unitOfMeasure' && sortDirection === 'asc', 'sort-desc': sortField === 'unitOfMeasure' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('price')">Cena zakupu (netto) <span [ngClass]="{'sort-asc': sortField === 'price' && sortDirection === 'asc', 'sort-desc': sortField === 'price' && sortDirection === 'desc'}"></span></th>
+                <th (click)="sortItems('unitPrice')">Cena jednostkowa (netto) <span [ngClass]="{'sort-asc': sortField === 'unitPrice' && sortDirection === 'asc', 'sort-desc': sortField === 'unitPrice' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('purchaseCost')">Koszt zakupu (netto) <span [ngClass]="{'sort-asc': sortField === 'purchaseCost' && sortDirection === 'asc', 'sort-desc': sortField === 'purchaseCost' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('vatRate')">Stawka VAT <span [ngClass]="{'sort-asc': sortField === 'vatRate' && sortDirection === 'asc', 'sort-desc': sortField === 'vatRate' && sortDirection === 'desc'}"></span></th>
                 <th (click)="sortItems('minimumStock')">Min. stan <span [ngClass]="{'sort-asc': sortField === 'minimumStock' && sortDirection === 'asc', 'sort-desc': sortField === 'minimumStock' && sortDirection === 'desc'}"></span></th>
@@ -255,7 +255,7 @@
                 <td data-label="Magazyn">{{ item.warehouse }}</td>
                 <td data-label="Ilość">{{ item.quantity }}</td>
                 <td data-label="Jednostka miary">{{ item.unitOfMeasure }}</td>
-                <td data-label="Cena zakupu (netto)">{{ item.price }} zł</td>
+                <td data-label="Cena jednostkowa (netto)">{{ item.unitPrice }} zł</td>
                 <td data-label="Koszt zakupu (netto)">{{ item.purchaseCost }} zł</td>
                 <td data-label="Stawka VAT">{{ formatVatRate(item.vatRate) }}</td>
                 <td data-label="Min. stan">{{ item.minimumStock }}</td>

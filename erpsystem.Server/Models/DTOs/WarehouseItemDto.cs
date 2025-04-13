@@ -17,8 +17,8 @@ namespace erpsystem.Server.Models.DTOs
         [Range(0, int.MaxValue, ErrorMessage = "Ilość musi być nieujemna")]
         public int Quantity { get; set; }
 
-        [Range(0, double.MaxValue, ErrorMessage = "Cena musi być nieujemna")]
-        public decimal Price { get; set; }
+        [Range(0.01, double.MaxValue, ErrorMessage = "Cena musi być większa od 0")]
+        public decimal UnitPrice { get; set; } 
 
         [Required(ErrorMessage = "Kategoria jest wymagana")]
         [StringLength(50, ErrorMessage = "Kategoria nie może przekraczać 50 znaków")]

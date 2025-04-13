@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using erpsystem.Server.Models;
 using erpsystem.Server.Models.DTOs;
 using System;
+using System.Linq;
+using System.Threading.Tasks;
 using erpsystem.Server.Data;
 
 namespace erpsystem.Server.Controllers
@@ -29,7 +31,7 @@ namespace erpsystem.Server.Controllers
                     Name = wi.Name,
                     Code = wi.Code,
                     Quantity = wi.Quantity,
-                    Price = wi.Price,
+                    UnitPrice = wi.Price, 
                     Category = wi.Category,
                     Location = wi.Location,
                     Warehouse = wi.Warehouse,
@@ -45,7 +47,7 @@ namespace erpsystem.Server.Controllers
                 })
                 .ToListAsync();
 
-            Console.WriteLine($"Returning {items.Count} warehouse items: {string.Join(", ", items.Select(i => $"{{Id: {i.Id}, Name: {i.Name}}}"))}");
+            Console.WriteLine($"Returning {items.Count} warehouse items: {string.Join(", ", items.Select(i => $"{{Id: {i.Id}, Name: {i.Name}, UnitPrice: {i.UnitPrice}}}"))}");
             return Ok(items);
         }
     }

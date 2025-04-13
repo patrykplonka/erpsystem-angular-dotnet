@@ -15,6 +15,10 @@
         <div class="messages">
           <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
           <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+          <div class="notification" *ngIf="notificationMessage">
+            {{ notificationMessage }}
+            <button (click)="notificationMessage = null">Zamknij</button>
+          </div>
         </div>
         <div class="forms-container" *ngIf="showAddForm">
           <div class="add-order-form">
@@ -63,7 +67,7 @@
                   </div>
                   <div class="form-group">
                     <label>Cena jednostkowa</label>
-                    <input [value]="item.unitPrice | currency:'PLN'" [name]="'unitPrice' + i" readonly>
+                    <input [(ngModel)]="item.unitPrice" [name]="'unitPrice' + i" readonly [ngModel]="item.unitPrice | currency:'PLN'">
                   </div>
                   <div class="form-group vat-group">
                     <label>Stawka VAT (%)</label>
@@ -71,7 +75,7 @@
                   </div>
                   <div class="form-group">
                     <label>Cena całkowita</label>
-                    <input [value]="item.totalPrice | currency:'PLN'" [name]="'totalPrice' + i" readonly>
+                    <input [(ngModel)]="item.totalPrice" [name]="'totalPrice' + i" readonly [ngModel]="item.totalPrice | currency:'PLN'">
                   </div>
                   <button type="button" class="remove-item" (click)="removeOrderItem(newOrder.orderItems, i)">Usuń</button>
                 </div>
@@ -131,7 +135,7 @@
                   </div>
                   <div class="form-group">
                     <label>Cena jednostkowa</label>
-                    <input [value]="item.unitPrice | currency:'PLN'" [name]="'editUnitPrice' + i" readonly>
+                    <input [(ngModel)]="item.unitPrice" [name]="'editUnitPrice' + i" readonly [ngModel]="item.unitPrice | currency:'PLN'">
                   </div>
                   <div class="form-group vat-group">
                     <label>Stawka VAT (%)</label>
@@ -139,7 +143,7 @@
                   </div>
                   <div class="form-group">
                     <label>Cena całkowita</label>
-                    <input [value]="item.totalPrice | currency:'PLN'" [name]="'editTotalPrice' + i" readonly>
+                    <input [(ngModel)]="item.totalPrice" [name]="'editTotalPrice' + i" readonly [ngModel]="item.totalPrice | currency:'PLN'">
                   </div>
                   <button type="button" class="remove-item" (click)="removeOrderItem(editOrder.orderItems, i)">Usuń</button>
                 </div>
@@ -174,6 +178,28 @@
               <option value="">Wszystkie statusy</option>
               <option *ngFor="let status of orderStatuses" [value]="status.value">{{ status.display }}</option>
             </select>
+            <input type="date" [(ngModel)]="startDate" (ngModelChange)="applyFilters()" placeholder="Od">
+            <input type="date" [(ngModel)]="endDate" (ngModelChange)="applyFilters()" placeholder="Do">
+            <button (click)="generateReport()">Generuj raport</button>
+          </div>
+          <div class="report-section" *ngIf="reportData.length > 0">
+            <h3>Raport zamówień</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Kontrahent</th>
+                  <th>Liczba zamówień</th>
+                  <th>Łączna kwota</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let report of reportData">
+                  <td>{{ report.contractor }}</td>
+                  <td>{{ report.totalOrders }}</td>
+                  <td>{{ report.totalAmount | currency:'PLN' }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
           <table>
             <thead>
@@ -215,12 +241,18 @@
         <div class="modal" *ngIf="selectedOrder">
           <div class="modal-content">
             <h3>Szczegóły zamówienia</h3>
-            <p><strong>Numer:</strong> {{ selectedOrder.orderNumber }}</p>
-            <p><strong>Kontrahent:</strong> {{ selectedOrder.contractorName }}</p>
-            <p><strong>Typ:</strong> {{ getTypeDisplay(selectedOrder.orderType) }}</p>
-            <p><strong>Data:</strong> {{ selectedOrder.orderDate | date:'shortDate' }}</p>
-            <p><strong>Kwota:</strong> {{ selectedOrder.totalAmount | currency:'PLN' }}</p>
-            <p><strong>Status:</strong> {{ getStatusDisplay(selectedOrder.status) }}</p>
+            <p><strong>Numer:</strong> {{ selectedOrder?.orderNumber }}</p>
+            <p><strong>Kontrahent:</strong> {{ selectedOrder?.contractorName }}</p>
+            <p><strong>Typ:</strong> {{ getTypeDisplay(selectedOrder?.orderType || '') }}</p>
+            <p><strong>Data:</strong> {{ selectedOrder?.orderDate | date:'shortDate' }}</p>
+            <p><strong>Kwota:</strong> {{ selectedOrder?.totalAmount | currency:'PLN' }}</p>
+            <p><strong>Status:</strong> {{ getStatusDisplay(selectedOrder?.status || '') }}</p>
+            <div class="status-update">
+              <label for="updateStatus">Zmień status:</label>
+              <select id="updateStatus" [(ngModel)]="selectedOrder.status" (ngModelChange)="updateStatus(selectedOrder)">
+                <option *ngFor="let status of orderStatuses" [value]="status.value">{{ status.display }}</option>
+              </select>
+            </div>
             <h4>Produkty</h4>
             <table class="items-table">
               <thead>
@@ -242,6 +274,25 @@
                 </tr>
               </tbody>
             </table>
+            <h4>Historia zmian</h4>
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Akcja</th>
+                  <th>Użytkownik</th>
+                  <th>Data</th>
+                  <th>Szczegóły</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let history of orderHistory">
+                  <td>{{ history.action }}</td>
+                  <td>{{ history.modifiedBy }}</td>
+                  <td>{{ history.modifiedDate | date:'short' }}</td>
+                  <td>{{ history.details }}</td>
+                </tr>
+              </tbody>
+            </table>
             <button class="close-button" (click)="closeDetails()">Zamknij</button>
           </div>
         </div>
@@ -250,7 +301,7 @@
             <h3>Potwierdź usunięcie</h3>
             <p>Czy na pewno chcesz usunąć to zamówienie?</p>
             <div class="form-buttons">
-              <button class="delete-button" (click)="deleteOrder(orderToDelete)">Tak</button>
+              <button class="delete-button" (click)="deleteOrder(orderToDelete!)">Tak</button>
               <button class="cancel-button" (click)="cancelDelete()">Nie</button>
             </div>
           </div>
