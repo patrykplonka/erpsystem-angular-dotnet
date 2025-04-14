@@ -4,45 +4,58 @@ using erpsystem.Server.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Caching.Memory;
 
 [ApiController]
 [Route("api/[controller]")]
 public class WarehouseController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IMemoryCache _cache;
 
-    public WarehouseController(ApplicationDbContext context)
+    public WarehouseController(ApplicationDbContext context, IMemoryCache cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetItems()
     {
-        var items = await _context.WarehouseItems
-            .Where(i => !i.IsDeleted)
-            .Include(i => i.Contractor) 
-            .ToListAsync();
-
-        var itemDtos = items.Select(item => new WarehouseItemDto
+        const string cacheKey = "WarehouseItems";
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto> itemDtos))
         {
-            Id = item.Id,
-            Name = item.Name,
-            Code = item.Code,
-            Quantity = item.Quantity,
-            UnitPrice = item.Price,
-            Category = item.Category,
-            Location = item.Location,
-            Warehouse = item.Warehouse,
-            UnitOfMeasure = item.UnitOfMeasure,
-            MinimumStock = item.MinimumStock,
-            ContractorId = item.ContractorId, 
-            ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty, 
-            BatchNumber = item.BatchNumber,
-            ExpirationDate = item.ExpirationDate,
-            PurchaseCost = item.PurchaseCost,
-            VatRate = item.VatRate
-        }).ToList();
+            var items = await _context.WarehouseItems
+                .Where(i => !i.IsDeleted)
+                .Include(i => i.Contractor)
+                .ToListAsync();
+
+            itemDtos = items.Select(item => new WarehouseItemDto
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Code = item.Code,
+                Quantity = item.Quantity,
+                UnitPrice = item.Price,
+                Category = item.Category,
+                Location = item.Location,
+                Warehouse = item.Warehouse,
+                UnitOfMeasure = item.UnitOfMeasure,
+                MinimumStock = item.MinimumStock,
+                ContractorId = item.ContractorId,
+                ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
+                BatchNumber = item.BatchNumber,
+                ExpirationDate = item.ExpirationDate,
+                PurchaseCost = item.PurchaseCost,
+                VatRate = item.VatRate
+            }).ToList();
+
+            var cacheOptions = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+            };
+            _cache.Set(cacheKey, itemDtos, cacheOptions);
+        }
 
         return Ok(itemDtos);
     }
@@ -55,7 +68,6 @@ public class WarehouseController : ControllerBase
 
         if (await _context.WarehouseItems.AnyAsync(i => i.Code == createDto.Code && !i.IsDeleted))
             return BadRequest("Produkt o podanym kodzie już istnieje.");
-
 
         if (createDto.ContractorId.HasValue && !await _context.Contractors.AnyAsync(c => c.Id == createDto.ContractorId && !c.IsDeleted))
             return BadRequest("Podany dostawca nie istnieje lub jest usunięty.");
@@ -71,7 +83,7 @@ public class WarehouseController : ControllerBase
             Warehouse = createDto.Warehouse,
             UnitOfMeasure = createDto.UnitOfMeasure,
             MinimumStock = createDto.MinimumStock,
-            ContractorId = createDto.ContractorId, 
+            ContractorId = createDto.ContractorId,
             BatchNumber = createDto.BatchNumber,
             ExpirationDate = createDto.ExpirationDate,
             PurchaseCost = createDto.PurchaseCost,
@@ -95,6 +107,8 @@ public class WarehouseController : ControllerBase
         _context.OperationLogs.Add(log);
 
         await _context.SaveChangesAsync();
+
+        _cache.Remove("WarehouseItems");
 
         var resultDto = new WarehouseItemDto
         {
@@ -141,36 +155,48 @@ public class WarehouseController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        _cache.Remove("WarehouseItems");
+
         return NoContent();
     }
 
     [HttpGet("deleted")]
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetDeletedItems()
     {
-        var deletedItems = await _context.WarehouseItems
-            .Where(i => i.IsDeleted)
-            .Include(i => i.Contractor) 
-            .ToListAsync();
-
-        var itemDtos = deletedItems.Select(item => new WarehouseItemDto
+        const string cacheKey = "DeletedWarehouseItems";
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto> itemDtos))
         {
-            Id = item.Id,
-            Name = item.Name,
-            Code = item.Code,
-            Quantity = item.Quantity,
-            UnitPrice = item.Price,
-            Category = item.Category,
-            Location = item.Location,
-            Warehouse = item.Warehouse,
-            UnitOfMeasure = item.UnitOfMeasure,
-            MinimumStock = item.MinimumStock,
-            ContractorId = item.ContractorId,
-            ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
-            BatchNumber = item.BatchNumber,
-            ExpirationDate = item.ExpirationDate,
-            PurchaseCost = item.PurchaseCost,
-            VatRate = item.VatRate
-        }).ToList();
+            var deletedItems = await _context.WarehouseItems
+                .Where(i => i.IsDeleted)
+                .Include(i => i.Contractor)
+                .ToListAsync();
+
+            itemDtos = deletedItems.Select(item => new WarehouseItemDto
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Code = item.Code,
+                Quantity = item.Quantity,
+                UnitPrice = item.Price,
+                Category = item.Category,
+                Location = item.Location,
+                Warehouse = item.Warehouse,
+                UnitOfMeasure = item.UnitOfMeasure,
+                MinimumStock = item.MinimumStock,
+                ContractorId = item.ContractorId,
+                ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
+                BatchNumber = item.BatchNumber,
+                ExpirationDate = item.ExpirationDate,
+                PurchaseCost = item.PurchaseCost,
+                VatRate = item.VatRate
+            }).ToList();
+
+            var cacheOptions = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+            };
+            _cache.Set(cacheKey, itemDtos, cacheOptions);
+        }
 
         return Ok(itemDtos);
     }
@@ -187,7 +213,6 @@ public class WarehouseController : ControllerBase
 
         if (item.Code != updateDto.Code && await _context.WarehouseItems.AnyAsync(i => i.Code == updateDto.Code && !i.IsDeleted))
             return BadRequest("Produkt o podanym kodzie już istnieje.");
-
 
         if (updateDto.ContractorId.HasValue && !await _context.Contractors.AnyAsync(c => c.Id == updateDto.ContractorId && !c.IsDeleted))
             return BadRequest("Podany dostawca nie istnieje lub jest usunięty.");
@@ -213,13 +238,15 @@ public class WarehouseController : ControllerBase
         item.Warehouse = updateDto.Warehouse;
         item.UnitOfMeasure = updateDto.UnitOfMeasure;
         item.MinimumStock = updateDto.MinimumStock;
-        item.ContractorId = updateDto.ContractorId; 
+        item.ContractorId = updateDto.ContractorId;
         item.BatchNumber = updateDto.BatchNumber;
         item.ExpirationDate = updateDto.ExpirationDate;
         item.PurchaseCost = updateDto.PurchaseCost;
         item.VatRate = updateDto.VatRate;
 
         await _context.SaveChangesAsync();
+
+        _cache.Remove("WarehouseItems");
 
         var resultDto = new WarehouseItemDto
         {
@@ -268,6 +295,8 @@ public class WarehouseController : ControllerBase
         item.Location = request.NewLocation;
         await _context.SaveChangesAsync();
 
+        _cache.Remove("WarehouseItems");
+
         var resultDto = new WarehouseItemDto
         {
             Id = item.Id,
@@ -315,6 +344,9 @@ public class WarehouseController : ControllerBase
         _context.OperationLogs.Add(log);
 
         await _context.SaveChangesAsync();
+
+        _cache.Remove("WarehouseItems");
+        _cache.Remove("DeletedWarehouseItems");
 
         var resultDto = new WarehouseItemDto
         {
@@ -430,6 +462,8 @@ public class WarehouseController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        _cache.Remove("WarehouseItems");
+
         var resultDto = new WarehouseItemDto
         {
             Id = item.Id,
@@ -460,23 +494,33 @@ public class WarehouseController : ControllerBase
         if (item == null)
             return NotFound("Produkt nie istnieje.");
 
-        var movements = await _context.WarehouseMovements
-            .Where(m => m.WarehouseItemId == id)
-            .Select(m => new WarehouseMovementsDTO
+        var cacheKey = $"WarehouseMovements_{id}";
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseMovementsDTO> movements))
+        {
+            movements = await _context.WarehouseMovements
+                .Where(m => m.WarehouseItemId == id)
+                .Select(m => new WarehouseMovementsDTO
+                {
+                    Id = m.Id,
+                    WarehouseItemId = m.WarehouseItemId,
+                    MovementType = m.MovementType.ToString(),
+                    Quantity = m.Quantity,
+                    Description = m.Description,
+                    Date = m.Date,
+                    CreatedBy = m.CreatedBy,
+                    Supplier = m.Supplier,
+                    DocumentNumber = m.DocumentNumber,
+                    Status = m.Status,
+                    Comment = m.Comment
+                })
+                .ToListAsync();
+
+            var cacheOptions = new MemoryCacheEntryOptions
             {
-                Id = m.Id,
-                WarehouseItemId = m.WarehouseItemId,
-                MovementType = m.MovementType.ToString(),
-                Quantity = m.Quantity,
-                Description = m.Description,
-                Date = m.Date,
-                CreatedBy = m.CreatedBy,
-                Supplier = m.Supplier,
-                DocumentNumber = m.DocumentNumber,
-                Status = m.Status,
-                Comment = m.Comment
-            })
-            .ToListAsync();
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+            };
+            _cache.Set(cacheKey, movements, cacheOptions);
+        }
 
         return Ok(movements);
     }
@@ -484,47 +528,68 @@ public class WarehouseController : ControllerBase
     [HttpGet("operation-logs")]
     public ActionResult<IEnumerable<OperationLogDto>> GetOperationLogs()
     {
-        var logs = _context.OperationLogs
-            .Select(l => new OperationLogDto
+        const string cacheKey = "OperationLogs";
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<OperationLogDto> logs))
+        {
+            logs = _context.OperationLogs
+                .Select(l => new OperationLogDto
+                {
+                    Id = l.Id,
+                    User = l.User,
+                    Operation = l.Operation,
+                    ItemId = l.ItemId,
+                    ItemName = l.ItemName,
+                    Timestamp = l.Timestamp.ToString("o"),
+                    Details = l.Details
+                })
+                .ToList();
+
+            var cacheOptions = new MemoryCacheEntryOptions
             {
-                Id = l.Id,
-                User = l.User,
-                Operation = l.Operation,
-                ItemId = l.ItemId,
-                ItemName = l.ItemName,
-                Timestamp = l.Timestamp.ToString("o"),
-                Details = l.Details
-            })
-            .ToList();
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+            };
+            _cache.Set(cacheKey, logs, cacheOptions);
+        }
+
         return Ok(logs);
     }
 
     [HttpGet("low-stock")]
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetLowStockItems()
     {
-        var lowStockItems = await _context.WarehouseItems
-            .Where(i => !i.IsDeleted && i.Quantity <= i.MinimumStock)
-            .Include(i => i.Contractor) 
-            .Select(item => new WarehouseItemDto
+        const string cacheKey = "LowStockItems";
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto> lowStockItems))
+        {
+            lowStockItems = await _context.WarehouseItems
+                .Where(i => !i.IsDeleted && i.Quantity <= i.MinimumStock)
+                .Include(i => i.Contractor)
+                .Select(item => new WarehouseItemDto
+                {
+                    Id = item.Id,
+                    Name = item.Name,
+                    Code = item.Code,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.Price,
+                    Category = item.Category,
+                    Location = item.Location,
+                    Warehouse = item.Warehouse,
+                    UnitOfMeasure = item.UnitOfMeasure,
+                    MinimumStock = item.MinimumStock,
+                    ContractorId = item.ContractorId,
+                    ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
+                    BatchNumber = item.BatchNumber,
+                    ExpirationDate = item.ExpirationDate,
+                    PurchaseCost = item.PurchaseCost,
+                    VatRate = item.VatRate
+                })
+                .ToListAsync();
+
+            var cacheOptions = new MemoryCacheEntryOptions
             {
-                Id = item.Id,
-                Name = item.Name,
-                Code = item.Code,
-                Quantity = item.Quantity,
-                UnitPrice = item.Price,
-                Category = item.Category,
-                Location = item.Location,
-                Warehouse = item.Warehouse,
-                UnitOfMeasure = item.UnitOfMeasure,
-                MinimumStock = item.MinimumStock,
-                ContractorId = item.ContractorId,
-                ContractorName = item.Contractor != null ? item.Contractor.Name : string.Empty,
-                BatchNumber = item.BatchNumber,
-                ExpirationDate = item.ExpirationDate,
-                PurchaseCost = item.PurchaseCost,
-                VatRate = item.VatRate
-            })
-            .ToListAsync();
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+            };
+            _cache.Set(cacheKey, lowStockItems, cacheOptions);
+        }
 
         return Ok(lowStockItems);
     }

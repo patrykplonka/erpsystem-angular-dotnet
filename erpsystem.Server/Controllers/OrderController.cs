@@ -5,6 +5,7 @@ using erpsystem.Server.Models.DTOs;
 using System.Linq;
 using System.Threading.Tasks;
 using erpsystem.Server.Data;
+using Microsoft.Extensions.Caching.Memory;
 using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
@@ -14,47 +15,59 @@ namespace erpsystem.Server.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IMemoryCache _cache;
 
-        public OrdersController(ApplicationDbContext context)
+        public OrdersController(ApplicationDbContext context, IMemoryCache cache)
         {
             _context = context;
+            _cache = cache;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<OrderDto>>> GetOrders()
         {
-            var orders = await _context.Orders
-                .Include(o => o.Contractor)
-                .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.WarehouseItem)
-                .Where(o => !o.IsDeleted)
-                .ToListAsync();
-
-            var orderDtos = orders.Select(o => new OrderDto
+            const string cacheKey = "Orders";
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<OrderDto> orderDtos))
             {
-                Id = o.Id,
-                OrderNumber = o.OrderNumber,
-                ContractorId = o.ContractorId,
-                ContractorName = o.Contractor != null ? o.Contractor.Name : "Brak kontrahenta",
-                OrderType = o.OrderType,
-                OrderDate = o.OrderDate,
-                TotalAmount = o.TotalAmount,
-                Status = o.Status,
-                CreatedBy = o.CreatedBy,
-                CreatedDate = o.CreatedDate,
-                IsDeleted = o.IsDeleted,
-                OrderItems = o.OrderItems.Select(oi => new OrderItemDto
+                var orders = await _context.Orders
+                    .Include(o => o.Contractor)
+                    .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.WarehouseItem)
+                    .Where(o => !o.IsDeleted)
+                    .ToListAsync();
+
+                orderDtos = orders.Select(o => new OrderDto
                 {
-                    Id = oi.Id,
-                    OrderId = oi.OrderId,
-                    WarehouseItemId = oi.WarehouseItemId,
-                    WarehouseItemName = oi.WarehouseItem != null ? oi.WarehouseItem.Name : "Brak produktu",
-                    Quantity = oi.Quantity,
-                    UnitPrice = oi.UnitPrice,
-                    VatRate = oi.VatRate,
-                    TotalPrice = oi.TotalPrice
-                }).ToList()
-            }).ToList();
+                    Id = o.Id,
+                    OrderNumber = o.OrderNumber,
+                    ContractorId = o.ContractorId,
+                    ContractorName = o.Contractor != null ? o.Contractor.Name : "Brak kontrahenta",
+                    OrderType = o.OrderType,
+                    OrderDate = o.OrderDate,
+                    TotalAmount = o.TotalAmount,
+                    Status = o.Status,
+                    CreatedBy = o.CreatedBy,
+                    CreatedDate = o.CreatedDate,
+                    IsDeleted = o.IsDeleted,
+                    OrderItems = o.OrderItems.Select(oi => new OrderItemDto
+                    {
+                        Id = oi.Id,
+                        OrderId = oi.OrderId,
+                        WarehouseItemId = oi.WarehouseItemId,
+                        WarehouseItemName = oi.WarehouseItem != null ? oi.WarehouseItem.Name : "Brak produktu",
+                        Quantity = oi.Quantity,
+                        UnitPrice = oi.UnitPrice,
+                        VatRate = oi.VatRate,
+                        TotalPrice = oi.TotalPrice
+                    }).ToList()
+                }).ToList();
+
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, orderDtos, cacheOptions);
+            }
 
             return Ok(orderDtos);
         }
@@ -62,42 +75,52 @@ namespace erpsystem.Server.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<OrderDto>> GetOrder(int id)
         {
-            var order = await _context.Orders
-                .Include(o => o.Contractor)
-                .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.WarehouseItem)
-                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
-
-            if (order == null)
+            var cacheKey = $"Order_{id}";
+            if (!_cache.TryGetValue(cacheKey, out OrderDto orderDto))
             {
-                return NotFound();
-            }
+                var order = await _context.Orders
+                    .Include(o => o.Contractor)
+                    .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.WarehouseItem)
+                    .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
-            var orderDto = new OrderDto
-            {
-                Id = order.Id,
-                OrderNumber = order.OrderNumber,
-                ContractorId = order.ContractorId,
-                ContractorName = order.Contractor != null ? order.Contractor.Name : "Brak kontrahenta",
-                OrderType = order.OrderType,
-                OrderDate = order.OrderDate,
-                TotalAmount = order.TotalAmount,
-                Status = order.Status,
-                CreatedBy = order.CreatedBy,
-                CreatedDate = order.CreatedDate,
-                IsDeleted = order.IsDeleted,
-                OrderItems = order.OrderItems.Select(oi => new OrderItemDto
+                if (order == null)
                 {
-                    Id = oi.Id,
-                    OrderId = oi.OrderId,
-                    WarehouseItemId = oi.WarehouseItemId,
-                    WarehouseItemName = oi.WarehouseItem != null ? oi.WarehouseItem.Name : "Brak produktu",
-                    Quantity = oi.Quantity,
-                    UnitPrice = oi.UnitPrice,
-                    VatRate = oi.VatRate,
-                    TotalPrice = oi.TotalPrice
-                }).ToList()
-            };
+                    return NotFound();
+                }
+
+                orderDto = new OrderDto
+                {
+                    Id = order.Id,
+                    OrderNumber = order.OrderNumber,
+                    ContractorId = order.ContractorId,
+                    ContractorName = order.Contractor != null ? order.Contractor.Name : "Brak kontrahenta",
+                    OrderType = order.OrderType,
+                    OrderDate = order.OrderDate,
+                    TotalAmount = order.TotalAmount,
+                    Status = order.Status,
+                    CreatedBy = order.CreatedBy,
+                    CreatedDate = order.CreatedDate,
+                    IsDeleted = order.IsDeleted,
+                    OrderItems = order.OrderItems.Select(oi => new OrderItemDto
+                    {
+                        Id = oi.Id,
+                        OrderId = oi.OrderId,
+                        WarehouseItemId = oi.WarehouseItemId,
+                        WarehouseItemName = oi.WarehouseItem != null ? oi.WarehouseItem.Name : "Brak produktu",
+                        Quantity = oi.Quantity,
+                        UnitPrice = oi.UnitPrice,
+                        VatRate = oi.VatRate,
+                        TotalPrice = oi.TotalPrice
+                    }).ToList()
+                };
+
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, orderDto, cacheOptions);
+            }
 
             return Ok(orderDto);
         }
@@ -161,6 +184,8 @@ namespace erpsystem.Server.Controllers
             };
             _context.OrderHistory.Add(history);
             await _context.SaveChangesAsync();
+
+            _cache.Remove("Orders");
 
             orderDto.Id = order.Id;
             orderDto.TotalAmount = order.TotalAmount;
@@ -235,6 +260,9 @@ namespace erpsystem.Server.Controllers
 
             await _context.SaveChangesAsync();
 
+            _cache.Remove("Orders");
+            _cache.Remove($"Order_{id}");
+
             return NoContent();
         }
 
@@ -261,6 +289,9 @@ namespace erpsystem.Server.Controllers
 
             await _context.SaveChangesAsync();
 
+            _cache.Remove("Orders");
+            _cache.Remove($"Order_{id}");
+
             return NoContent();
         }
 
@@ -272,16 +303,26 @@ namespace erpsystem.Server.Controllers
                 return BadRequest(new { message = "Nieprawidłowy typ zamówienia." });
             }
 
-            var today = DateTime.UtcNow.ToString("yyyyMMdd");
-            var prefix = orderType == "Purchase" ? "PO" : "SO";
-            var pattern = $"{prefix}-{today}-%";
+            var cacheKey = $"OrderNumber_{orderType}_{DateTime.UtcNow:yyyyMMdd}";
+            if (!_cache.TryGetValue(cacheKey, out string orderNumber))
+            {
+                var today = DateTime.UtcNow.ToString("yyyyMMdd");
+                var prefix = orderType == "Purchase" ? "PO" : "SO";
+                var pattern = $"{prefix}-{today}-%";
 
-            var count = await _context.Orders
-                .Where(o => o.OrderNumber.StartsWith($"{prefix}-{today}-") && !o.IsDeleted)
-                .CountAsync();
+                var count = await _context.Orders
+                    .Where(o => o.OrderNumber.StartsWith($"{prefix}-{today}-") && !o.IsDeleted)
+                    .CountAsync();
 
-            var sequence = (count + 1).ToString("D3");
-            var orderNumber = $"{prefix}-{today}-{sequence}";
+                var sequence = (count + 1).ToString("D3");
+                orderNumber = $"{prefix}-{today}-{sequence}";
+
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, orderNumber, cacheOptions);
+            }
 
             return Ok(new { orderNumber });
         }
@@ -357,6 +398,10 @@ namespace erpsystem.Server.Controllers
 
             await _context.SaveChangesAsync();
 
+            _cache.Remove("Orders");
+            _cache.Remove($"Order_{id}");
+            _cache.Remove("WarehouseItemsAll");
+
             return Ok(new { message = "Zamówienie zostało potwierdzone." });
         }
 
@@ -412,24 +457,38 @@ namespace erpsystem.Server.Controllers
 
             await _context.SaveChangesAsync();
 
+            _cache.Remove("Orders");
+            _cache.Remove($"Order_{id}");
+            _cache.Remove("WarehouseItemsAll");
+
             return Ok(new { message = "Zamówienie zostało przyjęte." });
         }
 
         [HttpGet("{id}/history")]
         public async Task<IActionResult> GetOrderHistory(int id)
         {
-            var history = await _context.OrderHistory
-                .Where(h => h.OrderId == id)
-                .Select(h => new OrderHistoryDto
+            var cacheKey = $"OrderHistory_{id}";
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<OrderHistoryDto> history))
+            {
+                history = await _context.OrderHistory
+                    .Where(h => h.OrderId == id)
+                    .Select(h => new OrderHistoryDto
+                    {
+                        Id = h.Id,
+                        OrderId = h.OrderId,
+                        Action = h.Action,
+                        ModifiedBy = h.ModifiedBy,
+                        ModifiedDate = h.ModifiedDate,
+                        Details = h.Details
+                    })
+                    .ToListAsync();
+
+                var cacheOptions = new MemoryCacheEntryOptions
                 {
-                    Id = h.Id,
-                    OrderId = h.OrderId,
-                    Action = h.Action,
-                    ModifiedBy = h.ModifiedBy,
-                    ModifiedDate = h.ModifiedDate,
-                    Details = h.Details
-                })
-                .ToListAsync();
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, history, cacheOptions);
+            }
 
             return Ok(history);
         }
@@ -459,30 +518,43 @@ namespace erpsystem.Server.Controllers
 
             await _context.SaveChangesAsync();
 
+            _cache.Remove("Orders");
+            _cache.Remove($"Order_{id}");
+
             return Ok(new { message = $"Status zmieniony na {newStatus}." });
         }
 
         [HttpGet("report")]
         public async Task<IActionResult> GetOrderReport([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
         {
-            var query = _context.Orders
-                .Include(o => o.Contractor)
-                .Where(o => !o.IsDeleted);
+            var cacheKey = $"OrderReport_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}";
+            if (!_cache.TryGetValue(cacheKey, out var report))
+            {
+                var query = _context.Orders
+                    .Include(o => o.Contractor)
+                    .Where(o => !o.IsDeleted);
 
-            if (startDate.HasValue)
-                query = query.Where(o => o.OrderDate >= startDate.Value);
-            if (endDate.HasValue)
-                query = query.Where(o => o.OrderDate <= endDate.Value);
+                if (startDate.HasValue)
+                    query = query.Where(o => o.OrderDate >= startDate.Value);
+                if (endDate.HasValue)
+                    query = query.Where(o => o.OrderDate <= endDate.Value);
 
-            var report = await query
-                .GroupBy(o => o.Contractor.Name)
-                .Select(g => new
+                report = await query
+                    .GroupBy(o => o.Contractor.Name)
+                    .Select(g => new
+                    {
+                        Contractor = g.Key,
+                        TotalOrders = g.Count(),
+                        TotalAmount = g.Sum(o => o.TotalAmount)
+                    })
+                    .ToListAsync();
+
+                var cacheOptions = new MemoryCacheEntryOptions
                 {
-                    Contractor = g.Key,
-                    TotalOrders = g.Count(),
-                    TotalAmount = g.Sum(o => o.TotalAmount)
-                })
-                .ToListAsync();
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, report, cacheOptions);
+            }
 
             return Ok(report);
         }
@@ -490,12 +562,23 @@ namespace erpsystem.Server.Controllers
         [HttpGet("dashboard-stats")]
         public async Task<IActionResult> GetDashboardStats()
         {
-            var stats = new
+            const string cacheKey = "DashboardStats";
+            if (!_cache.TryGetValue(cacheKey, out var stats))
             {
-                TotalOrders = await _context.Orders.CountAsync(o => !o.IsDeleted),
-                PendingOrders = await _context.Orders.CountAsync(o => o.Status == "Draft" && !o.IsDeleted),
-                TotalRevenue = await _context.Orders.Where(o => o.OrderType == "Sale" && !o.IsDeleted).SumAsync(o => o.TotalAmount)
-            };
+                stats = new
+                {
+                    TotalOrders = await _context.Orders.CountAsync(o => !o.IsDeleted),
+                    PendingOrders = await _context.Orders.CountAsync(o => o.Status == "Draft" && !o.IsDeleted),
+                    TotalRevenue = await _context.Orders.Where(o => o.OrderType == "Sale" && !o.IsDeleted).SumAsync(o => o.TotalAmount)
+                };
+
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, stats, cacheOptions);
+            }
+
             return Ok(stats);
         }
     }

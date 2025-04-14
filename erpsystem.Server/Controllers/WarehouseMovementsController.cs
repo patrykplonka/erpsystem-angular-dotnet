@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using erpsystem.Server.Data;
 using erpsystem.Server.Models.DTOs;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace erpsystem.Server.Controllers
 {
@@ -11,10 +12,12 @@ namespace erpsystem.Server.Controllers
     public class WarehouseMovementsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IMemoryCache _cache;
 
-        public WarehouseMovementsController(ApplicationDbContext context)
+        public WarehouseMovementsController(ApplicationDbContext context, IMemoryCache cache)
         {
             _context = context;
+            _cache = cache;
         }
 
         [HttpPost]
@@ -34,30 +37,28 @@ namespace erpsystem.Server.Controllers
 
             switch (movementType)
             {
-                case WarehouseMovementType.PZ: // Przyjęcie Zewnętrzne
-                case WarehouseMovementType.PW: // Przyjęcie Wewnętrzne
-                case WarehouseMovementType.ZW: // Zwrot Wewnętrzny
-                case WarehouseMovementType.ZK: // Zwrot Konsygnacyjny
+                case WarehouseMovementType.PZ:
+                case WarehouseMovementType.PW:
+                case WarehouseMovementType.ZW:
+                case WarehouseMovementType.ZK:
                     item.Quantity += movementDto.Quantity;
                     break;
 
-                case WarehouseMovementType.WZ: // Wydanie Zewnętrzne
-                case WarehouseMovementType.RW: // Rozchód Wewnętrzny
+                case WarehouseMovementType.WZ:
+                case WarehouseMovementType.RW:
                     if (item.Quantity < movementDto.Quantity)
                         return BadRequest("Niewystarczająca ilość na magazynie");
                     item.Quantity -= movementDto.Quantity;
                     break;
 
-                case WarehouseMovementType.MM: // Przesunięcie Międzymagazynowe
-                    // Tutaj można dodać logikę dla przesunięć, np. wymaga pola TargetWarehouseId
+                case WarehouseMovementType.MM:
                     if (item.Quantity < movementDto.Quantity)
                         return BadRequest("Niewystarczająca ilość na magazynie do przesunięcia");
-                    item.Quantity -= movementDto.Quantity; // Zmniejsz w źródłowym magazynie
-                    // Dodaj logikę zwiększenia w docelowym magazynie, jeśli masz TargetWarehouseId
+                    item.Quantity -= movementDto.Quantity;
                     break;
 
-                case WarehouseMovementType.INW: // Inwentaryzacja
-                    item.Quantity = movementDto.Quantity; // Ustaw nową wartość stanu
+                case WarehouseMovementType.INW:
+                    item.Quantity = movementDto.Quantity;
                     break;
 
                 default:
@@ -82,6 +83,10 @@ namespace erpsystem.Server.Controllers
             _context.WarehouseItems.Update(item);
             await _context.SaveChangesAsync();
 
+            _cache.Remove("AllMovements");
+            _cache.Remove($"MovementsByItem_{movementDto.WarehouseItemId}");
+            _cache.Remove("WarehouseItemsAll");
+
             var responseDto = new WarehouseMovementsDTO
             {
                 Id = movement.Id,
@@ -104,23 +109,33 @@ namespace erpsystem.Server.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllMovements()
         {
-            var movements = await _context.WarehouseMovements
-                .OrderByDescending(m => m.Date)
-                .Select(m => new WarehouseMovementsDTO
+            const string cacheKey = "AllMovements";
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseMovementsDTO> movements))
+            {
+                movements = await _context.WarehouseMovements
+                    .OrderByDescending(m => m.Date)
+                    .Select(m => new WarehouseMovementsDTO
+                    {
+                        Id = m.Id,
+                        WarehouseItemId = m.WarehouseItemId,
+                        MovementType = m.MovementType.ToString(),
+                        Quantity = m.Quantity,
+                        Supplier = m.Supplier,
+                        DocumentNumber = m.DocumentNumber,
+                        Date = m.Date,
+                        Description = m.Description,
+                        CreatedBy = m.CreatedBy,
+                        Status = m.Status,
+                        Comment = m.Comment
+                    })
+                    .ToListAsync();
+
+                var cacheOptions = new MemoryCacheEntryOptions
                 {
-                    Id = m.Id,
-                    WarehouseItemId = m.WarehouseItemId,
-                    MovementType = m.MovementType.ToString(),
-                    Quantity = m.Quantity,
-                    Supplier = m.Supplier,
-                    DocumentNumber = m.DocumentNumber,
-                    Date = m.Date,
-                    Description = m.Description,
-                    CreatedBy = m.CreatedBy,
-                    Status = m.Status,
-                    Comment = m.Comment
-                })
-                .ToListAsync();
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, movements, cacheOptions);
+            }
 
             Console.WriteLine($"Returning all movements: {System.Text.Json.JsonSerializer.Serialize(movements)}");
             return Ok(movements);
@@ -129,24 +144,34 @@ namespace erpsystem.Server.Controllers
         [HttpGet("item/{warehouseItemId}")]
         public async Task<IActionResult> GetMovementsByItem(int warehouseItemId)
         {
-            var movements = await _context.WarehouseMovements
-                .Where(m => m.WarehouseItemId == warehouseItemId)
-                .OrderByDescending(m => m.Date)
-                .Select(m => new WarehouseMovementsDTO
+            var cacheKey = $"MovementsByItem_{warehouseItemId}";
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseMovementsDTO> movements))
+            {
+                movements = await _context.WarehouseMovements
+                    .Where(m => m.WarehouseItemId == warehouseItemId)
+                    .OrderByDescending(m => m.Date)
+                    .Select(m => new WarehouseMovementsDTO
+                    {
+                        Id = m.Id,
+                        WarehouseItemId = m.WarehouseItemId,
+                        MovementType = m.MovementType.ToString(),
+                        Quantity = m.Quantity,
+                        Supplier = m.Supplier,
+                        DocumentNumber = m.DocumentNumber,
+                        Date = m.Date,
+                        Description = m.Description,
+                        CreatedBy = m.CreatedBy,
+                        Status = m.Status,
+                        Comment = m.Comment
+                    })
+                    .ToListAsync();
+
+                var cacheOptions = new MemoryCacheEntryOptions
                 {
-                    Id = m.Id,
-                    WarehouseItemId = m.WarehouseItemId,
-                    MovementType = m.MovementType.ToString(),
-                    Quantity = m.Quantity,
-                    Supplier = m.Supplier,
-                    DocumentNumber = m.DocumentNumber,
-                    Date = m.Date,
-                    Description = m.Description,
-                    CreatedBy = m.CreatedBy,
-                    Status = m.Status,
-                    Comment = m.Comment
-                })
-                .ToListAsync();
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, movements, cacheOptions);
+            }
 
             Console.WriteLine($"Returning movements for item {warehouseItemId}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
             return Ok(movements);
@@ -164,24 +189,34 @@ namespace erpsystem.Server.Controllers
             if (startDate > endDate)
                 return BadRequest("Data początkowa nie może być późniejsza niż data końcowa.");
 
-            var movements = await _context.WarehouseMovements
-                .Where(m => m.Date >= startDate && m.Date <= endDate)
-                .OrderBy(m => m.Date)
-                .Select(m => new WarehouseMovementsDTO
+            var cacheKey = $"MovementsInPeriod_{start}_{end}";
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseMovementsDTO> movements))
+            {
+                movements = await _context.WarehouseMovements
+                    .Where(m => m.Date >= startDate && m.Date <= endDate)
+                    .OrderBy(m => m.Date)
+                    .Select(m => new WarehouseMovementsDTO
+                    {
+                        Id = m.Id,
+                        WarehouseItemId = m.WarehouseItemId,
+                        MovementType = m.MovementType.ToString(),
+                        Quantity = m.Quantity,
+                        Supplier = m.Supplier,
+                        DocumentNumber = m.DocumentNumber,
+                        Date = m.Date,
+                        Description = m.Description,
+                        CreatedBy = m.CreatedBy,
+                        Status = m.Status,
+                        Comment = m.Comment
+                    })
+                    .ToListAsync();
+
+                var cacheOptions = new MemoryCacheEntryOptions
                 {
-                    Id = m.Id,
-                    WarehouseItemId = m.WarehouseItemId,
-                    MovementType = m.MovementType.ToString(),
-                    Quantity = m.Quantity,
-                    Supplier = m.Supplier,
-                    DocumentNumber = m.DocumentNumber,
-                    Date = m.Date,
-                    Description = m.Description,
-                    CreatedBy = m.CreatedBy,
-                    Status = m.Status,
-                    Comment = m.Comment
-                })
-                .ToListAsync();
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, movements, cacheOptions);
+            }
 
             Console.WriteLine($"Returning movements for period {start} to {end}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
             return Ok(movements);

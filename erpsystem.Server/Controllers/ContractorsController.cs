@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using erpsystem.Server.Data;
 using erpsystem.Server.Models;
 using erpsystem.Server.Models.DTOs;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace erpsystem.Server.Controllers
 {
@@ -11,10 +12,12 @@ namespace erpsystem.Server.Controllers
     public class ContractorsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IMemoryCache _cache;
 
-        public ContractorsController(ApplicationDbContext context)
+        public ContractorsController(ApplicationDbContext context, IMemoryCache cache)
         {
             _context = context;
+            _cache = cache;
         }
 
         [HttpGet]
@@ -22,20 +25,31 @@ namespace erpsystem.Server.Controllers
         {
             try
             {
-                var contractors = await _context.Contractors
-                    .Where(c => !c.IsDeleted && (c.Type == "Supplier" || c.Type == "Both"))
-                    .Select(c => new ContractorDTO
+                const string cacheKey = "Contractors";
+                if (!_cache.TryGetValue(cacheKey, out IEnumerable<ContractorDTO> contractors))
+                {
+                    contractors = await _context.Contractors
+                        .Where(c => !c.IsDeleted && (c.Type == "Supplier" || c.Type == "Both"))
+                        .Select(c => new ContractorDTO
+                        {
+                            Id = c.Id,
+                            Name = c.Name,
+                            Type = c.Type,
+                            Email = c.Email,
+                            Phone = c.Phone,
+                            Address = c.Address,
+                            TaxId = c.TaxId,
+                            IsDeleted = c.IsDeleted
+                        })
+                        .ToListAsync();
+
+                    var cacheOptions = new MemoryCacheEntryOptions
                     {
-                        Id = c.Id,
-                        Name = c.Name,
-                        Type = c.Type,
-                        Email = c.Email,
-                        Phone = c.Phone,
-                        Address = c.Address,
-                        TaxId = c.TaxId,
-                        IsDeleted = c.IsDeleted
-                    })
-                    .ToListAsync();
+                        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                    };
+                    _cache.Set(cacheKey, contractors, cacheOptions);
+                }
+
                 return Ok(contractors);
             }
             catch (Exception ex)
@@ -49,25 +63,36 @@ namespace erpsystem.Server.Controllers
         {
             try
             {
-                var contractor = await _context.Contractors
-                    .Where(c => c.Id == id)
-                    .Select(c => new ContractorDTO
-                    {
-                        Id = c.Id,
-                        Name = c.Name,
-                        Type = c.Type,
-                        Email = c.Email,
-                        Phone = c.Phone,
-                        Address = c.Address,
-                        TaxId = c.TaxId,
-                        IsDeleted = c.IsDeleted
-                    })
-                    .FirstOrDefaultAsync();
-
-                if (contractor == null)
+                var cacheKey = $"Contractor_{id}";
+                if (!_cache.TryGetValue(cacheKey, out ContractorDTO contractor))
                 {
-                    return NotFound("Kontrahent nie znaleziony.");
+                    contractor = await _context.Contractors
+                        .Where(c => c.Id == id)
+                        .Select(c => new ContractorDTO
+                        {
+                            Id = c.Id,
+                            Name = c.Name,
+                            Type = c.Type,
+                            Email = c.Email,
+                            Phone = c.Phone,
+                            Address = c.Address,
+                            TaxId = c.TaxId,
+                            IsDeleted = c.IsDeleted
+                        })
+                        .FirstOrDefaultAsync();
+
+                    if (contractor == null)
+                    {
+                        return NotFound("Kontrahent nie znaleziony.");
+                    }
+
+                    var cacheOptions = new MemoryCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                    };
+                    _cache.Set(cacheKey, contractor, cacheOptions);
                 }
+
                 return Ok(contractor);
             }
             catch (Exception ex)
@@ -105,6 +130,8 @@ namespace erpsystem.Server.Controllers
 
                 _context.Contractors.Add(contractor);
                 await _context.SaveChangesAsync();
+
+                _cache.Remove("Contractors");
 
                 var responseDto = new ContractorDTO
                 {
@@ -164,6 +191,10 @@ namespace erpsystem.Server.Controllers
                 _context.Entry(contractor).State = EntityState.Modified;
 
                 await _context.SaveChangesAsync();
+
+                _cache.Remove("Contractors");
+                _cache.Remove($"Contractor_{id}");
+
                 return NoContent();
             }
             catch (DbUpdateConcurrencyException)
@@ -193,6 +224,10 @@ namespace erpsystem.Server.Controllers
 
                 contractor.IsDeleted = true;
                 await _context.SaveChangesAsync();
+
+                _cache.Remove("Contractors");
+                _cache.Remove($"Contractor_{id}");
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -214,6 +249,10 @@ namespace erpsystem.Server.Controllers
 
                 contractor.IsDeleted = false;
                 await _context.SaveChangesAsync();
+
+                _cache.Remove("Contractors");
+                _cache.Remove($"Contractor_{id}");
+
                 return NoContent();
             }
             catch (Exception ex)
