@@ -11,16 +11,16 @@ interface InvoiceDto {
   id: number;
   orderId: number;
   invoiceNumber: string;
-  issueDate: string;
-  dueDate: string;
+  issueDate: Date;
+  dueDate: Date;
   contractorId: number;
   contractorName: string;
   totalAmount: number;
   vatAmount: number;
   netAmount: number;
   status: string;
-  filePath: string;
-  createdDate: string;
+  filePath: string | null;
+  createdDate: Date;
   createdBy: string;
 }
 
@@ -33,16 +33,17 @@ interface InvoiceDto {
 })
 export class InvoiceComponent implements OnInit {
   invoices: InvoiceDto[] = [];
+  filteredInvoices: InvoiceDto[] = [];
   currentUserEmail: string | null = null;
-  currentUserFullName: string = 'Unknown';
+  currentUserFullName = 'Unknown';
   errorMessage: string | null = null;
   successMessage: string | null = null;
-  invoiceSortField: string = '';
+  invoiceSortField: keyof InvoiceDto = 'invoiceNumber';
   invoiceSortDirection: 'asc' | 'desc' = 'asc';
-  invoiceStatusFilter: string = '';
-  invoiceStartDateFilter: string = '';
-  invoiceEndDateFilter: string = '';
-  invoiceUserFilter: string = '';
+  invoiceStatusFilter = '';
+  invoiceStartDateFilter: string | null = null;
+  invoiceEndDateFilter: string | null = null;
+  invoiceUserFilter = '';
 
   constructor(
     private http: HttpClient,
@@ -57,16 +58,18 @@ export class InvoiceComponent implements OnInit {
   }
 
   loadInvoices() {
-    this.http.get<InvoiceDto[]>('https://localhost:7224/api/orders/invoices', {
+    this.http.get<InvoiceDto[]>('https://localhost:7224/api/invoices', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     }).subscribe({
       next: (data) => {
         this.invoices = data.map(invoice => ({
           ...invoice,
-          issueDate: this.formatDate(invoice.issueDate),
-          dueDate: this.formatDate(invoice.dueDate),
+          issueDate: new Date(invoice.issueDate),
+          dueDate: new Date(invoice.dueDate),
+          createdDate: new Date(invoice.createdDate),
           status: this.mapStatusFromApi(invoice.status)
         }));
+        this.applyFilters();
       },
       error: (error) => {
         this.errorMessage = `Błąd ładowania faktur: ${error.status} ${error.message}`;
@@ -75,83 +78,72 @@ export class InvoiceComponent implements OnInit {
   }
 
   downloadInvoice(invoice: InvoiceDto) {
-    this.http.get(`https://localhost:7224/api/orders/invoices/download/${invoice.id}`, {
+    this.http.get(`https://localhost:7224/api/invoices/download/${invoice.id}`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
       responseType: 'blob'
     }).subscribe({
       next: (blob) => {
         saveAs(blob, `Invoice_${invoice.invoiceNumber}.pdf`);
         this.successMessage = `Faktura ${invoice.invoiceNumber} została pobrana.`;
+        this.errorMessage = null;
       },
       error: (error) => {
         this.errorMessage = `Błąd podczas pobierania faktury: ${error.status} ${error.message}`;
+        this.successMessage = null;
       }
     });
   }
 
-  formatDate(date: string | Date): string {
-    const d = new Date(date);
-    return d.toLocaleString('pl-PL', {
+  formatDate(date: Date): string {
+    return date.toLocaleString('pl-PL', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
   }
 
   mapStatusFromApi(status: string): string {
     switch (status) {
-      case 'Draft':
-        return 'Szkic';
-      case 'Issued':
-        return 'Wystawiona';
-      case 'Paid':
-        return 'Zapłacona';
-      case 'Overdue':
-        return 'Zaległa';
-      default:
-        return status;
+      case 'Draft': return 'Szkic';
+      case 'Issued': return 'Wystawiona';
+      case 'Paid': return 'Zapłacona';
+      case 'Overdue': return 'Zaległa';
+      default: return status;
     }
   }
 
   applyFilters() {
-  }
-
-  get filteredInvoices(): InvoiceDto[] {
-    let filtered = this.invoices.filter(i => {
+    this.filteredInvoices = this.invoices.filter(i => {
       const matchesStatus = !this.invoiceStatusFilter ||
-        i.status.toLowerCase().includes(this.invoiceStatusFilter.toLowerCase());
+        this.mapStatusFromApi(i.status).toLowerCase().includes(this.invoiceStatusFilter.toLowerCase());
       const matchesStartDate = !this.invoiceStartDateFilter ||
-        new Date(i.issueDate).getTime() >= new Date(this.invoiceStartDateFilter).getTime();
+        new Date(i.issueDate) >= new Date(this.invoiceStartDateFilter);
       const matchesEndDate = !this.invoiceEndDateFilter ||
-        new Date(i.issueDate).getTime() <= new Date(this.invoiceEndDateFilter).getTime();
+        new Date(i.issueDate) <= new Date(this.invoiceEndDateFilter);
       const matchesUser = !this.invoiceUserFilter ||
         i.createdBy.toLowerCase().includes(this.invoiceUserFilter.toLowerCase());
       return matchesStatus && matchesStartDate && matchesEndDate && matchesUser;
     });
 
-    if (this.invoiceSortField) {
-      filtered.sort((a, b) => {
-        const valueA = a[this.invoiceSortField as keyof InvoiceDto];
-        const valueB = b[this.invoiceSortField as keyof InvoiceDto];
-        if (this.invoiceSortField === 'issueDate' || this.invoiceSortField === 'dueDate') {
-          return this.invoiceSortDirection === 'asc'
-            ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
-            : new Date(valueB as string).getTime() - new Date(valueA as string).getTime();
-        } else if (typeof valueA === 'string' && typeof valueB === 'string') {
-          return this.invoiceSortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-        } else if (typeof valueA === 'number' && typeof valueB === 'number') {
-          return this.invoiceSortDirection === 'asc' ? valueA - valueB : valueB - valueA;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
+    this.filteredInvoices.sort((a, b) => {
+      const valueA = a[this.invoiceSortField];
+      const valueB = b[this.invoiceSortField];
+      if (this.invoiceSortField === 'issueDate' || this.invoiceSortField === 'dueDate' || this.invoiceSortField === 'createdDate') {
+        return this.invoiceSortDirection === 'asc'
+          ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
+          : new Date(valueB as string).getTime() - new Date(valueA as string).getTime();
+      }
+      if (typeof valueA === 'string' && typeof valueB === 'string') {
+        return this.invoiceSortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+      }
+      if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return this.invoiceSortDirection === 'asc' ? valueA - valueB : valueB - valueA;
+      }
+      return 0;
+    });
   }
 
-  sortInvoices(field: string) {
+  sortInvoices(field: keyof InvoiceDto) {
     if (this.invoiceSortField === field) {
       this.invoiceSortDirection = this.invoiceSortDirection === 'asc' ? 'desc' : 'asc';
     } else {

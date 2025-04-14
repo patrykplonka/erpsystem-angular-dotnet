@@ -19,8 +19,8 @@
         <div class="movements-container">
           <div class="advanced-filters">
             <input [(ngModel)]="invoiceStatusFilter" placeholder="Filtruj po statusie" (ngModelChange)="applyFilters()">
-            <input [(ngModel)]="invoiceStartDateFilter" type="date" placeholder="Od daty" (ngModelChange)="applyFilters()">
-            <input [(ngModel)]="invoiceEndDateFilter" type="date" placeholder="Do daty" (ngModelChange)="applyFilters()">
+            <input [(ngModel)]="invoiceStartDateFilter" type="date" (ngModelChange)="applyFilters()">
+            <input [(ngModel)]="invoiceEndDateFilter" type="date" (ngModelChange)="applyFilters()">
             <input [(ngModel)]="invoiceUserFilter" placeholder="Filtruj po użytkowniku" (ngModelChange)="applyFilters()">
           </div>
           <h4>Lista faktur</h4>
@@ -45,14 +45,14 @@
                 <td data-label="Numer faktury">{{ invoice.invoiceNumber }}</td>
                 <td data-label="Zamówienie">{{ invoice.orderId }}</td>
                 <td data-label="Kontrahent">{{ invoice.contractorName }}</td>
-                <td data-label="Data wystawienia">{{ invoice.issueDate }}</td>
-                <td data-label="Data płatności">{{ invoice.dueDate }}</td>
+                <td data-label="Data wystawienia">{{ formatDate(invoice.issueDate) }}</td>
+                <td data-label="Data płatności">{{ formatDate(invoice.dueDate) }}</td>
                 <td data-label="Kwota netto">{{ invoice.netAmount | number:'1.2-2' }} PLN</td>
                 <td data-label="VAT">{{ invoice.vatAmount | number:'1.2-2' }} PLN</td>
                 <td data-label="Kwota brutto">{{ invoice.totalAmount | number:'1.2-2' }} PLN</td>
                 <td data-label="Status">{{ invoice.status }}</td>
                 <td data-label="Użytkownik">{{ invoice.createdBy }}</td>
-                <td>
+                <td data-label="Akcje">
                   <button class="action-button add-button" (click)="downloadInvoice(invoice)">Pobierz PDF</button>
                 </td>
               </tr>

@@ -20,6 +20,33 @@ namespace erpsystem.Server.Controllers
             _context = context;
         }
 
+        [HttpGet]
+        public async Task<ActionResult<InvoiceDto[]>> GetInvoices()
+        {
+            var invoices = await _context.Invoices
+                .Where(i => !string.IsNullOrEmpty(i.InvoiceNumber))
+                .Select(i => new InvoiceDto
+                {
+                    Id = i.Id,
+                    OrderId = i.OrderId,
+                    InvoiceNumber = i.InvoiceNumber,
+                    IssueDate = i.IssueDate,
+                    DueDate = i.DueDate,
+                    ContractorId = i.ContractorId,
+                    ContractorName = i.ContractorName,
+                    TotalAmount = i.TotalAmount,
+                    VatAmount = i.VatAmount,
+                    NetAmount = i.NetAmount,
+                    Status = i.Status,
+                    FilePath = i.FilePath,
+                    CreatedBy = i.CreatedBy,
+                    CreatedDate = i.CreatedDate
+                })
+                .ToArrayAsync();
+
+            return Ok(invoices);
+        }
+
         [HttpPost("generate/{orderId}")]
         public async Task<ActionResult<InvoiceDto>> GenerateInvoice(int orderId, [FromBody] InvoiceRequestDto request)
         {
@@ -87,6 +114,20 @@ namespace erpsystem.Server.Controllers
             };
 
             return Ok(invoiceDto);
+        }
+
+        [HttpGet("download/{id}")]
+        public async Task<IActionResult> DownloadInvoice(int id)
+        {
+            var invoice = await _context.Invoices.FindAsync(id);
+            if (invoice == null)
+            {
+                return NotFound(new { message = $"Faktura o ID {id} nie istnieje." });
+            }
+
+            var content = System.Text.Encoding.UTF8.GetBytes($"Faktura: {invoice.InvoiceNumber}\nZamówienie: {invoice.OrderId}\nData wystawienia: {invoice.IssueDate:yyyy-MM-dd}\nKwota brutto: {invoice.TotalAmount}");
+            var stream = new MemoryStream(content);
+            return File(stream, "application/pdf", $"Invoice_{invoice.InvoiceNumber}.pdf");
         }
 
         private async Task<string> GenerateInvoiceNumber()
