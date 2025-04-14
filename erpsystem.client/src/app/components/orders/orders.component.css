@@ -762,3 +762,22 @@ td.clickable {
     flex-direction: column;
   }
 }
+
+.invoice-button {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0 4px;
+}
+
+  .invoice-button:hover {
+    background-color: #059669;
+  }
+
+  .invoice-button:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }

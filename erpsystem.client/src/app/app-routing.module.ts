@@ -7,7 +7,8 @@ import { ProductManagementComponent } from './components/product-management/prod
 import { WarehouseMovementsComponent } from './components/warehouse-movements/warehouse-movements.component';
 import { WarehouseReportsComponent } from './components/warehouse-reports/warehouse-reports.component';
 import { ContractorsComponent } from './components/contractors/contractors.component';
-import { OrdersComponent } from './components/orders/orders.component'; 
+import { OrdersComponent } from './components/orders/orders.component';
+import { InvoiceComponent } from './components/invoice/invoice.component'; 
   
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -17,6 +18,7 @@ const routes: Routes = [
   { path: 'reports', component: WarehouseReportsComponent, canActivate: [AuthGuard] },
   { path: 'contractors', component: ContractorsComponent, canActivate: [AuthGuard] },
   { path: 'orders', component: OrdersComponent, canActivate: [AuthGuard] },
+  { path: 'invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: '**', redirectTo: '/login' }
 ];

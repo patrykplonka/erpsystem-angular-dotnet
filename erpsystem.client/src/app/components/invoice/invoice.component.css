@@ -1,0 +1,125 @@
+.movements-container {
+  padding: 25px;
+  background: #f9fafb;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+  .movements-container h4 {
+    margin: 25px 0 15px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2a44;
+  }
+
+  .movements-container table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .movements-container thead {
+    background: #1f2a44;
+    color: #ffffff;
+  }
+
+  .movements-container th,
+  .movements-container td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .movements-container th {
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    position: relative;
+    padding-right: 30px;
+  }
+
+    .movements-container th .sort-asc::after {
+      content: '↑';
+      position: absolute;
+      right: 10px;
+      color: #e2e8f0;
+    }
+
+    .movements-container th .sort-desc::after {
+      content: '↓';
+      position: absolute;
+      right: 10px;
+      color: #e2e8f0;
+    }
+
+  .movements-container td {
+    font-size: 14px;
+    color: #1f2a44;
+  }
+
+  .movements-container tbody tr {
+    transition: background 0.3s ease;
+  }
+
+    .movements-container tbody tr:hover {
+      background: #f1f5f9;
+    }
+
+    .movements-container tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+.advanced-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+  .advanced-filters input {
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    background: #f9fafb;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+    .advanced-filters input:focus {
+      border-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+@media (max-width: 768px) {
+  .movements-container table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .movements-container th,
+  .movements-container td {
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .advanced-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 769px) {
+  .movements-container th,
+  .movements-container td {
+    padding: 16px 20px;
+  }
+}
