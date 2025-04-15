@@ -6,6 +6,10 @@ using erpsystem.Server.Models.DTOs;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using System.IO;
 
 namespace erpsystem.Server.Controllers
 {
@@ -119,15 +123,31 @@ namespace erpsystem.Server.Controllers
         [HttpGet("download/{id}")]
         public async Task<IActionResult> DownloadInvoice(int id)
         {
-            var invoice = await _context.Invoices.FindAsync(id);
-            if (invoice == null)
+            try
             {
-                return NotFound(new { message = $"Faktura o ID {id} nie istnieje." });
-            }
+                var invoice = await _context.Invoices.FindAsync(id);
+                if (invoice == null)
+                {
+                    return NotFound(new { message = $"Faktura o ID {id} nie istnieje." });
+                }
 
-            var content = System.Text.Encoding.UTF8.GetBytes($"Faktura: {invoice.InvoiceNumber}\nZamówienie: {invoice.OrderId}\nData wystawienia: {invoice.IssueDate:yyyy-MM-dd}\nKwota brutto: {invoice.TotalAmount}");
-            var stream = new MemoryStream(content);
-            return File(stream, "application/pdf", $"Invoice_{invoice.InvoiceNumber}.pdf");
+                using var memoryStream = new MemoryStream();
+                using var writer = new PdfWriter(memoryStream);
+                using var pdf = new PdfDocument(writer);
+                using var document = new Document(pdf);
+
+                document.Add(new Paragraph($"Faktura: {invoice.InvoiceNumber}"));
+                document.Add(new Paragraph($"Zamówienie: {invoice.OrderId}"));
+                document.Add(new Paragraph($"Data wystawienia: {invoice.IssueDate:yyyy-MM-dd}"));
+                document.Add(new Paragraph($"Kwota brutto: {invoice.TotalAmount} PLN"));
+
+                document.Close();
+                return File(memoryStream.ToArray(), "application/pdf", $"Invoice_{invoice.InvoiceNumber}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas generowania PDF", details = ex.ToString() });
+            }
         }
 
         private async Task<string> GenerateInvoiceNumber()
