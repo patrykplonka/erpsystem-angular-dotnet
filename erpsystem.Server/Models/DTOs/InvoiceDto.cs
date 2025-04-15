@@ -1,4 +1,6 @@
-﻿namespace erpsystem.Server.Models.DTOs
+﻿using System;
+
+namespace erpsystem.Server.Models.DTOs
 {
     public class InvoiceDto
     {
@@ -14,7 +16,7 @@
         public decimal NetAmount { get; set; }
         public string Status { get; set; }
         public string FilePath { get; set; }
-        public DateTime CreatedDate { get; set; }
         public string CreatedBy { get; set; }
+        public DateTime CreatedDate { get; set; }
     }
 }

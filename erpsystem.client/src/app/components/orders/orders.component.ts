@@ -52,6 +52,23 @@ interface OrderHistoryDto {
   details: string;
 }
 
+interface InvoiceDto {
+  id: number;
+  orderId: number;
+  invoiceNumber: string;
+  issueDate: string;
+  dueDate: string;
+  contractorId: number;
+  contractorName: string;
+  totalAmount: number;
+  vatAmount: number;
+  netAmount: number;
+  status: string;
+  filePath: string;
+  createdDate: string;
+  createdBy: string;
+}
+
 @Component({
   selector: 'app-orders',
   templateUrl: './orders.component.html',
@@ -89,6 +106,7 @@ export class OrdersComponent implements OnInit {
   errorMessage: string | null = null;
   notificationMessage: string | null = null;
   isLoadingWarehouseItems = false;
+  isGeneratingInvoice = false;
   nameFilter = '';
   typeFilter = '';
   statusFilter = '';
@@ -527,6 +545,51 @@ export class OrdersComponent implements OnInit {
         error: (error) => this.setError(`Błąd podczas przyjęcia zamówienia: ${error.message}`)
       });
     }
+  }
+  generateInvoice(orderId: number) {
+    this.isGeneratingInvoice = true;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      this.setError('Brak tokenu autoryzacji. Zaloguj się ponownie.');
+      this.router.navigate(['/login']);
+      this.isGeneratingInvoice = false;
+      return;
+    }
+
+    const payload = {
+      orderId: orderId,
+      issueDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    };
+
+    this.http.post<InvoiceDto>(
+      `https://localhost:7224/api/invoices/generate/${orderId}`,
+      payload,
+      {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }
+    ).subscribe({
+      next: (invoice) => {
+        this.setSuccess(`Faktura ${invoice.invoiceNumber} została wygenerowana.`);
+        this.loadOrders();
+        this.isGeneratingInvoice = false;
+      },
+      error: (error) => {
+        let errorMsg = 'Błąd generowania faktury';
+        if (error.status === 400 && error.error?.message) {
+          errorMsg += `: ${error.error.message}`;
+        } else if (error.status === 404) {
+          errorMsg += ': Zamówienie nie istnieje.';
+        } else if (error.status === 401) {
+          errorMsg += ': Nieautoryzowany dostęp. Zaloguj się ponownie.';
+          this.router.navigate(['/login']);
+        } else {
+          errorMsg += `: ${error.message}`;
+        }
+        this.setError(errorMsg);
+        this.isGeneratingInvoice = false;
+      }
+    });
   }
 
   updateStock(order: OrderDto) {

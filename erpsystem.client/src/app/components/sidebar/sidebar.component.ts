@@ -38,6 +38,10 @@ export class SidebarComponent {
     this.navigate.emit('/orders');
   }
 
+  goToInvoices() {
+    this.navigate.emit('/invoices'); 
+  }
+
   logout() {
     this.logoutEvent.emit();
   }

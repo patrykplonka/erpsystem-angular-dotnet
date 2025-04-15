@@ -226,6 +226,7 @@
                     <button *ngIf="!showDeleted && order.status === 'Draft'" class="action-button edit-button" (click)="startEdit(order)">Edytuj</button>
                     <button *ngIf="!showDeleted && order.status === 'Draft'" class="action-button delete-button" (click)="confirmDelete(order.id)">Usuń</button>
                     <button *ngIf="!showDeleted && order.status === 'Draft'" class="action-button confirm-button" (click)="confirmOrder(order.id)">Potwierdź</button>
+                    <button *ngIf="!showDeleted && ['Confirmed', 'Completed'].includes(order.status)" class="action-button invoice-button" (click)="generateInvoice(order.id)" [disabled]="isGeneratingInvoice">Generuj fakturę</button>
                     <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreOrder(order.id)">Przywróć</button>
                   </div>
                 </td>

@@ -7,9 +7,9 @@
 .dashboard-container {
   display: flex;
   flex-direction: row;
-  height: 100vh; 
-  width: 100vw; 
-  overflow: hidden; 
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }
 
 @media (max-width: 767px) {
@@ -17,4 +17,3 @@
     flex-direction: column;
   }
 }
-
