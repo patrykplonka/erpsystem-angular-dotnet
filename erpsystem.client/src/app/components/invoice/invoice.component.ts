@@ -88,7 +88,7 @@ export class InvoiceComponent implements OnInit {
         this.errorMessage = null;
       },
       error: (error) => {
-        this.errorMessage = `Błąd podczas pobierania faktury: ${error.status} ${error.message}`;
+        this.errorMessage = 'Błąd podczas pobierania faktury.';
         this.successMessage = null;
       }
     });
