@@ -11,9 +11,11 @@ using iText.Layout;
 using iText.Layout.Element;
 using iText.Layout.Properties;
 using System.IO;
-using iText.Kernel.Pdf.Canvas.Draw;
-using iText.Kernel.Colors;
 using iText.Kernel.Geom;
+using iText.Kernel.Pdf.Canvas.Draw;
+using iText.Kernel.Font;
+using iText.IO.Font;
+using iText.IO.Font.Constants;
 using iText.Layout.Borders;
 
 namespace erpsystem.Server.Controllers
@@ -159,7 +161,11 @@ namespace erpsystem.Server.Controllers
                 using var document = new Document(pdf, PageSize.A4);
                 document.SetMargins(36, 36, 36, 36);
 
+                var font = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+                PdfFontFactory.RegisterSystemDirectories();
+
                 document.Add(new Paragraph("FAKTURA VAT")
+                    .SetFont(font)
                     .SetFontSize(16)
                     .SetBold()
                     .SetTextAlignment(TextAlignment.CENTER));
@@ -168,17 +174,19 @@ namespace erpsystem.Server.Controllers
                     .UseAllAvailableWidth();
                 invoiceDetailsTable.AddCell(new Cell()
                     .SetBorder(Border.NO_BORDER)
-                    .Add(new Paragraph("Numer faktury: " + invoice.InvoiceNumber)));
+                    .Add(new Paragraph("Numer faktury: " + invoice.InvoiceNumber).SetFont(font)));
                 invoiceDetailsTable.AddCell(new Cell()
                     .SetBorder(Border.NO_BORDER)
                     .Add(new Paragraph("Data wystawienia: " + invoice.IssueDate.ToString("yyyy-MM-dd"))
+                        .SetFont(font)
                         .SetTextAlignment(TextAlignment.RIGHT)));
                 invoiceDetailsTable.AddCell(new Cell()
                     .SetBorder(Border.NO_BORDER)
-                    .Add(new Paragraph("Zamówienie: " + invoice.OrderId)));
+                    .Add(new Paragraph("Zamówienie: " + invoice.OrderId).SetFont(font)));
                 invoiceDetailsTable.AddCell(new Cell()
                     .SetBorder(Border.NO_BORDER)
                     .Add(new Paragraph("Termin płatności: " + invoice.DueDate.ToString("yyyy-MM-dd"))
+                        .SetFont(font)
                         .SetTextAlignment(TextAlignment.RIGHT)));
                 document.Add(invoiceDetailsTable);
                 document.Add(new Paragraph("\n"));
@@ -186,22 +194,20 @@ namespace erpsystem.Server.Controllers
                 var issuerRecipientTable = new Table(UnitValue.CreatePercentArray(new float[] { 50, 50 }))
                     .UseAllAvailableWidth();
                 issuerRecipientTable.AddCell(new Cell()
-                    .Add(new Paragraph("Sprzedawca:")
-                        .SetBold())
-                    .Add(new Paragraph("Twoja Firma Sp. z o.o."))
-                    .Add(new Paragraph("ul. Przykładowa 123, 00-000 Warszawa"))
-                    .Add(new Paragraph("NIP: 1234567890"))
-                    .Add(new Paragraph("Email: kontakt@twojafirma.pl"))
-                    .Add(new Paragraph("Telefon: +48 123 456 789"))
+                    .Add(new Paragraph("Sprzedawca:").SetFont(font).SetBold())
+                    .Add(new Paragraph("Twoja Firma Sp. z o.o.").SetFont(font))
+                    .Add(new Paragraph("ul. Przykładowa 123, 00-000 Warszawa").SetFont(font))
+                    .Add(new Paragraph("NIP: 1234567890").SetFont(font))
+                    .Add(new Paragraph("Email: kontakt@twojafirma.pl").SetFont(font))
+                    .Add(new Paragraph("Telefon: +48 123 456 789").SetFont(font))
                     .SetBorder(Border.NO_BORDER));
                 issuerRecipientTable.AddCell(new Cell()
-                    .Add(new Paragraph("Nabywca:")
-                        .SetBold())
-                    .Add(new Paragraph(recipientContractor.Name))
-                    .Add(new Paragraph(recipientContractor.Address))
-                    .Add(new Paragraph($"NIP: {recipientContractor.TaxId}"))
-                    .Add(new Paragraph($"Email: {recipientContractor.Email}"))
-                    .Add(new Paragraph($"Telefon: {recipientContractor.Phone}"))
+                    .Add(new Paragraph("Nabywca:").SetFont(font).SetBold())
+                    .Add(new Paragraph(recipientContractor.Name).SetFont(font))
+                    .Add(new Paragraph(recipientContractor.Address).SetFont(font))
+                    .Add(new Paragraph($"NIP: {recipientContractor.TaxId}").SetFont(font))
+                    .Add(new Paragraph($"Email: {recipientContractor.Email}").SetFont(font))
+                    .Add(new Paragraph($"Telefon: {recipientContractor.Phone}").SetFont(font))
                     .SetBorder(Border.NO_BORDER));
                 document.Add(issuerRecipientTable);
                 document.Add(new Paragraph("\n"));
@@ -211,23 +217,23 @@ namespace erpsystem.Server.Controllers
                 var itemsTable = new Table(UnitValue.CreatePercentArray(new float[] { 5, 35, 15, 15, 15, 15 }))
                     .UseAllAvailableWidth()
                     .SetMarginBottom(10);
-                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Lp.").SetBold()));
-                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Nazwa").SetBold()));
-                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Ilość").SetBold()));
-                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Cena jedn. (netto)").SetBold()));
-                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("VAT (%)").SetBold()));
-                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Wartość brutto").SetBold()));
+                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Lp.").SetFont(font).SetBold()));
+                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Nazwa").SetFont(font).SetBold()));
+                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Ilość").SetFont(font).SetBold()));
+                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Cena jedn. (netto)").SetFont(font).SetBold()));
+                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("VAT (%)").SetFont(font).SetBold()));
+                itemsTable.AddHeaderCell(new Cell().Add(new Paragraph("Wartość brutto").SetFont(font).SetBold()));
 
                 int itemCount = 1;
                 foreach (var item in order.OrderItems)
                 {
                     var grossValue = item.Quantity * item.UnitPrice * (1 + item.VatRate / 100);
-                    itemsTable.AddCell(new Cell().Add(new Paragraph(itemCount.ToString())));
-                    itemsTable.AddCell(new Cell().Add(new Paragraph(item.WarehouseItem?.Name ?? "Brak nazwy")));
-                    itemsTable.AddCell(new Cell().Add(new Paragraph(item.Quantity.ToString())));
-                    itemsTable.AddCell(new Cell().Add(new Paragraph(item.UnitPrice.ToString("F2") + " PLN")));
-                    itemsTable.AddCell(new Cell().Add(new Paragraph(item.VatRate.ToString())));
-                    itemsTable.AddCell(new Cell().Add(new Paragraph(grossValue.ToString("F2") + " PLN")));
+                    itemsTable.AddCell(new Cell().Add(new Paragraph(itemCount.ToString()).SetFont(font)));
+                    itemsTable.AddCell(new Cell().Add(new Paragraph(item.WarehouseItem?.Name ?? "Brak nazwy").SetFont(font)));
+                    itemsTable.AddCell(new Cell().Add(new Paragraph(item.Quantity.ToString()).SetFont(font)));
+                    itemsTable.AddCell(new Cell().Add(new Paragraph(item.UnitPrice.ToString("F2") + " PLN").SetFont(font)));
+                    itemsTable.AddCell(new Cell().Add(new Paragraph(item.VatRate.ToString()).SetFont(font)));
+                    itemsTable.AddCell(new Cell().Add(new Paragraph(grossValue.ToString("F2") + " PLN").SetFont(font)));
                     itemCount++;
                 }
                 document.Add(itemsTable);
@@ -241,6 +247,7 @@ namespace erpsystem.Server.Controllers
                 totalsTable.AddCell(new Cell()
                     .SetBorder(Border.NO_BORDER)
                     .Add(new Paragraph("Suma netto: " + invoice.NetAmount.ToString("F2") + " PLN")
+                        .SetFont(font)
                         .SetTextAlignment(TextAlignment.RIGHT)));
                 totalsTable.AddCell(new Cell()
                     .SetBorder(Border.NO_BORDER)
@@ -248,6 +255,7 @@ namespace erpsystem.Server.Controllers
                 totalsTable.AddCell(new Cell()
                     .SetBorder(Border.NO_BORDER)
                     .Add(new Paragraph("VAT: " + invoice.VatAmount.ToString("F2") + " PLN")
+                        .SetFont(font)
                         .SetTextAlignment(TextAlignment.RIGHT)));
                 totalsTable.AddCell(new Cell()
                     .SetBorder(Border.NO_BORDER)
@@ -255,6 +263,7 @@ namespace erpsystem.Server.Controllers
                 totalsTable.AddCell(new Cell()
                     .SetBorder(Border.NO_BORDER)
                     .Add(new Paragraph("Suma brutto: " + invoice.TotalAmount.ToString("F2") + " PLN")
+                        .SetFont(font)
                         .SetBold()
                         .SetTextAlignment(TextAlignment.RIGHT)));
                 document.Add(totalsTable);
@@ -262,16 +271,19 @@ namespace erpsystem.Server.Controllers
                 document.Add(new Paragraph("\n"));
                 document.Add(new LineSeparator(new SolidLine()).SetMarginBottom(10));
                 document.Add(new Paragraph("Dane do płatności:")
+                    .SetFont(font)
                     .SetBold());
-                document.Add(new Paragraph("Bank: Twój Bank S.A."));
-                document.Add(new Paragraph("Numer konta: 98 7654 3210 9876 5432 1098 76"));
-                document.Add(new Paragraph("Tytuł przelewu: Faktura " + invoice.InvoiceNumber));
+                document.Add(new Paragraph("Bank: Twój Bank S.A.").SetFont(font));
+                document.Add(new Paragraph("Numer konta: 98 7654 3210 9876 5432 1098 76").SetFont(font));
+                document.Add(new Paragraph("Tytuł przelewu: Faktura " + invoice.InvoiceNumber).SetFont(font));
 
                 document.Add(new Paragraph("\n"));
                 document.Add(new Paragraph("Wystawiono przez: " + invoice.CreatedBy)
+                    .SetFont(font)
                     .SetFontSize(10)
                     .SetTextAlignment(TextAlignment.CENTER));
                 document.Add(new Paragraph("Data utworzenia: " + invoice.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss"))
+                    .SetFont(font)
                     .SetFontSize(10)
                     .SetTextAlignment(TextAlignment.CENTER));
 
@@ -280,7 +292,7 @@ namespace erpsystem.Server.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas generowania PDF", details = ex.ToString() });
+                return StatusCode(500, new { message = "Błąd podczas generowania PDF", details = ex.Message });
             }
         }
 
