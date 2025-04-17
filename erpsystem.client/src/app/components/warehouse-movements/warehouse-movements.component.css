@@ -6,23 +6,23 @@
 }
 
 html, body {
-  height: 100%;
   width: 100%;
   background: #f5f7fa;
   color: #1f2a44;
   line-height: 1.6;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .warehouse-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
 }
 
 .dashboard-container {
   display: flex;
   flex: 1;
-  height: 100vh;
+  width: 100%;
 }
 
 .main-content {
@@ -31,7 +31,6 @@ html, body {
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
   width: 100%;
 }
 
@@ -277,12 +276,14 @@ header {
 
 .movements-container table {
   width: 100%;
+  max-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   background: #ffffff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   overflow: hidden;
+  table-layout: fixed;
 }
 
 .movements-container thead {
@@ -295,6 +296,7 @@ header {
   padding: 14px 16px;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
+  word-wrap: break-word;
 }
 
 .movements-container th {
@@ -380,7 +382,6 @@ header {
 
     .movements-container table {
       display: block;
-      overflow-x: auto;
     }
 
     .movements-container th,
