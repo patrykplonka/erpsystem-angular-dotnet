@@ -1,7 +1,7 @@
 # ERP System - Engineering Thesis
 
 ## Overview
-This ERP system is being developed as part of my engineering thesis. It is designed to manage warehouse operations, invoices, and customers efficiently using modern web technologies. The project is currently under development
+This ERP system is being developed as part of my engineering thesis. It is designed to manage warehouse operations, invoices, and customers efficiently using modern web technologies. The project is currently under development.
 
 ## Technologies Used
 - **Backend:** ASP.NET Core, Entity Framework Core, SignalR
