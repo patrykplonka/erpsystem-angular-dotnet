@@ -22,5 +22,7 @@ namespace erpsystem.Server.Data
         public DbSet<Purchase> Purchases { get; set; }
         public DbSet<PurchaseItem> PurchaseItems { get; set; }
 
+        public DbSet<PurchaseHistory> PurchaseHistory { get; set; }
+
     }
 }
