@@ -6,6 +6,7 @@ import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, F
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { SidebarComponent } from '../sidebar/sidebar.component';
+import { AuthService } from '../../services/auth.service';
 import { BehaviorSubject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
@@ -43,6 +44,11 @@ interface PurchaseHistoryDto {
   details: string;
 }
 
+interface ContractorDto {
+  id: number;
+  name: string;
+}
+
 @Component({
   selector: 'app-purchases',
   templateUrl: './purchases.component.html',
@@ -61,6 +67,7 @@ interface PurchaseHistoryDto {
 export class PurchasesComponent implements OnInit {
   purchases: PurchaseDto[] = [];
   filteredPurchases: PurchaseDto[] = [];
+  contractors: ContractorDto[] = [];
   selectedPurchase: PurchaseDto | null = null;
   purchaseToDelete: number | null = null;
   purchaseHistory: PurchaseHistoryDto[] = [];
@@ -93,16 +100,17 @@ export class PurchasesComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private fb: FormBuilder,
-    public router: Router, // Changed to public
+    public router: Router,
     private cdr: ChangeDetectorRef,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private authService: AuthService
   ) {
     this.newPurchaseForm = this.fb.group({
       purchaseNumber: ['', Validators.required],
       contractorId: ['', Validators.required],
       orderDate: ['', Validators.required],
       status: ['Draft', Validators.required],
-      createdBy: ['', Validators.required],
+      createdBy: [{ value: '', disabled: true }, Validators.required],
       purchaseItems: this.fb.array([])
     });
 
@@ -112,13 +120,15 @@ export class PurchasesComponent implements OnInit {
       contractorId: ['', Validators.required],
       orderDate: ['', Validators.required],
       status: ['', Validators.required],
-      createdBy: ['', Validators.required],
+      createdBy: [{ value: '', disabled: true }, Validators.required],
       purchaseItems: this.fb.array([])
     });
   }
 
   ngOnInit() {
     this.loadData();
+    this.loadContractors();
+    this.setCurrentUser();
     this.nameFilter.pipe(debounceTime(300), distinctUntilChanged()).subscribe(() => this.applyFilters());
   }
 
@@ -134,11 +144,47 @@ export class PurchasesComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (error) => {
-        this.snackBar.open(error.error.message || 'Błąd ładowania danych.', 'Zamknij', { duration: 3000 });
+        this.snackBar.open(error.error?.message || 'Błąd ładowania danych.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
       }
     });
+  }
+
+  loadContractors() {
+    this.isLoading = true;
+    const endpoint = `${environment.apiUrl}/contractors`; // Adjust this if the endpoint is different
+    console.log('Próba ładowania kontrahentów z:', endpoint);
+    this.http.get<ContractorDto[]>(endpoint).subscribe({
+      next: (data) => {
+        console.log('Kontrahenci załadowani:', data);
+        this.contractors = data;
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Błąd ładowania kontrahentów:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          details: error.error
+        });
+        this.snackBar.open(error.error?.message || 'Nie udało się załadować kontrahentów. Sprawdź konsolę.', 'Zamknij', { duration: 5000 });
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  setCurrentUser() {
+    const fullName = this.authService.getCurrentUserFullName();
+    if (fullName && fullName !== 'Unknown') {
+      this.newPurchaseForm.patchValue({ createdBy: fullName });
+      this.editPurchaseForm.patchValue({ createdBy: fullName });
+    } else {
+      this.snackBar.open('Brak zalogowanego użytkownika.', 'Zamknij', { duration: 3000 });
+    }
+    this.cdr.markForCheck();
   }
 
   toggleSelectAll(event: Event) {
@@ -216,7 +262,7 @@ export class PurchasesComponent implements OnInit {
           this.cdr.markForCheck();
         },
         error: (error) => {
-          this.snackBar.open(error.error.message || 'Błąd usuwania zamówienia.', 'Zamknij', { duration: 3000 });
+          this.snackBar.open(error.error?.message || 'Błąd usuwania zamówienia.', 'Zamknij', { duration: 3000 });
           this.isLoading = false;
           this.cdr.markForCheck();
         }
@@ -232,7 +278,7 @@ export class PurchasesComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (error) => {
-        this.snackBar.open(error.error.message || 'Błąd ładowania historii.', 'Zamknij', { duration: 3000 });
+        this.snackBar.open(error.error?.message || 'Błąd ładowania historii.', 'Zamknij', { duration: 3000 });
         this.cdr.markForCheck();
       }
     });
@@ -266,7 +312,7 @@ export class PurchasesComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (error) => {
-        this.snackBar.open(error.error.message || 'Błąd usuwania zamówienia.', 'Zamknij', { duration: 3000 });
+        this.snackBar.open(error.error?.message || 'Błąd usuwania zamówienia.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -288,6 +334,7 @@ export class PurchasesComponent implements OnInit {
         totalPrice: [item.totalPrice]
       }));
     });
+    this.setCurrentUser();
     this.cdr.markForCheck();
   }
 
@@ -299,7 +346,7 @@ export class PurchasesComponent implements OnInit {
         this.snackBar.open('Zamówienie potwierdzone.', 'Zamknij', { duration: 3000 });
       },
       error: (error) => {
-        this.snackBar.open(error.error.message || 'Błąd potwierdzania zamówienia.', 'Zamknij', { duration: 3000 });
+        this.snackBar.open(error.error?.message || 'Błąd potwierdzania zamówienia.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -314,7 +361,7 @@ export class PurchasesComponent implements OnInit {
         this.snackBar.open('Zamówienie przyjęte.', 'Zamknij', { duration: 3000 });
       },
       error: (error) => {
-        this.snackBar.open(error.error.message || 'Błąd przyjmowania zamówienia.', 'Zamknij', { duration: 3000 });
+        this.snackBar.open(error.error?.message || 'Błąd przyjmowania zamówienia.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -329,7 +376,7 @@ export class PurchasesComponent implements OnInit {
         this.snackBar.open('Zamówienie przywrócone.', 'Zamknij', { duration: 3000 });
       },
       error: (error) => {
-        this.snackBar.open(error.error.message || 'Błąd przywracania zamówienia.', 'Zamknij', { duration: 3000 });
+        this.snackBar.open(error.error?.message || 'Błąd przywracania zamówienia.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -344,7 +391,7 @@ export class PurchasesComponent implements OnInit {
         this.snackBar.open('Status zaktualizowany.', 'Zamknij', { duration: 3000 });
       },
       error: (error) => {
-        this.snackBar.open(error.error.message || 'Błąd aktualizacji statusu.', 'Zamknij', { duration: 3000 });
+        this.snackBar.open(error.error?.message || 'Błąd aktualizacji statusu.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -401,15 +448,16 @@ export class PurchasesComponent implements OnInit {
   submitNewPurchase() {
     if (this.newPurchaseForm.valid) {
       this.isLoading = true;
-      this.http.post(`${environment.apiUrl}/purchases`, this.newPurchaseForm.value).subscribe({
+      this.http.post(`${environment.apiUrl}/purchases`, this.newPurchaseForm.getRawValue()).subscribe({
         next: () => {
           this.loadData();
           this.newPurchaseForm.reset();
+          this.setCurrentUser();
           this.showAddForm = false;
           this.snackBar.open('Zamówienie dodane.', 'Zamknij', { duration: 3000 });
         },
         error: (error) => {
-          this.snackBar.open(error.error.message || 'Błąd dodawania zamówienia.', 'Zamknij', { duration: 3000 });
+          this.snackBar.open(error.error?.message || 'Błąd dodawania zamówienia.', 'Zamknij', { duration: 3000 });
           this.isLoading = false;
           this.cdr.markForCheck();
         }
@@ -420,14 +468,15 @@ export class PurchasesComponent implements OnInit {
   submitEditPurchase() {
     if (this.editPurchaseForm.valid) {
       this.isLoading = true;
-      this.http.put(`${environment.apiUrl}/purchases/${this.editPurchaseForm.value.id}`, this.editPurchaseForm.value).subscribe({
+      this.http.put(`${environment.apiUrl}/purchases/${this.editPurchaseForm.value.id}`, this.editPurchaseForm.getRawValue()).subscribe({
         next: () => {
           this.loadData();
           this.editPurchaseForm.reset();
+          this.setCurrentUser();
           this.snackBar.open('Zamówienie zaktualizowane.', 'Zamknij', { duration: 3000 });
         },
         error: (error) => {
-          this.snackBar.open(error.error.message || 'Błąd aktualizacji zamówienia.', 'Zamknij', { duration: 3000 });
+          this.snackBar.open(error.error?.message || 'Błąd aktualizacji zamówienia.', 'Zamknij', { duration: 3000 });
           this.isLoading = false;
           this.cdr.markForCheck();
         }
