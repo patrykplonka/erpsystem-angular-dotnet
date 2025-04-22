@@ -130,6 +130,16 @@ namespace erpsystem.Server.Controllers
                 return BadRequest(ModelState);
             }
 
+            // Validate contractor type
+            var contractor = await _context.Contractors
+                .Where(c => c.Id == purchaseDto.ContractorId && !c.IsDeleted)
+                .FirstOrDefaultAsync();
+
+            if (contractor == null || (contractor.Type != "Supplier" && contractor.Type != "Both"))
+            {
+                return BadRequest(new { message = "Wybrany kontrahent nie może być dostawcą." });
+            }
+
             var warehouseItemIds = purchaseDto.PurchaseItems.Select(pi => pi.WarehouseItemId).Distinct().ToList();
             var warehouseItems = await _context.WarehouseItems
                 .Where(wi => warehouseItemIds.Contains(wi.Id) && !wi.IsDeleted)
@@ -191,6 +201,16 @@ namespace erpsystem.Server.Controllers
             if (id != purchaseDto.Id)
             {
                 return BadRequest();
+            }
+
+            // Validate contractor type
+            var contractor = await _context.Contractors
+                .Where(c => c.Id == purchaseDto.ContractorId && !c.IsDeleted)
+                .FirstOrDefaultAsync();
+
+            if (contractor == null || (contractor.Type != "Supplier" && contractor.Type != "Both"))
+            {
+                return BadRequest(new { message = "Wybrany kontrahent nie może być dostawcą." });
             }
 
             var purchase = await _context.Purchases
@@ -341,7 +361,7 @@ namespace erpsystem.Server.Controllers
                 var movement = new WarehouseMovements
                 {
                     WarehouseItemId = item.WarehouseItemId,
-                    MovementType = "PZ",
+                    MovementType = WarehouseMovementType.PZ,
                     Quantity = item.Quantity,
                     Supplier = purchase.Contractor.Name,
                     DocumentNumber = purchase.PurchaseNumber,
