@@ -19,6 +19,8 @@ namespace erpsystem.Server.Data
         public DbSet<OrderHistory> OrderHistory { get; set; }
         public DbSet<OperationLog> OperationLogs { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
+        public DbSet<Purchase> Purchases { get; set; }
+        public DbSet<PurchaseItem> PurchaseItems { get; set; }
 
     }
 }
