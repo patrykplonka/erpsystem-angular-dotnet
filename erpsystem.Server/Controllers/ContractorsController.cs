@@ -43,6 +43,11 @@ namespace erpsystem.Server.Controllers
                         })
                         .ToListAsync();
 
+                    if (!contractors.Any())
+                    {
+                        return Ok(new List<ContractorDTO>());
+                    }
+
                     var cacheOptions = new MemoryCacheEntryOptions
                     {
                         AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
@@ -54,7 +59,7 @@ namespace erpsystem.Server.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                return StatusCode(500, new { message = $"Błąd serwera: {ex.Message}" });
             }
         }
 
@@ -83,7 +88,7 @@ namespace erpsystem.Server.Controllers
 
                     if (contractor == null)
                     {
-                        return NotFound("Kontrahent nie znaleziony.");
+                        return NotFound(new { message = "Kontrahent nie znaleziony." });
                     }
 
                     var cacheOptions = new MemoryCacheEntryOptions
@@ -97,7 +102,7 @@ namespace erpsystem.Server.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                return StatusCode(500, new { message = $"Błąd serwera: {ex.Message}" });
             }
         }
 
@@ -109,12 +114,12 @@ namespace erpsystem.Server.Controllers
                 if (string.IsNullOrEmpty(dto.Name) || string.IsNullOrEmpty(dto.Type) ||
                     string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.TaxId))
                 {
-                    return BadRequest("Nazwa, typ, email i NIP są wymagane.");
+                    return BadRequest(new { message = "Nazwa, typ, email i NIP są wymagane." });
                 }
 
                 if (!new[] { "Supplier", "Client", "Both" }.Contains(dto.Type))
                 {
-                    return BadRequest("Typ musi być: Supplier, Client lub Both.");
+                    return BadRequest(new { message = "Typ musi być: Supplier, Client lub Both." });
                 }
 
                 var contractor = new Contractor
@@ -149,7 +154,7 @@ namespace erpsystem.Server.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                return StatusCode(500, new { message = $"Błąd serwera: {ex.Message}" });
             }
         }
 
@@ -160,24 +165,24 @@ namespace erpsystem.Server.Controllers
             {
                 if (id != dto.Id)
                 {
-                    return BadRequest("ID w ścieżce i DTO nie zgadzają się.");
+                    return BadRequest(new { message = "ID w ścieżce i DTO nie zgadzają się." });
                 }
 
                 if (string.IsNullOrEmpty(dto.Name) || string.IsNullOrEmpty(dto.Type) ||
                     string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.TaxId))
                 {
-                    return BadRequest("Nazwa, typ, email i NIP są wymagane.");
+                    return BadRequest(new { message = "Nazwa, typ, email i NIP są wymagane." });
                 }
 
                 if (!new[] { "Supplier", "Client", "Both" }.Contains(dto.Type))
                 {
-                    return BadRequest("Typ musi być: Supplier, Client lub Both.");
+                    return BadRequest(new { message = "Typ musi być: Supplier, Client lub Both." });
                 }
 
                 var contractor = await _context.Contractors.FindAsync(id);
                 if (contractor == null)
                 {
-                    return NotFound("Kontrahent nie znaleziony.");
+                    return NotFound(new { message = "Kontrahent nie znaleziony." });
                 }
 
                 contractor.Name = dto.Name;
@@ -201,13 +206,13 @@ namespace erpsystem.Server.Controllers
             {
                 if (!_context.Contractors.Any(e => e.Id == id))
                 {
-                    return NotFound("Kontrahent nie znaleziony.");
+                    return NotFound(new { message = "Kontrahent nie znaleziony." });
                 }
                 throw;
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                return StatusCode(500, new { message = $"Błąd serwera: {ex.Message}" });
             }
         }
 
@@ -219,7 +224,7 @@ namespace erpsystem.Server.Controllers
                 var contractor = await _context.Contractors.FindAsync(id);
                 if (contractor == null)
                 {
-                    return NotFound("Kontrahent nie znaleziony.");
+                    return NotFound(new { message = "Kontrahent nie znaleziony." });
                 }
 
                 contractor.IsDeleted = true;
@@ -232,7 +237,7 @@ namespace erpsystem.Server.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                return StatusCode(500, new { message = $"Błąd serwera: {ex.Message}" });
             }
         }
 
@@ -244,7 +249,7 @@ namespace erpsystem.Server.Controllers
                 var contractor = await _context.Contractors.FindAsync(id);
                 if (contractor == null)
                 {
-                    return NotFound("Kontrahent nie znaleziony.");
+                    return NotFound(new { message = "Kontrahent nie znaleziony." });
                 }
 
                 contractor.IsDeleted = false;
@@ -257,7 +262,7 @@ namespace erpsystem.Server.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                return StatusCode(500, new { message = $"Błąd serwera: {ex.Message}" });
             }
         }
     }

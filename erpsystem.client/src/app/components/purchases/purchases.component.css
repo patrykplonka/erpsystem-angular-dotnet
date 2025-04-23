@@ -22,6 +22,12 @@
     border-radius: 4px;
   }
 
+.error-message {
+  color: red;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
 .form-container {
   padding: 20px;
   background: #fff;

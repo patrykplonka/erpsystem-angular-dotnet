@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
@@ -9,7 +9,6 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 import { AuthService } from '../../services/auth.service';
 import { BehaviorSubject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
 
 interface PurchaseDto {
   id: number;
@@ -47,6 +46,12 @@ interface PurchaseHistoryDto {
 interface ContractorDto {
   id: number;
   name: string;
+  type: 'Supplier' | 'Client' | 'Both';
+  email: string;
+  phone: string;
+  address: string;
+  taxId: string;
+  isDeleted: boolean;
 }
 
 @Component({
@@ -96,6 +101,7 @@ export class PurchasesComponent implements OnInit {
     { value: 'Received', display: 'Przyjęte' },
     { value: 'Cancelled', display: 'Anulowane' }
   ];
+  private apiUrl = 'https://localhost:7224/api';
 
   constructor(
     private http: HttpClient,
@@ -132,9 +138,9 @@ export class PurchasesComponent implements OnInit {
     this.nameFilter.pipe(debounceTime(300), distinctUntilChanged()).subscribe(() => this.applyFilters());
   }
 
-  public loadData() {
+  loadData() {
     this.isLoading = true;
-    this.http.get<PurchaseDto[]>(`${environment.apiUrl}/purchases?showDeleted=${this.showDeleted}`).subscribe({
+    this.http.get<PurchaseDto[]>(`${this.apiUrl}/purchases?showDeleted=${this.showDeleted}`).subscribe({
       next: (data) => {
         this.purchases = data.map(p => ({ ...p, selected: false }));
         this.filteredPurchases = this.purchases;
@@ -153,23 +159,32 @@ export class PurchasesComponent implements OnInit {
 
   loadContractors() {
     this.isLoading = true;
-    const endpoint = `${environment.apiUrl}/contractors`; // Adjust this if the endpoint is different
-    console.log('Próba ładowania kontrahentów z:', endpoint);
-    this.http.get<ContractorDto[]>(endpoint).subscribe({
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${this.authService.getToken()}`
+    });
+    this.http.get<ContractorDto[]>(`${this.apiUrl}/contractors`, { headers }).subscribe({
       next: (data) => {
-        console.log('Kontrahenci załadowani:', data);
-        this.contractors = data;
+        this.contractors = data.filter(c => !c.isDeleted && (c.type === 'Supplier' || c.type === 'Both'));
         this.isLoading = false;
         this.cdr.markForCheck();
       },
       error: (error) => {
-        console.error('Błąd ładowania kontrahentów:', {
+        let message = 'Nie udało się załadować dostawców.';
+        if (error.status === 401) {
+          message = 'Brak autoryzacji. Zaloguj się ponownie.';
+          this.router.navigate(['/login']);
+        } else if (error.status === 404) {
+          message = 'Endpoint kontrahentów nie znaleziony.';
+        } else if (error.status === 500) {
+          message = 'Błąd serwera. Sprawdź konsolę.';
+        }
+        console.error('Błąd ładowania dostawców:', {
           status: error.status,
           statusText: error.statusText,
           message: error.message,
           details: error.error
         });
-        this.snackBar.open(error.error?.message || 'Nie udało się załadować kontrahentów. Sprawdź konsolę.', 'Zamknij', { duration: 5000 });
+        this.snackBar.open(message, 'Zamknij', { duration: 5000 });
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -253,7 +268,7 @@ export class PurchasesComponent implements OnInit {
     if (selectedIds.length === 0) return;
     this.isLoading = true;
     selectedIds.forEach(id => {
-      this.http.delete(`${environment.apiUrl}/purchases/${id}`).subscribe({
+      this.http.delete(`${this.apiUrl}/purchases/${id}`).subscribe({
         next: () => {
           this.purchases = this.purchases.filter(p => p.id !== id);
           this.applyFilters();
@@ -272,7 +287,7 @@ export class PurchasesComponent implements OnInit {
 
   showDetails(purchase: PurchaseDto) {
     this.selectedPurchase = purchase;
-    this.http.get<PurchaseHistoryDto[]>(`${environment.apiUrl}/purchases/${purchase.id}/history`).subscribe({
+    this.http.get<PurchaseHistoryDto[]>(`${this.apiUrl}/purchases/${purchase.id}/history`).subscribe({
       next: (data) => {
         this.purchaseHistory = data;
         this.cdr.markForCheck();
@@ -302,7 +317,7 @@ export class PurchasesComponent implements OnInit {
 
   deletePurchase(id: number) {
     this.isLoading = true;
-    this.http.delete(`${environment.apiUrl}/purchases/${id}`).subscribe({
+    this.http.delete(`${this.apiUrl}/purchases/${id}`).subscribe({
       next: () => {
         this.purchases = this.purchases.filter(p => p.id !== id);
         this.applyFilters();
@@ -340,7 +355,7 @@ export class PurchasesComponent implements OnInit {
 
   confirmPurchase(id: number) {
     this.isLoading = true;
-    this.http.post(`${environment.apiUrl}/purchases/${id}/confirm`, {}).subscribe({
+    this.http.post(`${this.apiUrl}/purchases/${id}/confirm`, {}).subscribe({
       next: () => {
         this.loadData();
         this.snackBar.open('Zamówienie potwierdzone.', 'Zamknij', { duration: 3000 });
@@ -355,13 +370,13 @@ export class PurchasesComponent implements OnInit {
 
   receivePurchase(id: number) {
     this.isLoading = true;
-    this.http.post(`${environment.apiUrl}/purchases/${id}/receive`, {}).subscribe({
+    this.http.post(`${this.apiUrl}/purchases/${id}/receive`, {}).subscribe({
       next: () => {
         this.loadData();
         this.snackBar.open('Zamówienie przyjęte.', 'Zamknij', { duration: 3000 });
       },
       error: (error) => {
-        this.snackBar.open(error.error?.message || 'Błąd przyjmowania zamówienia.', 'Zamknij', { duration: 3000 });
+        this.snackBar.open(error.error?.message || 'Błąd przyjmowania sprzedaży.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -370,7 +385,7 @@ export class PurchasesComponent implements OnInit {
 
   restorePurchase(id: number) {
     this.isLoading = true;
-    this.http.post(`${environment.apiUrl}/purchases/${id}/restore`, {}).subscribe({
+    this.http.post(`${this.apiUrl}/purchases/${id}/restore`, {}).subscribe({
       next: () => {
         this.loadData();
         this.snackBar.open('Zamówienie przywrócone.', 'Zamknij', { duration: 3000 });
@@ -385,7 +400,7 @@ export class PurchasesComponent implements OnInit {
 
   updateStatus(purchase: PurchaseDto) {
     this.isLoading = true;
-    this.http.put(`${environment.apiUrl}/purchases/${purchase.id}/status`, { status: purchase.status }).subscribe({
+    this.http.put(`${this.apiUrl}/purchases/${purchase.id}/status`, { status: purchase.status }).subscribe({
       next: () => {
         this.loadData();
         this.snackBar.open('Status zaktualizowany.', 'Zamknij', { duration: 3000 });
@@ -448,7 +463,10 @@ export class PurchasesComponent implements OnInit {
   submitNewPurchase() {
     if (this.newPurchaseForm.valid) {
       this.isLoading = true;
-      this.http.post(`${environment.apiUrl}/purchases`, this.newPurchaseForm.getRawValue()).subscribe({
+      const headers = new HttpHeaders({
+        'Authorization': `Bearer ${this.authService.getToken()}`
+      });
+      this.http.post(`${this.apiUrl}/purchases`, this.newPurchaseForm.getRawValue(), { headers }).subscribe({
         next: () => {
           this.loadData();
           this.newPurchaseForm.reset();
@@ -468,7 +486,10 @@ export class PurchasesComponent implements OnInit {
   submitEditPurchase() {
     if (this.editPurchaseForm.valid) {
       this.isLoading = true;
-      this.http.put(`${environment.apiUrl}/purchases/${this.editPurchaseForm.value.id}`, this.editPurchaseForm.getRawValue()).subscribe({
+      const headers = new HttpHeaders({
+        'Authorization': `Bearer ${this.authService.getToken()}`
+      });
+      this.http.put(`${this.apiUrl}/purchases/${this.editPurchaseForm.value.id}`, this.editPurchaseForm.getRawValue(), { headers }).subscribe({
         next: () => {
           this.loadData();
           this.editPurchaseForm.reset();

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace erpsystem.Server.Controllers
+namespace erIgnoreSystem.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -23,7 +23,7 @@ namespace erpsystem.Server.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PurchaseDto>>> GetPurchases()
+        public async Task<ActionResult<IEnumerable<PurchaseDto>>> GetPurchases(bool showDeleted = false)
         {
             const string cacheKey = "Purchases";
             if (!_cache.TryGetValue(cacheKey, out IEnumerable<PurchaseDto> purchaseDtos))
@@ -32,7 +32,7 @@ namespace erpsystem.Server.Controllers
                     .Include(p => p.Contractor)
                     .Include(p => p.PurchaseItems)
                     .ThenInclude(pi => pi.WarehouseItem)
-                    .Where(p => !p.IsDeleted)
+                    .Where(p => showDeleted || !p.IsDeleted)
                     .ToListAsync();
 
                 purchaseDtos = purchases.Select(p => new PurchaseDto
@@ -130,7 +130,6 @@ namespace erpsystem.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Validate contractor type
             var contractor = await _context.Contractors
                 .Where(c => c.Id == purchaseDto.ContractorId && !c.IsDeleted)
                 .FirstOrDefaultAsync();
@@ -203,7 +202,6 @@ namespace erpsystem.Server.Controllers
                 return BadRequest();
             }
 
-            // Validate contractor type
             var contractor = await _context.Contractors
                 .Where(c => c.Id == purchaseDto.ContractorId && !c.IsDeleted)
                 .FirstOrDefaultAsync();
@@ -289,6 +287,35 @@ namespace erpsystem.Server.Controllers
                 ModifiedBy = "System",
                 ModifiedDate = DateTime.UtcNow,
                 Details = $"Purchase {purchase.PurchaseNumber} marked as deleted."
+            };
+            _context.PurchaseHistory.Add(history);
+
+            await _context.SaveChangesAsync();
+
+            _cache.Remove("Purchases");
+            _cache.Remove($"Purchase_{id}");
+
+            return NoContent();
+        }
+
+        [HttpPost("{id}/restore")]
+        public async Task<IActionResult> RestorePurchase(int id)
+        {
+            var purchase = await _context.Purchases.FindAsync(id);
+            if (purchase == null)
+            {
+                return NotFound();
+            }
+
+            purchase.IsDeleted = false;
+
+            var history = new PurchaseHistory
+            {
+                PurchaseId = purchase.Id,
+                Action = "Restored",
+                ModifiedBy = "System",
+                ModifiedDate = DateTime.UtcNow,
+                Details = $"Purchase {purchase.PurchaseNumber} restored."
             };
             _context.PurchaseHistory.Add(history);
 
@@ -478,7 +505,7 @@ namespace erpsystem.Server.Controllers
             return Ok(history);
         }
 
-        [HttpPost("{id}/update-status")]
+        [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] string newStatus)
         {
             var purchase = await _context.Purchases.FindAsync(id);
