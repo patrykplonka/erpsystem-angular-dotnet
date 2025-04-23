@@ -9,6 +9,7 @@ import { WarehouseReportsComponent } from './components/warehouse-reports/wareho
 import { ContractorsComponent } from './components/contractors/contractors.component';
 import { OrdersComponent } from './components/orders/orders.component';
 import { InvoiceComponent } from './components/invoice/invoice.component'; 
+import { PurchasesComponent } from './components/purchases/purchases.component';
   
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -19,6 +20,7 @@ const routes: Routes = [
   { path: 'contractors', component: ContractorsComponent, canActivate: [AuthGuard] },
   { path: 'orders', component: OrdersComponent, canActivate: [AuthGuard] },
   { path: 'invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
+  { path: 'purchases', component: PurchasesComponent, canActivate: [AuthGuard] },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: '**', redirectTo: '/login' }
 ];

@@ -38,8 +38,12 @@ export class SidebarComponent {
     this.navigate.emit('/orders');
   }
 
+  goToPurchases() {
+    this.navigate.emit('/purchases'); 
+  }
+
   goToInvoices() {
-    this.navigate.emit('/invoices'); 
+    this.navigate.emit('/invoices');
   }
 
   logout() {
