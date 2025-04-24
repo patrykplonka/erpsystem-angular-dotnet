@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output, ChangeDetectorRef } from '@angu
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { debounceTime } from 'rxjs/operators';
 
 interface OrderDto {
   id: number;
@@ -102,12 +103,12 @@ export class OrderFormComponent {
       warehouseItemId: [item?.warehouseItemId || null, [Validators.required, Validators.min(1)]],
       quantity: [item?.quantity || 1, [Validators.required, Validators.min(1)]],
       unitPrice: [{ value: item?.unitPrice || 0, disabled: true }],
-      vatRate: [item?.vatRate ? item.vatRate * 100 : 23, [Validators.required, Validators.min(0)]], // Store as percentage
+      vatRate: [item?.vatRate ? item.vatRate * 100 : 23, [Validators.required, Validators.min(0)]],
       totalPrice: [{ value: item?.totalPrice || 0, disabled: true }]
     });
-    itemGroup.get('warehouseItemId')?.valueChanges.subscribe(() => this.updateOrderItem(itemGroup));
-    itemGroup.get('quantity')?.valueChanges.subscribe(() => this.updateOrderItem(itemGroup));
-    itemGroup.get('vatRate')?.valueChanges.subscribe(() => this.updateOrderItem(itemGroup));
+    itemGroup.get('warehouseItemId')?.valueChanges.pipe(debounceTime(300)).subscribe(() => this.updateOrderItem(itemGroup));
+    itemGroup.get('quantity')?.valueChanges.pipe(debounceTime(300)).subscribe(() => this.updateOrderItem(itemGroup));
+    itemGroup.get('vatRate')?.valueChanges.pipe(debounceTime(300)).subscribe(() => this.updateOrderItem(itemGroup));
     this.orderItems.push(itemGroup);
     this.cdr.markForCheck();
   }
@@ -126,7 +127,7 @@ export class OrderFormComponent {
         unitPrice: selectedItem.unitPrice
       });
       const quantity = itemGroup.get('quantity')?.value;
-      const vatRate = itemGroup.get('vatRate')?.value / 100; // Convert percentage to decimal
+      const vatRate = itemGroup.get('vatRate')?.value / 100;
       const totalPrice = quantity * selectedItem.unitPrice * (1 + vatRate);
       itemGroup.patchValue({ totalPrice: Number(totalPrice.toFixed(2)) });
     } else {
@@ -181,7 +182,7 @@ export class OrderFormComponent {
         warehouseItemId: Number(item.warehouseItemId),
         quantity: Number(item.quantity),
         unitPrice: Number(item.unitPrice),
-        vatRate: Number(item.vatRate) / 100, // Convert percentage to decimal
+        vatRate: Number(item.vatRate) / 100,
         totalPrice: Number(item.totalPrice)
       }))
     };

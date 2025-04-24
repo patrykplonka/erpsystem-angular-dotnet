@@ -32,7 +32,7 @@
         </div>
       </div>
       <h4>Produkty</h4>
-      <div class="order-items">
+      <div class="order-items" *ngIf="warehouseItems.length > 0; else noItemsTemplate">
         <div *ngFor="let item of orderItems.controls; let i = index" class="order-item" [formGroup]="item">
           <div class="form-group">
             <label>Produkt</label>
@@ -40,12 +40,14 @@
               <option [ngValue]="null" disabled>Wybierz produkt</option>
               <option *ngFor="let wi of warehouseItems" [ngValue]="wi.id">{{ wi.name }} ({{ wi.quantity }} szt.)</option>
             </select>
-            <span class="error-text" *ngIf="item.get('warehouseItemId')?.touched && item.get('warehouseItemId')?.invalid">Wybierz produkt</span>
+            <span class="error-text" *ngIf="item.get('warehouseItemId')?.touched && item.get('warehouseItemId')?.errors?.['required']">Wybierz produkt</span>
+            <span class="error-text" *ngIf="item.get('warehouseItemId')?.touched && item.get('warehouseItemId')?.errors?.['min']">Nieprawidłowy produkt</span>
           </div>
           <div class="form-group">
             <label>Ilość</label>
             <input formControlName="quantity" type="number" min="1">
-            <span class="error-text" *ngIf="item.get('quantity')?.touched && item.get('quantity')?.invalid">Ilość musi być większa od 0</span>
+            <span class="error-text" *ngIf="item.get('quantity')?.touched && item.get('quantity')?.errors?.['required']">Pole wymagane</span>
+            <span class="error-text" *ngIf="item.get('quantity')?.touched && item.get('quantity')?.errors?.['min']">Ilość musi być większa od 0</span>
           </div>
           <div class="form-group">
             <label>Cena jednostkowa</label>
@@ -54,7 +56,8 @@
           <div class="form-group vat-group">
             <label>Stawka VAT (%)</label>
             <input formControlName="vatRate" type="number" step="1" min="0">
-            <span class="error-text" *ngIf="item.get('vatRate')?.touched && item.get('vatRate')?.invalid">VAT musi być nieujemny</span>
+            <span class="error-text" *ngIf="item.get('vatRate')?.touched && item.get('vatRate')?.errors?.['required']">Pole wymagane</span>
+            <span class="error-text" *ngIf="item.get('vatRate')?.touched && item.get('vatRate')?.errors?.['min']">VAT musi być dodatni</span>
           </div>
           <div class="form-group">
             <label>Cena całkowita</label>
@@ -64,6 +67,9 @@
         </div>
         <button type="button" class="add-item" (click)="addOrderItem()" [disabled]="warehouseItems.length === 0">Dodaj produkt</button>
       </div>
+      <ng-template #noItemsTemplate>
+        <div class="alert alert-warning">Brak dostępnych produktów w magazynie. Dodaj produkty, aby kontynuować.</div>
+      </ng-template>
       <div class="form-buttons">
         <button type="submit" [disabled]="isLoading || orderForm.invalid">{{ isLoading ? 'Zapisywanie...' : 'Zapisz' }}</button>
         <button type="button" class="cancel-button" (click)="cancelForm()">Anuluj</button>
