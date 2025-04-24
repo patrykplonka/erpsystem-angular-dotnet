@@ -23,53 +23,66 @@ namespace erpsystem.Server.Controllers
             _cache = cache;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<OrderDto>>> GetOrders()
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResult<OrderDto>>> GetPagedOrders(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? contractorName = null,
+            [FromQuery] string? orderType = null,
+            [FromQuery] string? status = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
         {
-            const string cacheKey = "Orders";
-            if (!_cache.TryGetValue(cacheKey, out IEnumerable<OrderDto> orderDtos))
+            var query = _context.Orders
+                .Include(o => o.Contractor)
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.WarehouseItem)
+                .Where(o => !o.IsDeleted);
+
+            if (!string.IsNullOrEmpty(contractorName))
+                query = query.Where(o => o.Contractor.Name.Contains(contractorName));
+            if (!string.IsNullOrEmpty(orderType))
+                query = query.Where(o => o.OrderType == orderType);
+            if (!string.IsNullOrEmpty(status))
+                query = query.Where(o => o.Status == status);
+            if (startDate.HasValue)
+                query = query.Where(o => o.OrderDate >= startDate.Value);
+            if (endDate.HasValue)
+                query = query.Where(o => o.OrderDate <= endDate.Value);
+
+            var totalItems = await query.CountAsync();
+            var orders = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var orderDtos = orders.Select(o => new OrderDto
             {
-                var orders = await _context.Orders
-                    .Include(o => o.Contractor)
-                    .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.WarehouseItem)
-                    .Where(o => !o.IsDeleted)
-                    .ToListAsync();
-
-                orderDtos = orders.Select(o => new OrderDto
+                Id = o.Id,
+                OrderNumber = o.OrderNumber,
+                ContractorId = o.ContractorId,
+                ContractorName = o.Contractor?.Name ?? "Brak kontrahenta",
+                OrderType = o.OrderType,
+                OrderDate = o.OrderDate,
+                TotalAmount = o.TotalAmount,
+                Status = o.Status,
+                CreatedBy = o.CreatedBy,
+                CreatedDate = o.CreatedDate,
+                IsDeleted = o.IsDeleted,
+                OrderItems = o.OrderItems.Select(oi => new OrderItemDto
                 {
-                    Id = o.Id,
-                    OrderNumber = o.OrderNumber,
-                    ContractorId = o.ContractorId,
-                    ContractorName = o.Contractor != null ? o.Contractor.Name : "Brak kontrahenta",
-                    OrderType = o.OrderType,
-                    OrderDate = o.OrderDate,
-                    TotalAmount = o.TotalAmount,
-                    Status = o.Status,
-                    CreatedBy = o.CreatedBy,
-                    CreatedDate = o.CreatedDate,
-                    IsDeleted = o.IsDeleted,
-                    OrderItems = o.OrderItems.Select(oi => new OrderItemDto
-                    {
-                        Id = oi.Id,
-                        OrderId = oi.OrderId,
-                        WarehouseItemId = oi.WarehouseItemId,
-                        WarehouseItemName = oi.WarehouseItem != null ? oi.WarehouseItem.Name : "Brak produktu",
-                        Quantity = oi.Quantity,
-                        UnitPrice = oi.UnitPrice,
-                        VatRate = oi.VatRate,
-                        TotalPrice = oi.TotalPrice
-                    }).ToList()
-                }).ToList();
+                    Id = oi.Id,
+                    OrderId = oi.OrderId,
+                    WarehouseItemId = oi.WarehouseItemId,
+                    WarehouseItemName = oi.WarehouseItem?.Name ?? "Brak produktu",
+                    Quantity = oi.Quantity,
+                    UnitPrice = oi.UnitPrice,
+                    VatRate = oi.VatRate,
+                    TotalPrice = oi.TotalPrice
+                }).ToList()
+            }).ToList();
 
-                var cacheOptions = new MemoryCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
-                };
-                _cache.Set(cacheKey, orderDtos, cacheOptions);
-            }
-
-            return Ok(orderDtos);
+            return Ok(new PagedResult<OrderDto> { Items = orderDtos, TotalItems = totalItems });
         }
 
         [HttpGet("{id}")]
@@ -82,19 +95,17 @@ namespace erpsystem.Server.Controllers
                     .Include(o => o.Contractor)
                     .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.WarehouseItem)
-                    .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+                    .FirstOrDefaultAsync(o => o.Id == id);
 
                 if (order == null)
-                {
                     return NotFound();
-                }
 
                 orderDto = new OrderDto
                 {
                     Id = order.Id,
                     OrderNumber = order.OrderNumber,
                     ContractorId = order.ContractorId,
-                    ContractorName = order.Contractor != null ? order.Contractor.Name : "Brak kontrahenta",
+                    ContractorName = order.Contractor?.Name ?? "Brak kontrahenta",
                     OrderType = order.OrderType,
                     OrderDate = order.OrderDate,
                     TotalAmount = order.TotalAmount,
@@ -107,7 +118,7 @@ namespace erpsystem.Server.Controllers
                         Id = oi.Id,
                         OrderId = oi.OrderId,
                         WarehouseItemId = oi.WarehouseItemId,
-                        WarehouseItemName = oi.WarehouseItem != null ? oi.WarehouseItem.Name : "Brak produktu",
+                        WarehouseItemName = oi.WarehouseItem?.Name ?? "Brak produktu",
                         Quantity = oi.Quantity,
                         UnitPrice = oi.UnitPrice,
                         VatRate = oi.VatRate,
@@ -129,9 +140,7 @@ namespace erpsystem.Server.Controllers
         public async Task<ActionResult<OrderDto>> CreateOrder(OrderDto orderDto)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             var warehouseItemIds = orderDto.OrderItems.Select(oi => oi.WarehouseItemId).Distinct().ToList();
             var warehouseItems = await _context.WarehouseItems
@@ -149,14 +158,7 @@ namespace erpsystem.Server.Controllers
                 OrderItems = orderDto.OrderItems.Select(oi =>
                 {
                     if (!warehouseItems.TryGetValue(oi.WarehouseItemId, out var unitPrice))
-                    {
                         throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} nie istnieje lub jest usunięty.");
-                    }
-
-                    if (unitPrice <= 0)
-                    {
-                        throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} ma cenę 0. Zaktualizuj cenę w bazie danych.");
-                    }
 
                     return new OrderItem
                     {
@@ -164,7 +166,7 @@ namespace erpsystem.Server.Controllers
                         Quantity = oi.Quantity,
                         UnitPrice = unitPrice,
                         VatRate = oi.VatRate,
-                        TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate / 100)
+                        TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate)
                     };
                 }).ToList()
             };
@@ -198,18 +200,14 @@ namespace erpsystem.Server.Controllers
         public async Task<IActionResult> UpdateOrder(int id, OrderDto orderDto)
         {
             if (id != orderDto.Id)
-            {
                 return BadRequest();
-            }
 
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
-                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+                .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null)
-            {
                 return NotFound();
-            }
 
             var warehouseItemIds = orderDto.OrderItems.Select(oi => oi.WarehouseItemId).Distinct().ToList();
             var warehouseItems = await _context.WarehouseItems
@@ -221,28 +219,21 @@ namespace erpsystem.Server.Controllers
             order.OrderType = orderDto.OrderType;
             order.OrderDate = orderDto.OrderDate;
             order.Status = orderDto.Status;
+            order.IsDeleted = orderDto.IsDeleted;
 
             _context.OrderItems.RemoveRange(order.OrderItems);
             order.OrderItems = orderDto.OrderItems.Select(oi =>
             {
                 if (!warehouseItems.TryGetValue(oi.WarehouseItemId, out var unitPrice))
-                {
                     throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} nie istnieje lub jest usunięty.");
-                }
-
-                if (unitPrice <= 0)
-                {
-                    throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} ma cenę 0. Zaktualizuj cenę w bazie danych.");
-                }
 
                 return new OrderItem
                 {
-                    OrderId = order.Id,
                     WarehouseItemId = oi.WarehouseItemId,
                     Quantity = oi.Quantity,
                     UnitPrice = unitPrice,
                     VatRate = oi.VatRate,
-                    TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate / 100)
+                    TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate)
                 };
             }).ToList();
 
@@ -252,14 +243,13 @@ namespace erpsystem.Server.Controllers
             {
                 OrderId = order.Id,
                 Action = "Updated",
-                ModifiedBy = orderDto.CreatedBy,
+                ModifiedBy = orderDto.CreatedBy ?? "System",
                 ModifiedDate = DateTime.UtcNow,
                 Details = $"Order {order.OrderNumber} updated."
             };
             _context.OrderHistory.Add(history);
 
             await _context.SaveChangesAsync();
-
             _cache.Remove("Orders");
             _cache.Remove($"Order_{id}");
 
@@ -270,13 +260,10 @@ namespace erpsystem.Server.Controllers
         public async Task<IActionResult> DeleteOrder(int id)
         {
             var order = await _context.Orders.FindAsync(id);
-            if (order == null || order.IsDeleted)
-            {
+            if (order == null)
                 return NotFound();
-            }
 
             order.IsDeleted = true;
-
             var history = new OrderHistory
             {
                 OrderId = order.Id,
@@ -288,298 +275,74 @@ namespace erpsystem.Server.Controllers
             _context.OrderHistory.Add(history);
 
             await _context.SaveChangesAsync();
-
             _cache.Remove("Orders");
             _cache.Remove($"Order_{id}");
 
             return NoContent();
         }
 
-        [HttpGet("generate-order-number")]
-        public async Task<IActionResult> GenerateOrderNumber([FromQuery] string orderType)
-        {
-            if (orderType != "Purchase" && orderType != "Sale")
-            {
-                return BadRequest(new { message = "Nieprawidłowy typ zamówienia." });
-            }
-
-            var cacheKey = $"OrderNumber_{orderType}_{DateTime.UtcNow:yyyyMMdd}";
-            if (!_cache.TryGetValue(cacheKey, out string orderNumber))
-            {
-                var today = DateTime.UtcNow.ToString("yyyyMMdd");
-                var prefix = orderType == "Purchase" ? "PO" : "SO";
-                var pattern = $"{prefix}-{today}-%";
-
-                var count = await _context.Orders
-                    .Where(o => o.OrderNumber.StartsWith($"{prefix}-{today}-") && !o.IsDeleted)
-                    .CountAsync();
-
-                var sequence = (count + 1).ToString("D3");
-                orderNumber = $"{prefix}-{today}-{sequence}";
-
-                var cacheOptions = new MemoryCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
-                };
-                _cache.Set(cacheKey, orderNumber, cacheOptions);
-            }
-
-            return Ok(new { orderNumber });
-        }
-
         [HttpPost("confirm/{id}")]
         public async Task<IActionResult> ConfirmOrder(int id)
         {
-            var order = await _context.Orders
-                .Include(o => o.Contractor)
-                .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.WarehouseItem)
-                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
-
+            var order = await _context.Orders.FindAsync(id);
             if (order == null)
-            {
-                return NotFound(new { message = $"Zamówienie o ID {id} nie istnieje." });
-            }
+                return NotFound();
 
             if (order.Status != "Draft")
-            {
-                return BadRequest(new { message = "Tylko zamówienia w statusie Draft mogą być potwierdzone." });
-            }
-
-            if (order.Contractor == null)
-            {
-                return BadRequest(new { message = $"Kontrahent dla zamówienia o ID {id} nie istnieje. Sprawdź ContractorId." });
-            }
-
-            foreach (var item in order.OrderItems)
-            {
-                if (item.WarehouseItem == null)
-                {
-                    return BadRequest(new { message = $"Produkt o ID {item.WarehouseItemId} nie istnieje." });
-                }
-
-                if (order.OrderType == "Sale" && item.WarehouseItem.Quantity < item.Quantity)
-                {
-                    return BadRequest(new { message = $"Niewystarczająca ilość produktu {item.WarehouseItem.Name} w magazynie." });
-                }
-
-                if (order.OrderType == "Sale")
-                {
-                    item.WarehouseItem.Quantity -= item.Quantity;
-                }
-
-                var movement = new WarehouseMovements
-                {
-                    WarehouseItemId = item.WarehouseItemId,
-                    MovementType = order.OrderType == "Purchase" ? WarehouseMovementType.PZ : WarehouseMovementType.WZ,
-                    Quantity = item.Quantity,
-                    Supplier = order.Contractor.Name,
-                    DocumentNumber = order.OrderNumber,
-                    Date = DateTime.UtcNow,
-                    Description = $"Zamówienie {order.OrderType} - {order.OrderNumber}",
-                    CreatedBy = order.CreatedBy,
-                    Status = "Completed"
-                };
-
-                _context.WarehouseMovements.Add(movement);
-            }
+                return BadRequest("Only draft orders can be confirmed.");
 
             order.Status = "Confirmed";
-
             var history = new OrderHistory
             {
                 OrderId = order.Id,
                 Action = "Confirmed",
-                ModifiedBy = order.CreatedBy,
+                ModifiedBy = "System",
                 ModifiedDate = DateTime.UtcNow,
                 Details = $"Order {order.OrderNumber} confirmed."
             };
             _context.OrderHistory.Add(history);
 
             await _context.SaveChangesAsync();
-
             _cache.Remove("Orders");
             _cache.Remove($"Order_{id}");
-            _cache.Remove("WarehouseItemsAll");
 
-            return Ok(new { message = "Zamówienie zostało potwierdzone." });
-        }
-
-        [HttpPost("{id}/receive")]
-        public async Task<IActionResult> ReceiveOrder(int id)
-        {
-            var order = await _context.Orders
-                .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.WarehouseItem)
-                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
-
-            if (order == null)
-            {
-                return NotFound(new { message = $"Zamówienie o ID {id} nie istnieje." });
-            }
-
-            if (order.OrderType != "Purchase")
-            {
-                return BadRequest(new { message = "Tylko zamówienia typu Purchase mogą być przyjęte." });
-            }
-
-            if (order.Status != "Confirmed")
-            {
-                return BadRequest(new { message = "Tylko zamówienia w statusie Confirmed mogą być przyjęte." });
-            }
-
-            if (order.Status == "Received")
-            {
-                return BadRequest(new { message = "Zamówienie zostało już przyjęte." });
-            }
-
-            foreach (var item in order.OrderItems)
-            {
-                if (item.WarehouseItem == null)
-                {
-                    return BadRequest(new { message = $"Produkt o ID {item.WarehouseItemId} nie istnieje." });
-                }
-
-                item.WarehouseItem.Quantity += item.Quantity;
-            }
-
-            order.Status = "Received";
-
-            var history = new OrderHistory
-            {
-                OrderId = order.Id,
-                Action = "Received",
-                ModifiedBy = "System",
-                ModifiedDate = DateTime.UtcNow,
-                Details = $"Order {order.OrderNumber} received."
-            };
-            _context.OrderHistory.Add(history);
-
-            await _context.SaveChangesAsync();
-
-            _cache.Remove("Orders");
-            _cache.Remove($"Order_{id}");
-            _cache.Remove("WarehouseItemsAll");
-
-            return Ok(new { message = "Zamówienie zostało przyjęte." });
+            return NoContent();
         }
 
         [HttpGet("{id}/history")]
-        public async Task<IActionResult> GetOrderHistory(int id)
+        public async Task<ActionResult<IEnumerable<OrderHistoryDto>>> GetOrderHistory(int id)
         {
-            var cacheKey = $"OrderHistory_{id}";
-            if (!_cache.TryGetValue(cacheKey, out IEnumerable<OrderHistoryDto> history))
-            {
-                history = await _context.OrderHistory
-                    .Where(h => h.OrderId == id)
-                    .Select(h => new OrderHistoryDto
-                    {
-                        Id = h.Id,
-                        OrderId = h.OrderId,
-                        Action = h.Action,
-                        ModifiedBy = h.ModifiedBy,
-                        ModifiedDate = h.ModifiedDate,
-                        Details = h.Details
-                    })
-                    .ToListAsync();
-
-                var cacheOptions = new MemoryCacheEntryOptions
+            var history = await _context.OrderHistory
+                .Where(h => h.OrderId == id)
+                .Select(h => new OrderHistoryDto
                 {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
-                };
-                _cache.Set(cacheKey, history, cacheOptions);
-            }
+                    Id = h.Id,
+                    OrderId = h.OrderId,
+                    Action = h.Action,
+                    ModifiedBy = h.ModifiedBy,
+                    ModifiedDate = h.ModifiedDate,
+                    Details = h.Details
+                })
+                .ToListAsync();
 
             return Ok(history);
         }
 
-        [HttpPost("{id}/update-status")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] string newStatus)
+        [HttpGet("generate-order-number")]
+        public async Task<ActionResult<object>> GenerateOrderNumber([FromQuery] string orderType)
         {
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null || order.IsDeleted)
-                return NotFound();
-
-            var validStatuses = new[] { "Draft", "Confirmed", "InProgress", "Shipped", "Completed", "Cancelled" };
-            if (!validStatuses.Contains(newStatus))
-                return BadRequest(new { message = "Nieprawidłowy status." });
-
-            order.Status = newStatus;
-
-            var history = new OrderHistory
-            {
-                OrderId = order.Id,
-                Action = "StatusUpdated",
-                ModifiedBy = "System",
-                ModifiedDate = DateTime.UtcNow,
-                Details = $"Status changed to {newStatus}."
-            };
-            _context.OrderHistory.Add(history);
-
-            await _context.SaveChangesAsync();
-
-            _cache.Remove("Orders");
-            _cache.Remove($"Order_{id}");
-
-            return Ok(new { message = $"Status zmieniony na {newStatus}." });
+            var prefix = orderType == "Purchase" ? "PUR" : "SAL";
+            var date = DateTime.Now.ToString("yyyyMMdd");
+            var count = await _context.Orders
+                .CountAsync(o => o.OrderNumber.StartsWith($"{prefix}-{date}")) + 1;
+            var orderNumber = $"{prefix}-{date}-{count:D4}";
+            return new { orderNumber };
         }
+    }
 
-        [HttpGet("report")]
-        public async Task<IActionResult> GetOrderReport([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
-        {
-            var cacheKey = $"OrderReport_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}";
-            if (!_cache.TryGetValue(cacheKey, out var report))
-            {
-                var query = _context.Orders
-                    .Include(o => o.Contractor)
-                    .Where(o => !o.IsDeleted);
-
-                if (startDate.HasValue)
-                    query = query.Where(o => o.OrderDate >= startDate.Value);
-                if (endDate.HasValue)
-                    query = query.Where(o => o.OrderDate <= endDate.Value);
-
-                report = await query
-                    .GroupBy(o => o.Contractor.Name)
-                    .Select(g => new
-                    {
-                        Contractor = g.Key,
-                        TotalOrders = g.Count(),
-                        TotalAmount = g.Sum(o => o.TotalAmount)
-                    })
-                    .ToListAsync();
-
-                var cacheOptions = new MemoryCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
-                };
-                _cache.Set(cacheKey, report, cacheOptions);
-            }
-
-            return Ok(report);
-        }
-
-        [HttpGet("dashboard-stats")]
-        public async Task<IActionResult> GetDashboardStats()
-        {
-            const string cacheKey = "DashboardStats";
-            if (!_cache.TryGetValue(cacheKey, out var stats))
-            {
-                stats = new
-                {
-                    TotalOrders = await _context.Orders.CountAsync(o => !o.IsDeleted),
-                    PendingOrders = await _context.Orders.CountAsync(o => o.Status == "Draft" && !o.IsDeleted),
-                    TotalRevenue = await _context.Orders.Where(o => o.OrderType == "Sale" && !o.IsDeleted).SumAsync(o => o.TotalAmount)
-                };
-
-                var cacheOptions = new MemoryCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
-                };
-                _cache.Set(cacheKey, stats, cacheOptions);
-            }
-
-            return Ok(stats);
-        }
+    public class PagedResult<T>
+    {
+        public IEnumerable<T> Items { get; set; }
+        public int TotalItems { get; set; }
     }
 }

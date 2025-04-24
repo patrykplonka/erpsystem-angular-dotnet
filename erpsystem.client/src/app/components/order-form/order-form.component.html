@@ -1,0 +1,106 @@
+<div class="order-form-container">
+  <div class="dashboard-container">
+    <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
+    <main class="main-content">
+      <header>
+        <div>
+          <h1>Nowy Zamówienie</h1>
+          <p>Dodaj nowe zamówienie do systemu</p>
+        </div>
+        <div class="user-info">
+          <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+        </div>
+      </header>
+      <section class="order-form-section">
+        <div class="messages">
+          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
+        <div class="forms-container">
+          <div class="add-order-form">
+            <h3>Dodaj nowe zamówienie</h3>
+            <form>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="orderNumber">Numer zamówienia</label>
+                  <input [(ngModel)]="order.orderNumber" id="orderNumber" name="orderNumber" placeholder="Numer zamówienia" readonly>
+                </div>
+                <div class="form-group">
+                  <label for="contractor">Kontrahent</label>
+                  <select [(ngModel)]="order.contractorId" id="contractor" name="contractor" required>
+                    <option value="0" disabled>Wybierz kontrahenta</option>
+                    <option *ngFor="let contractor of contractors" [value]="contractor.id">{{ contractor.name }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="orderType">Typ</label>
+                  <select [(ngModel)]="order.orderType" id="orderType" name="orderType" required (ngModelChange)="generateOrderNumber()">
+                    <option value="Purchase">Zakup</option>
+                    <option value="Sale">Sprzedaż</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="orderDate">Data</label>
+                  <input [(ngModel)]="order.orderDate" id="orderDate" name="orderDate" type="date" required>
+                </div>
+                <div class="form-group">
+                  <label for="status">Status</label>
+                  <select [(ngModel)]="order.status" id="status" name="status" required>
+                    <option value="Draft">Szkic</option>
+                    <option value="Confirmed">Potwierdzone</option>
+                    <option value="Completed">Zrealizowane</option>
+                  </select>
+                </div>
+              </div>
+              <h3>Produkty</h3>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="warehouseItem">Produkt</label>
+                  <select [(ngModel)]="newItem.warehouseItemId" id="warehouseItem" name="warehouseItem">
+                    <option value="0" disabled>Wybierz produkt</option>
+                    <option *ngFor="let item of warehouseItems" [value]="item.id">{{ item.name }} (Dostępne: {{ item.quantity }})</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="quantity">Ilość</label>
+                  <input [(ngModel)]="newItem.quantity" id="quantity" name="quantity" type="number" min="1" placeholder="Ilość">
+                </div>
+              </div>
+              <div class="form-buttons">
+                <button type="button" (click)="addItem()">Dodaj produkt</button>
+              </div>
+              <table *ngIf="order.orderItems.length > 0">
+                <thead>
+                  <tr>
+                    <th>Produkt</th>
+                    <th>Ilość</th>
+                    <th>Cena jednostkowa</th>
+                    <th>Stawka VAT</th>
+                    <th>Całkowita cena</th>
+                    <th>Akcje</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let item of order.orderItems; let i = index">
+                    <td data-label="Produkt">{{ item.warehouseItemName }}</td>
+                    <td data-label="Ilość">{{ item.quantity }}</td>
+                    <td data-label="Cena jednostkowa">{{ item.unitPrice | currency:'PLN' }}</td>
+                    <td data-label="Stawka VAT">{{ item.vatRate * 100 }}%</td>
+                    <td data-label="Całkowita cena">{{ item.totalPrice | currency:'PLN' }}</td>
+                    <td data-label="Akcje" class="actions">
+                      <button class="action-button delete-button" (click)="removeItem(i)">Usuń</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="form-buttons">
+                <button type="button" (click)="submitOrder()">Zapisz</button>
+                <button type="button" class="cancel-button" (click)="cancel()">Anuluj</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

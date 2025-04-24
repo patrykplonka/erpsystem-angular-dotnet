@@ -5,7 +5,7 @@
   font-family: "Arial", sans-serif;
 }
 
-.orders-container {
+.order-form-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -57,7 +57,7 @@ header {
     color: #2c3e50;
   }
 
-.orders-section {
+.order-form-section {
   padding: 0 10px;
   flex: 1;
 }
@@ -82,51 +82,45 @@ header {
   color: #721c24;
 }
 
-.orders-list {
+.forms-container {
   background: #ffffff;
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.list-controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.add-button, .toggle-deleted {
-  padding: 8px 14px;
-  background: #3b82f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-  .add-button:hover, .toggle-deleted:hover {
-    background: #2563eb;
-  }
-
-.toggle-deleted {
-  background: #6b7280;
-}
-
-  .toggle-deleted:hover {
-    background: #4b5563;
-  }
-
-.advanced-filters {
-  display: flex;
-  gap: 15px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
 }
 
-  .advanced-filters select {
+.add-order-form {
+  max-width: 800px;
+}
+
+  .add-order-form h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #2c3e50;
+  }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+  .form-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 5px;
+  }
+
+  .form-group input,
+  .form-group select {
     padding: 10px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
@@ -135,8 +129,40 @@ header {
     transition: border-color 0.2s;
   }
 
-    .advanced-filters select:focus {
+    .form-group input:focus,
+    .form-group select:focus {
       border-color: #3b82f6;
+    }
+
+.form-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+  .form-buttons button {
+    padding: 8px 14px;
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+    .form-buttons button:hover {
+      background: #2563eb;
+    }
+
+  .form-buttons .cancel-button {
+    background: #e5e7eb;
+    color: #4b5563;
+  }
+
+    .form-buttons .cancel-button:hover {
+      background: #d1d5db;
     }
 
 table {
@@ -146,6 +172,7 @@ table {
   background: #ffffff;
   border-radius: 12px;
   overflow: hidden;
+  margin-top: 20px;
 }
 
 thead {
@@ -159,17 +186,7 @@ th {
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  cursor: pointer;
 }
-
-  th span {
-    font-size: 10px;
-  }
-
-    th span.asc {
-      transform: rotate(180deg);
-      display: inline-block;
-    }
 
 td {
   padding: 10px;
@@ -200,15 +217,6 @@ tbody tr:hover {
   transition: background 0.2s;
 }
 
-.edit-button {
-  background: #3b82f6;
-  color: #ffffff;
-}
-
-  .edit-button:hover {
-    background: #2563eb;
-  }
-
 .delete-button {
   background: #ef4444;
   color: #ffffff;
@@ -216,48 +224,6 @@ tbody tr:hover {
 
   .delete-button:hover {
     background: #dc2626;
-  }
-
-.restore-button {
-  background: #10b981;
-  color: #ffffff;
-}
-
-  .restore-button:hover {
-    background: #059669;
-  }
-
-.no-orders {
-  text-align: center;
-  padding: 20px;
-  color: #666;
-  font-size: 14px;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-  .pagination button {
-    padding: 8px 14px;
-    background: #3b82f6;
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-    .pagination button:disabled {
-      background: #d1d5db;
-      cursor: not-allowed;
-    }
-
-  .pagination span {
-    align-self: center;
-    font-size: 14px;
   }
 
 @media (max-width: 767px) {
@@ -301,7 +267,7 @@ tbody tr:hover {
 }
 
 @media (min-width: 768px) {
-  .orders-container {
+  .order-form-container {
     flex-direction: row;
   }
 
