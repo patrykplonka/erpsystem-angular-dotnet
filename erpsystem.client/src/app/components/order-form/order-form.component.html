@@ -1,0 +1,73 @@
+<div class="forms-container">
+  <div class="order-form">
+    <h3>{{ order ? 'Edytuj zamówienie' : 'Dodaj nowe zamówienie' }}</h3>
+    <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+    <form [formGroup]="orderForm" (ngSubmit)="saveOrder()">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="orderNumber">Numer zamówienia</label>
+          <input formControlName="orderNumber" id="orderNumber" readonly>
+          <span class="error-text" *ngIf="orderForm.get('orderNumber')?.touched && orderForm.get('orderNumber')?.invalid">Pole wymagane</span>
+        </div>
+        <div class="form-group">
+          <label for="contractorId">Kontrahent</label>
+          <select formControlName="contractorId" id="contractorId">
+            <option [ngValue]="null" disabled>Wybierz kontrahenta</option>
+            <option *ngFor="let contractor of contractors" [ngValue]="contractor.id">{{ contractor.name }}</option>
+          </select>
+          <span class="error-text" *ngIf="orderForm.get('contractorId')?.touched && orderForm.get('contractorId')?.invalid">Wybierz kontrahenta</span>
+        </div>
+        <div class="form-group">
+          <label for="orderType">Typ</label>
+          <select formControlName="orderType" id="orderType" (change)="onOrderTypeChange()">
+            <option value="" disabled>Wybierz typ</option>
+            <option *ngFor="let type of orderTypes" [value]="type.value">{{ type.display }}</option>
+          </select>
+          <span class="error-text" *ngIf="orderForm.get('orderType')?.touched && orderForm.get('orderType')?.invalid">Pole wymagane</span>
+        </div>
+        <div class="form-group">
+          <label for="orderDate">Data</label>
+          <input formControlName="orderDate" id="orderDate" type="date">
+          <span class="error-text" *ngIf="orderForm.get('orderDate')?.touched && orderForm.get('orderDate')?.invalid">Pole wymagane</span>
+        </div>
+      </div>
+      <h4>Produkty</h4>
+      <div class="order-items">
+        <div *ngFor="let item of orderItems.controls; let i = index" class="order-item" [formGroup]="item">
+          <div class="form-group">
+            <label>Produkt</label>
+            <select formControlName="warehouseItemId">
+              <option [ngValue]="null" disabled>Wybierz produkt</option>
+              <option *ngFor="let wi of warehouseItems" [ngValue]="wi.id">{{ wi.name }} ({{ wi.quantity }} szt.)</option>
+            </select>
+            <span class="error-text" *ngIf="item.get('warehouseItemId')?.touched && item.get('warehouseItemId')?.invalid">Wybierz produkt</span>
+          </div>
+          <div class="form-group">
+            <label>Ilość</label>
+            <input formControlName="quantity" type="number" min="1">
+            <span class="error-text" *ngIf="item.get('quantity')?.touched && item.get('quantity')?.invalid">Ilość musi być większa od 0</span>
+          </div>
+          <div class="form-group">
+            <label>Cena jednostkowa</label>
+            <input formControlName="unitPrice" readonly [value]="item.get('unitPrice')?.value | currency:'PLN'">
+          </div>
+          <div class="form-group vat-group">
+            <label>Stawka VAT (%)</label>
+            <input formControlName="vatRate" type="number" step="1" min="0">
+            <span class="error-text" *ngIf="item.get('vatRate')?.touched && item.get('vatRate')?.invalid">VAT musi być nieujemny</span>
+          </div>
+          <div class="form-group">
+            <label>Cena całkowita</label>
+            <input formControlName="totalPrice" readonly [value]="item.get('totalPrice')?.value | currency:'PLN'">
+          </div>
+          <button type="button" class="remove-item" (click)="removeOrderItem(i)">Usuń</button>
+        </div>
+        <button type="button" class="add-item" (click)="addOrderItem()" [disabled]="warehouseItems.length === 0">Dodaj produkt</button>
+      </div>
+      <div class="form-buttons">
+        <button type="submit" [disabled]="isLoading || orderForm.invalid">{{ isLoading ? 'Zapisywanie...' : 'Zapisz' }}</button>
+        <button type="button" class="cancel-button" (click)="cancelForm()">Anuluj</button>
+      </div>
+    </form>
+  </div>
+</div>
