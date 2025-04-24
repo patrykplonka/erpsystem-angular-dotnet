@@ -1,231 +1,216 @@
-import { Component, EventEmitter, Input, Output, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { debounceTime } from 'rxjs/operators';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Router, RouterModule } from '@angular/router';
+import { SidebarComponent } from '../sidebar/sidebar.component';
+import { AuthService } from '../../services/auth.service';
 
-interface OrderDto {
+interface ContractorDto {
   id: number;
-  orderNumber: string;
-  contractorId: number;
-  orderType: string;
-  orderDate: string;
-  totalAmount: number;
-  status: string;
-  createdBy: string;
-  createdDate: string;
+  name: string;
+  type: 'Supplier' | 'Client' | 'Both';
+  email: string;
+  phone: string;
+  address: string;
+  taxId: string;
   isDeleted: boolean;
-  orderItems: OrderItemDto[];
+}
+
+interface WarehouseItemDto {
+  id: number;
+  name: string;
+  code: string;
+  quantity: number;
+  unitPrice: number;
+  category: string;
+  location: string;
+  warehouse: string;
+  unitOfMeasure: string;
+  minimumStock: number;
+  contractorId: number | null;
+  contractorName: string;
+  batchNumber: string;
+  expirationDate: string | null;
+  purchaseCost: number;
+  vatRate: number;
+  isDeleted: boolean;
 }
 
 interface OrderItemDto {
-  id: number;
-  orderId: number;
   warehouseItemId: number;
+  warehouseItemName: string;
   quantity: number;
   unitPrice: number;
   vatRate: number;
   totalPrice: number;
 }
 
-interface ContractorDto {
-  id: number;
-  name: string;
-}
-
-interface WarehouseItemDto {
-  id: number;
-  name: string;
-  quantity: number;
-  unitPrice: number;
+interface CreateOrderDto {
+  orderNumber: string;
+  contractorId: number;
+  orderType: 'Purchase' | 'Sale';
+  orderDate: string;
+  status: 'Draft' | 'Confirmed' | 'Completed';
+  createdBy: string;
+  orderItems: OrderItemDto[];
 }
 
 @Component({
   selector: 'app-order-form',
   templateUrl: './order-form.component.html',
   styleUrls: ['./order-form.component.css'],
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, SidebarComponent],
   standalone: true
 })
-export class OrderFormComponent {
-  @Input() order: OrderDto | null = null;
-  @Input() contractors: ContractorDto[] = [];
-  @Input() warehouseItems: WarehouseItemDto[] = [];
-  @Input() orderTypes: { value: string; display: string }[] = [];
-  @Output() orderSaved = new EventEmitter<void>();
-  @Output() cancel = new EventEmitter<void>();
-
-  orderForm: FormGroup;
-  apiUrl = 'https://localhost:7224/api/orders';
-  isLoading = false;
+export class OrderFormComponent implements OnInit {
+  order: CreateOrderDto = {
+    orderNumber: '',
+    contractorId: 0,
+    orderType: 'Purchase',
+    orderDate: new Date().toISOString().split('T')[0],
+    status: 'Draft',
+    createdBy: '',
+    orderItems: []
+  };
+  contractors: ContractorDto[] = [];
+  warehouseItems: WarehouseItemDto[] = [];
+  newItem: OrderItemDto = { warehouseItemId: 0, warehouseItemName: '', quantity: 1, unitPrice: 0, vatRate: 0, totalPrice: 0 };
   errorMessage: string | null = null;
+  successMessage: string | null = null;
+  currentUserEmail: string | null = null;
+  apiUrl = 'https://localhost:7224/api/orders';
+  contractorsApiUrl = 'https://localhost:7224/api/contractors';
+  warehouseApiUrl = 'https://localhost:7224/api/warehouseitems';
+  generateOrderNumberUrl = 'https://localhost:7224/api/orders/generate-order-number';
 
-  constructor(private fb: FormBuilder, private http: HttpClient, private cdr: ChangeDetectorRef) {
-    this.orderForm = this.fb.group({
-      orderNumber: [{ value: '', disabled: true }],
-      contractorId: [null, [Validators.required, Validators.min(1)]],
-      orderType: ['', Validators.required],
-      orderDate: ['', Validators.required],
-      orderItems: this.fb.array([])
-    });
-  }
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private authService: AuthService
+  ) { }
 
   ngOnInit() {
-    if (this.order) {
-      this.orderForm.patchValue({
-        orderNumber: this.order.orderNumber,
-        contractorId: this.order.contractorId,
-        orderType: this.order.orderType,
-        orderDate: new Date(this.order.orderDate).toISOString().split('T')[0]
-      });
-      this.order.orderItems.forEach(item => this.addOrderItem(item));
-    } else {
-      this.orderForm.patchValue({
-        orderDate: new Date().toISOString().split('T')[0]
-      });
-      this.http.get<{ orderNumber: string }>(`${this.apiUrl}/generate-order-number?orderType=Purchase`).subscribe({
-        next: (data) => {
-          this.orderForm.patchValue({ orderNumber: data.orderNumber });
-          this.cdr.markForCheck();
-        },
-        error: (error) => this.errorMessage = `Błąd generowania numeru: ${error.message}`
-      });
-      this.addOrderItem();
-    }
+    this.currentUserEmail = this.authService.getCurrentUserEmail();
+    this.order.createdBy = this.currentUserEmail || 'System';
+    this.loadContractors();
+    this.loadWarehouseItems();
+    this.generateOrderNumber();
   }
 
-  get orderItems(): FormArray<FormGroup> {
-    return this.orderForm.get('orderItems') as FormArray<FormGroup>;
-  }
-
-  addOrderItem(item?: OrderItemDto) {
-    const itemGroup = this.fb.group({
-      warehouseItemId: [item?.warehouseItemId || null, [Validators.required, Validators.min(1)]],
-      quantity: [item?.quantity || 1, [Validators.required, Validators.min(1)]],
-      unitPrice: [{ value: item?.unitPrice || 0, disabled: true }],
-      vatRate: [item?.vatRate ? item.vatRate * 100 : 23, [Validators.required, Validators.min(0)]],
-      totalPrice: [{ value: item?.totalPrice || 0, disabled: true }]
+  private getHeaders(): HttpHeaders {
+    const token = localStorage.getItem('authToken');
+    return new HttpHeaders({
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json'
     });
-    itemGroup.get('warehouseItemId')?.valueChanges.pipe(debounceTime(300)).subscribe(() => this.updateOrderItem(itemGroup));
-    itemGroup.get('quantity')?.valueChanges.pipe(debounceTime(300)).subscribe(() => this.updateOrderItem(itemGroup));
-    itemGroup.get('vatRate')?.valueChanges.pipe(debounceTime(300)).subscribe(() => this.updateOrderItem(itemGroup));
-    this.orderItems.push(itemGroup);
-    this.cdr.markForCheck();
   }
 
-  removeOrderItem(index: number) {
-    this.orderItems.removeAt(index);
-    this.updateTotalAmount();
-    this.cdr.markForCheck();
-  }
-
-  updateOrderItem(itemGroup: FormGroup) {
-    const warehouseItemId = itemGroup.get('warehouseItemId')?.value;
-    const selectedItem = this.warehouseItems.find(wi => wi.id === warehouseItemId);
-    if (selectedItem) {
-      itemGroup.patchValue({
-        unitPrice: selectedItem.unitPrice
-      });
-      const quantity = itemGroup.get('quantity')?.value;
-      const vatRate = itemGroup.get('vatRate')?.value / 100;
-      const totalPrice = quantity * selectedItem.unitPrice * (1 + vatRate);
-      itemGroup.patchValue({ totalPrice: Number(totalPrice.toFixed(2)) });
-    } else {
-      itemGroup.patchValue({ unitPrice: 0, totalPrice: 0 });
-    }
-    this.updateTotalAmount();
-    this.cdr.markForCheck();
-  }
-
-  updateTotalAmount() {
-    const total = this.orderItems.controls.reduce((sum, item) => sum + (item.get('totalPrice')?.value || 0), 0);
-    this.orderForm.patchValue({ totalAmount: Number(total.toFixed(2)) });
-    this.cdr.markForCheck();
-  }
-
-  onOrderTypeChange() {
-    this.http.get<{ orderNumber: string }>(`${this.apiUrl}/generate-order-number?orderType=${this.orderForm.get('orderType')?.value}`).subscribe({
+  generateOrderNumber() {
+    this.http.get<{ orderNumber: string }>(`${this.generateOrderNumberUrl}?orderType=${this.order.orderType}`, { headers: this.getHeaders() }).subscribe({
       next: (data) => {
-        this.orderForm.patchValue({ orderNumber: data.orderNumber });
-        this.cdr.markForCheck();
-      },
-      error: (error) => this.errorMessage = `Błąd generowania numeru: ${error.message}`
-    });
-  }
-
-  saveOrder() {
-    if (this.orderForm.invalid) {
-      this.orderForm.markAllAsTouched();
-      const errors = this.getFormValidationErrors();
-      this.errorMessage = `Formularz zawiera błędy: ${errors.join(', ')}`;
-      this.cdr.markForCheck();
-      return;
-    }
-
-    this.isLoading = true;
-    const formValue = this.orderForm.getRawValue();
-
-    const payload: OrderDto = {
-      id: this.order?.id || 0,
-      orderNumber: formValue.orderNumber,
-      contractorId: Number(formValue.contractorId),
-      orderType: formValue.orderType,
-      orderDate: formValue.orderDate,
-      totalAmount: Number(this.orderItems.controls.reduce((sum, item) => sum + (item.get('totalPrice')?.value || 0), 0).toFixed(2)),
-      status: 'Draft',
-      createdBy: 'System',
-      createdDate: new Date().toISOString().split('T')[0],
-      isDeleted: false,
-      orderItems: formValue.orderItems.map((item: any) => ({
-        id: item.id || 0,
-        orderId: this.order?.id || 0,
-        warehouseItemId: Number(item.warehouseItemId),
-        quantity: Number(item.quantity),
-        unitPrice: Number(item.unitPrice),
-        vatRate: Number(item.vatRate) / 100,
-        totalPrice: Number(item.totalPrice)
-      }))
-    };
-
-    const request = this.order
-      ? this.http.put(`${this.apiUrl}/${this.order.id}`, payload)
-      : this.http.post(this.apiUrl, payload);
-
-    request.subscribe({
-      next: () => {
-        this.orderSaved.emit();
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.order.orderNumber = data.orderNumber;
       },
       error: (error) => {
-        const serverMessage = error.error?.errors ? JSON.stringify(error.error.errors) : error.message;
-        this.errorMessage = `Błąd zapisu zamówienia: ${serverMessage}`;
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.errorMessage = `Błąd generowania numeru zamówienia: ${error.status} ${error.message}`;
       }
     });
   }
 
-  cancelForm() {
-    this.cancel.emit();
-  }
-
-  private getFormValidationErrors(): string[] {
-    const errors: string[] = [];
-    Object.keys(this.orderForm.controls).forEach(key => {
-      const controlErrors = this.orderForm.get(key)?.errors;
-      if (controlErrors) {
-        Object.keys(controlErrors).forEach(error => errors.push(`${key}: ${error}`));
+  loadContractors() {
+    this.http.get<ContractorDto[]>(this.contractorsApiUrl, { headers: this.getHeaders() }).subscribe({
+      next: (data) => {
+        this.contractors = data.filter(c => !c.isDeleted);
+      },
+      error: (error) => {
+        this.errorMessage = `Błąd ładowania kontrahentów: ${error.status} ${error.message}`;
       }
     });
-    this.orderItems.controls.forEach((group: FormGroup, index: number) => {
-      Object.keys(group.controls).forEach(key => {
-        const controlErrors = group.get(key)?.errors;
-        if (controlErrors) {
-          Object.keys(controlErrors).forEach(error => errors.push(`orderItems[${index}].${key}: ${error}`));
+  }
+
+  loadWarehouseItems() {
+    this.http.get<WarehouseItemDto[]>(this.warehouseApiUrl, { headers: this.getHeaders() }).subscribe({
+      next: (data) => {
+        this.warehouseItems = data.filter(p => !p.isDeleted && p.quantity > 0);
+        console.log('Loaded warehouseItems:', this.warehouseItems);
+        if (this.warehouseItems.length === 0) {
+          this.errorMessage = 'Brak dostępnych produktów w magazynie.';
         }
-      });
+      },
+      error: (error) => {
+        this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}. Sprawdź endpoint /api/warehouseitems.`;
+      }
     });
-    return errors;
+  }
+
+  addItem() {
+    console.log('addItem called, newItem:', this.newItem);
+    if (!this.newItem.warehouseItemId || this.newItem.warehouseItemId === 0) {
+      this.errorMessage = 'Wybierz produkt.';
+      return;
+    }
+    const itemId = Number(this.newItem.warehouseItemId); // Convert to number
+    const selectedItem = this.warehouseItems.find(p => p.id === itemId);
+    if (!selectedItem) {
+      console.log('Selected item not found, itemId:', itemId, 'warehouseItems:', this.warehouseItems);
+      this.errorMessage = 'Wybrany produkt nie istnieje.';
+      return;
+    }
+    if (this.newItem.quantity <= 0 || this.newItem.quantity > selectedItem.quantity) {
+      this.errorMessage = `Nieprawidłowa ilość. Dostępne: ${selectedItem.quantity}.`;
+      return;
+    }
+    this.newItem.vatRate = selectedItem.vatRate;
+    this.newItem.unitPrice = selectedItem.unitPrice;
+    this.newItem.totalPrice = this.newItem.quantity * selectedItem.unitPrice * (1 + selectedItem.vatRate);
+    this.order.orderItems.push({
+      warehouseItemId: itemId,
+      warehouseItemName: selectedItem.name,
+      quantity: this.newItem.quantity,
+      unitPrice: this.newItem.unitPrice,
+      vatRate: this.newItem.vatRate,
+      totalPrice: this.newItem.totalPrice
+    });
+    console.log('Item added, orderItems:', this.order.orderItems);
+    this.newItem = { warehouseItemId: 0, warehouseItemName: '', quantity: 1, unitPrice: 0, vatRate: 0, totalPrice: 0 };
+    this.errorMessage = null;
+  }
+
+  removeItem(index: number) {
+    this.order.orderItems.splice(index, 1);
+  }
+
+  submitOrder() {
+    if (!this.order.orderNumber || !this.order.contractorId || !this.order.orderType || !this.order.orderDate || !this.order.status) {
+      this.errorMessage = 'Wszystkie pola są wymagane.';
+      return;
+    }
+    if (this.order.orderItems.length === 0) {
+      this.errorMessage = 'Dodaj przynajmniej jeden produkt.';
+      return;
+    }
+    this.http.post(this.apiUrl, this.order, { headers: this.getHeaders() }).subscribe({
+      next: () => {
+        this.successMessage = 'Zamówienie zapisane.';
+        this.errorMessage = null;
+        this.router.navigate(['/orders']);
+      },
+      error: (error) => {
+        this.errorMessage = `Błąd zapisywania zamówienia: ${error.status} ${error.message}`;
+      }
+    });
+  }
+
+  cancel() {
+    this.router.navigate(['/orders']);
+  }
+
+  navigateTo(page: string) {
+    this.router.navigate([page]);
+  }
+
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }

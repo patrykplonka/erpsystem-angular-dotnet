@@ -15,139 +15,62 @@
         <div class="messages">
           <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
           <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
-          <div class="notification" *ngIf="notificationMessage">
-            {{ notificationMessage }}
-            <button (click)="notificationMessage = null">Zamknij</button>
-          </div>
         </div>
-        <app-order-form *ngIf="showAddForm"
-                        [contractors]="contractors"
-                        [warehouseItems]="warehouseItems"
-                        [orderTypes]="orderTypes"
-                        (orderSaved)="onOrderSaved()"
-                        (cancel)="toggleAddForm()"></app-order-form>
-        <app-order-form *ngIf="showEditForm && selectedOrder"
-                        [order]="selectedOrder"
-                        [contractors]="contractors"
-                        [warehouseItems]="warehouseItems"
-                        [orderTypes]="orderTypes"
-                        (orderSaved)="onOrderSaved()"
-                        (cancel)="toggleEditForm(selectedOrder)"></app-order-form>
         <div class="orders-list">
           <div class="list-controls">
-            <button class="add-button" (click)="toggleAddForm()">Dodaj zamówienie</button>
-            <button class="export-button" (click)="exportToCsv()">Eksportuj do CSV</button>
+            <button class="add-button" [routerLink]="['/orders/new']">Dodaj zamówienie</button>
+            <button class="toggle-deleted" (click)="toggleDeletedView()">
+              {{ showDeleted ? "Pokaż aktywne" : "Pokaż usunięte" }}
+            </button>
           </div>
-          <form [formGroup]="filterForm" class="advanced-filters">
-            <input formControlName="nameFilter" placeholder="Szukaj po kontrahencie" (ngModelChange)="applyFilters()">
-            <select formControlName="typeFilter" (ngModelChange)="applyFilters()">
-              <option value="">Wszystkie typy</option>
-              <option *ngFor="let type of orderTypes" [value]="type.value">{{ type.display }}</option>
-            </select>
-            <select formControlName="statusFilter" (ngModelChange)="applyFilters()">
+          <div class="advanced-filters">
+            <select [(ngModel)]="filterStatus" (ngModelChange)="loadOrders()">
               <option value="">Wszystkie statusy</option>
-              <option *ngFor="let status of orderStatuses" [value]="status.value">{{ status.display }}</option>
+              <option value="Draft">Szkic</option>
+              <option value="Confirmed">Potwierdzone</option>
+              <option value="Completed">Zrealizowane</option>
             </select>
-            <input type="date" formControlName="startDate" (ngModelChange)="applyFilters()">
-            <input type="date" formControlName="endDate" (ngModelChange)="applyFilters()">
-          </form>
+            <select [(ngModel)]="filterType" (ngModelChange)="loadOrders()">
+              <option value="">Wszystkie typy</option>
+              <option value="Purchase">Zakup</option>
+              <option value="Sale">Sprzedaż</option>
+            </select>
+          </div>
           <table>
             <thead>
               <tr>
-                <th>Numer</th>
-                <th>Kontrahent</th>
-                <th>Typ</th>
-                <th>Data</th>
-                <th>Kwota</th>
-                <th>Status</th>
-                <th class="actions-header">Akcje</th>
+                <th (click)="sortBy('orderNumber')">Numer <span *ngIf="sortField === 'orderNumber'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortBy('contractorName')">Kontrahent <span *ngIf="sortField === 'contractorName'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortBy('orderType')">Typ <span *ngIf="sortField === 'orderType'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortBy('orderDate')">Data <span *ngIf="sortField === 'orderDate'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortBy('totalAmount')">Kwota <span *ngIf="sortField === 'totalAmount'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th (click)="sortBy('status')">Status <span *ngIf="sortField === 'status'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+                <th>Akcje</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let order of filteredOrders; trackBy: trackByOrderId">
-                <td data-label="Numer" (click)="showDetails(order)" class="clickable">{{ order.orderNumber }}</td>
+              <tr *ngFor="let order of filteredOrders">
+                <td data-label="Numer">{{ order.orderNumber }}</td>
                 <td data-label="Kontrahent">{{ order.contractorName }}</td>
-                <td data-label="Typ">{{ getTypeDisplay(order.orderType) }}</td>
-                <td data-label="Data">{{ order.orderDate | date:'shortDate' }}</td>
+                <td data-label="Typ">{{ order.orderType }}</td>
+                <td data-label="Data">{{ order.orderDate | date:'yyyy-MM-dd' }}</td>
                 <td data-label="Kwota">{{ order.totalAmount | currency:'PLN' }}</td>
-                <td data-label="Status">{{ getStatusDisplay(order.status) }}</td>
+                <td data-label="Status">{{ order.status }}</td>
                 <td data-label="Akcje" class="actions">
-                  <div class="action-buttons">
-                    <button *ngIf="order.status === 'Draft'" class="action-button edit-button" (click)="toggleEditForm(order)">Edytuj</button>
-                    <button *ngIf="order.status === 'Draft'" class="action-button delete-button" (click)="confirmDelete(order.id)">Usuń</button>
-                    <button *ngIf="order.status === 'Draft'" class="action-button confirm-button" (click)="confirmOrder(order.id)">Potwierdź</button>
-                    <button *ngIf="['Confirmed', 'Completed'].includes(order.status)" class="action-button invoice-button" (click)="generateInvoice(order.id)" [disabled]="isGeneratingInvoice">Generuj fakturę</button>
-                  </div>
+                  <a *ngIf="!showDeleted" [routerLink]="['/orders/edit', order.id]" class="action-button edit-button">Edytuj</a>
+                  <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteOrder(order.id)">Usuń</button>
+                  <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreOrder(order.id)">Przywróć</button>
                 </td>
               </tr>
             </tbody>
           </table>
-          <div class="pagination" *ngIf="totalItems > pageSize">
-            <button (click)="prevPage()" [disabled]="currentPage === 1">Poprzednia</button>
-            <span>Strona {{ currentPage }} z {{ getTotalPages() }}</span>
-            <button (click)="nextPage()" [disabled]="currentPage >= getTotalPages()">Następna</button>
+          <div class="no-orders" *ngIf="!isLoading && filteredOrders.length === 0">
+            Brak zamówień do wyświetlenia.
           </div>
-        </div>
-        <div class="modal" *ngIf="selectedOrder">
-          <div class="modal-content">
-            <h3>Szczegóły zamówienia</h3>
-            <p><strong>Numer:</strong> {{ selectedOrder.orderNumber }}</p>
-            <p><strong>Kontrahent:</strong> {{ selectedOrder.contractorName }}</p>
-            <p><strong>Typ:</strong> {{ getTypeDisplay(selectedOrder.orderType || '') }}</p>
-            <p><strong>Data:</strong> {{ selectedOrder.orderDate | date:'shortDate' }}</p>
-            <p><strong>Kwota:</strong> {{ selectedOrder.totalAmount | currency:'PLN' }}</p>
-            <p><strong>Status:</strong> {{ getStatusDisplay(selectedOrder.status || '') }}</p>
-            <h4>Produkty</h4>
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th>Produkt</th>
-                  <th>Ilość</th>
-                  <th>Cena jednostkowa</th>
-                  <th>VAT</th>
-                  <th>Razem</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let item of selectedOrder.orderItems">
-                  <td data-label="Produkt">{{ item.warehouseItemName }}</td>
-                  <td data-label="Ilość">{{ item.quantity }}</td>
-                  <td data-label="Cena jednostkowa">{{ item.unitPrice | currency:'PLN' }}</td>
-                  <td data-label="VAT">{{ item.vatRate }}%</td>
-                  <td data-label="Razem">{{ item.totalPrice | currency:'PLN' }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <h4>Historia zmian</h4>
-            <table class="history-table">
-              <thead>
-                <tr>
-                  <th>Akcja</th>
-                  <th>Użytkownik</th>
-                  <th>Data</th>
-                  <th>Szczegóły</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let history of orderHistory">
-                  <td>{{ history.action }}</td>
-                  <td>{{ history.modifiedBy }}</td>
-                  <td>{{ history.modifiedDate | date:'short' }}</td>
-                  <td>{{ history.details }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <button class="close-button" (click)="closeDetails()">Zamknij</button>
-          </div>
-        </div>
-        <div class="modal" *ngIf="orderToDelete">
-          <div class="modal-content">
-            <h3>Potwierdź usunięcie</h3>
-            <p>Czy na pewno chcesz usunąć to zamówienie?</p>
-            <div class="form-buttons">
-              <button class="delete-button" (click)="deleteOrder(orderToDelete!)">Tak</button>
-              <button class="cancel-button" (click)="cancelDelete()">Nie</button>
-            </div>
+          <div class="pagination" *ngIf="totalPages > 1">
+            <button (click)="changePage(page - 1)" [disabled]="page === 1">Poprzednia</button>
+            <span>Strona {{ page }} z {{ totalPages }}</span>
+            <button (click)="changePage(page + 1)" [disabled]="page >= totalPages">Następna</button>
           </div>
         </div>
       </section>

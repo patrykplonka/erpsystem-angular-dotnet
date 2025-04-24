@@ -8,7 +8,8 @@ import { WarehouseMovementsComponent } from './components/warehouse-movements/wa
 import { WarehouseReportsComponent } from './components/warehouse-reports/warehouse-reports.component';
 import { ContractorsComponent } from './components/contractors/contractors.component';
 import { OrdersComponent } from './components/orders/orders.component';
-import { InvoiceComponent } from './components/invoice/invoice.component'; 
+import { InvoiceComponent } from './components/invoice/invoice.component';
+import { OrderFormComponent } from './components/order-form/order-form.component';
   
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -18,6 +19,8 @@ const routes: Routes = [
   { path: 'reports', component: WarehouseReportsComponent, canActivate: [AuthGuard] },
   { path: 'contractors', component: ContractorsComponent, canActivate: [AuthGuard] },
   { path: 'orders', component: OrdersComponent, canActivate: [AuthGuard] },
+  { path: 'orders/new', component: OrderFormComponent, canActivate: [AuthGuard] },
+  { path: 'orders/edit/:id', component: OrderFormComponent, canActivate: [AuthGuard] },
   { path: 'invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: '**', redirectTo: '/login' }
