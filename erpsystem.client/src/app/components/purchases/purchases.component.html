@@ -7,6 +7,7 @@
       <button class="action-button" (click)="showAddForm = !showAddForm">Dodaj</button>
       <button class="action-button" (click)="showDeleted = !showDeleted">{{ showDeleted ? 'Pokaż aktywne' : 'Pokaż usunięte' }}</button>
       <button class="action-button" [disabled]="!hasSelectedPurchases" (click)="deleteSelected()">Usuń wybrane</button>
+      <button class="action-button" (click)="loadWarehouseItems()" [disabled]="isLoadingWarehouseItems">{{ isLoadingWarehouseItems ? 'Ładowanie...' : 'Odśwież produkty' }}</button>
       <input [(ngModel)]="nameFilterValue" placeholder="Szukaj po kontrahencie" (ngModelChange)="applyFilters()">
       <select [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
         <option *ngFor="let status of purchaseStatuses" [value]="status.value">{{ status.display }}</option>
@@ -24,7 +25,7 @@
         <h2>Dodaj zamówienie</h2>
         <div class="form-group">
           <label for="purchaseNumber">Numer zamówienia</label>
-          <input id="purchaseNumber" formControlName="purchaseNumber" required>
+          <input id="purchaseNumber" formControlName="purchaseNumber" readonly>
         </div>
         <div class="form-group">
           <label for="contractorId">Dostawca</label>
@@ -35,7 +36,7 @@
         </div>
         <div class="form-group">
           <label for="orderDate">Data zamówienia</label>
-          <input id="orderDate" type="date" formControlName="orderDate" required>
+          <input id="orderDate" type="date" formControlName="orderDate" readonly>
         </div>
         <div class="form-group">
           <label for="createdBy">Utworzone przez</label>
@@ -46,27 +47,31 @@
           <div *ngFor="let item of purchaseItems.controls; let i = index" [formGroupName]="i" class="purchase-item">
             <div class="form-group">
               <label for="warehouseItemId-{{i}}">Produkt</label>
-              <input id="warehouseItemId-{{i}}" formControlName="warehouseItemId" required>
+              <select id="warehouseItemId-{{i}}" formControlName="warehouseItemId" (ngModelChange)="updatePurchaseItem(item)" required [disabled]="warehouseItems.length === 0 || isLoadingWarehouseItems">
+                <option value="">Wybierz produkt</option>
+                <option *ngFor="let wi of warehouseItems" [value]="wi.id">{{ wi.name }} ({{ wi.quantity }} szt.)</option>
+              </select>
+              <span *ngIf="warehouseItems.length === 0 && !isLoadingWarehouseItems" class="error-text">Brak dostępnych produktów wAmazonmagazynie.</span>
             </div>
             <div class="form-group">
               <label for="quantity-{{i}}">Ilość</label>
-              <input id="quantity-{{i}}" type="number" formControlName="quantity" required>
+              <input id="quantity-{{i}}" type="number" formControlName="quantity" (ngModelChange)="updatePurchaseItem(item)" required>
             </div>
             <div class="form-group">
               <label for="unitPrice-{{i}}">Cena jednostkowa</label>
-              <input id="unitPrice-{{i}}" type="number" formControlName="unitPrice" readonly [value]="item.get('unitPrice')?.value | currency:'PLN'">
+              <input id="unitPrice-{{i}}" type="number" formControlName="unitPrice" readonly>
             </div>
             <div class="form-group">
               <label for="vatRate-{{i}}">VAT (%)</label>
-              <input id="vatRate-{{i}}" type="number" formControlName="vatRate" required>
+              <input id="vatRate-{{i}}" type="number" formControlName="vatRate" (ngModelChange)="updatePurchaseItem(item)" required>
             </div>
             <div class="form-group">
               <label for="totalPrice-{{i}}">Razem</label>
-              <input id="totalPrice-{{i}}" type="number" formControlName="totalPrice" readonly [value]="item.get('totalPrice')?.value | currency:'PLN'">
+              <input id="totalPrice-{{i}}" type="number" formControlName="totalPrice" readonly>
             </div>
             <button type="button" class="action-button delete-button" (click)="removePurchaseItem(i)">Usuń</button>
           </div>
-          <button type="button" class="action-button" (click)="addPurchaseItem()">Dodaj pozycję</button>
+          <button type="button" class="action-button" (click)="addPurchaseItem()" [disabled]="warehouseItems.length === 0 || isLoadingWarehouseItems">Dodaj pozycję</button>
         </div>
         <div class="action-buttons">
           <button type="submit" class="action-button" [disabled]="newPurchaseForm.invalid || isLoading">Zapisz</button>
@@ -80,7 +85,7 @@
         <h2>Edytuj zamówienie</h2>
         <div class="form-group">
           <label for="editPurchaseNumber">Numer zamówienia</label>
-          <input id="editPurchaseNumber" formControlName="purchaseNumber" required>
+          <input id="editPurchaseNumber" formControlName="purchaseNumber" readonly>
         </div>
         <div class="form-group">
           <label for="editContractorId">Dostawca</label>
@@ -91,7 +96,7 @@
         </div>
         <div class="form-group">
           <label for="editOrderDate">Data zamówienia</label>
-          <input id="editOrderDate" type="date" formControlName="orderDate" required>
+          <input id="editOrderDate" type="date" formControlName="orderDate" readonly>
         </div>
         <div class="form-group">
           <label for="editCreatedBy">Utworzone przez</label>
@@ -102,27 +107,31 @@
           <div *ngFor="let item of editPurchaseItems.controls; let i = index" [formGroupName]="i" class="purchase-item">
             <div class="form-group">
               <label for="editWarehouseItemId-{{i}}">Produkt</label>
-              <input id="editWarehouseItemId-{{i}}" formControlName="warehouseItemId" required>
+              <select id="editWarehouseItemId-{{i}}" formControlName="warehouseItemId" (ngModelChange)="updateEditPurchaseItem(item)" required [disabled]="warehouseItems.length === 0 || isLoadingWarehouseItems">
+                <option value="">Wybierz produkt</option>
+                <option *ngFor="let wi of warehouseItems" [value]="wi.id">{{ wi.name }} ({{ wi.quantity }} szt.)</option>
+              </select>
+              <span *ngIf="warehouseItems.length === 0 && !isLoadingWarehouseItems" class="error-text">Brak dostępnych produktów w magazynie.</span>
             </div>
             <div class="form-group">
               <label for="editQuantity-{{i}}">Ilość</label>
-              <input id="editQuantity-{{i}}" type="number" formControlName="quantity" required>
+              <input id="editQuantity-{{i}}" type="number" formControlName="quantity" (ngModelChange)="updateEditPurchaseItem(item)" required>
             </div>
             <div class="form-group">
               <label for="editUnitPrice-{{i}}">Cena jednostkowa</label>
-              <input id="editUnitPrice-{{i}}" type="number" formControlName="unitPrice" readonly [value]="item.get('unitPrice')?.value | currency:'PLN'">
+              <input id="editUnitPrice-{{i}}" type="number" formControlName="unitPrice" readonly>
             </div>
             <div class="form-group">
               <label for="editVatRate-{{i}}">VAT (%)</label>
-              <input id="editVatRate-{{i}}" type="number" formControlName="vatRate" required>
+              <input id="editVatRate-{{i}}" type="number" formControlName="vatRate" (ngModelChange)="updateEditPurchaseItem(item)" required>
             </div>
             <div class="form-group">
               <label for="editTotalPrice-{{i}}">Razem</label>
-              <input id="editTotalPrice-{{i}}" type="number" formControlName="totalPrice" readonly [value]="item.get('totalPrice')?.value | currency:'PLN'">
+              <input id="editTotalPrice-{{i}}" type="number" formControlName="totalPrice" readonly>
             </div>
             <button type="button" class="action-button delete-button" (click)="removeEditPurchaseItem(i)">Usuń</button>
           </div>
-          <button type="button" class="action-button" (click)="addEditPurchaseItem()">Dodaj pozycję</button>
+          <button type="button" class="action-button" (click)="addEditPurchaseItem()" [disabled]="warehouseItems.length === 0 || isLoadingWarehouseItems">Dodaj pozycję</button>
         </div>
         <div class="action-buttons">
           <button type="submit" class="action-button" [disabled]="editPurchaseForm.invalid || isLoading">Zapisz</button>
@@ -139,7 +148,7 @@
           <th (click)="sortTable('contractorName')">Dostawca <span *ngIf="sortColumn === 'contractorName'" [class.asc]="sortDirection === 'asc'">▼</span></th>
           <th (click)="sortTable('orderDate')">Data <span *ngIf="sortColumn === 'orderDate'" [class.asc]="sortDirection === 'asc'">▼</span></th>
           <th (click)="sortTable('totalAmount')">Kwota <span *ngIf="sortColumn === 'totalAmount'" [class.asc]="sortDirection === 'asc'">▼</span></th>
-          <th (click)="sortTable('status')">Status <span *ngIf="sortColumn === 'status'" [class.asc]="sortDirection === 'asc'">▼</span></th>
+          <th (click)="sortTable('status')">Status <span *ngIf="sortColumn === 'status'" [class.asc]="sortDirection === 'asc'">►</span></th>
           <th>Akcje</th>
         </tr>
       </thead>
@@ -214,6 +223,7 @@
             </tr>
           </thead>
           <tbody>
+            three
             <tr *ngFor="let history of purchaseHistory">
               <td>{{ history.action }}</td>
               <td>{{ history.modifiedBy }}</td>

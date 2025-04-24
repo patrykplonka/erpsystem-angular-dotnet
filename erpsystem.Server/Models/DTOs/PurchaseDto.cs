@@ -12,6 +12,6 @@
         public string CreatedBy { get; set; }
         public string CreatedDate { get; set; }
         public bool IsDeleted { get; set; }
-        public List<PurchaseItemDto> PurchaseItems { get; set; }
+        public List<PurchaseItemDto> PurchaseItems { get; set; } = new List<PurchaseItemDto>();
     }
 }

@@ -1,16 +1,10 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, FormArray, Validators, AbstractControl } from '@angular/forms';
 import { Router } from '@angular/router';
-import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import { SidebarComponent } from '../sidebar/sidebar.component';
-import { AuthService } from '../../services/auth.service';
-import { BehaviorSubject } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
-interface PurchaseDto {
+interface Purchase {
   id: number;
   purchaseNumber: string;
   contractorId: number;
@@ -21,11 +15,11 @@ interface PurchaseDto {
   createdBy: string;
   createdDate: string;
   isDeleted: boolean;
-  purchaseItems: PurchaseItemDto[];
+  purchaseItems: PurchaseItem[];
   selected?: boolean;
 }
 
-interface PurchaseItemDto {
+interface PurchaseItem {
   id: number;
   purchaseId: number;
   warehouseItemId: number;
@@ -36,472 +30,431 @@ interface PurchaseItemDto {
   totalPrice: number;
 }
 
-interface PurchaseHistoryDto {
+interface Contractor {
+  id: number;
+  name: string;
+  type: string;
+}
+
+interface WarehouseItem {
+  id: number;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+interface PurchaseHistory {
+  id: number;
+  purchaseId: number;
   action: string;
   modifiedBy: string;
   modifiedDate: string;
   details: string;
 }
 
-interface ContractorDto {
-  id: number;
-  name: string;
-  type: 'Supplier' | 'Client' | 'Both';
-  email: string;
-  phone: string;
-  address: string;
-  taxId: string;
-  isDeleted: boolean;
+interface Status {
+  value: string;
+  display: string;
 }
 
 @Component({
   selector: 'app-purchases',
   templateUrl: './purchases.component.html',
-  styleUrls: ['./purchases.component.css'],
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    FormsModule,
-    MatProgressSpinnerModule,
-    MatSnackBarModule,
-    SidebarComponent
-  ],
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./purchases.component.css']
 })
 export class PurchasesComponent implements OnInit {
-  purchases: PurchaseDto[] = [];
-  filteredPurchases: PurchaseDto[] = [];
-  contractors: ContractorDto[] = [];
-  selectedPurchase: PurchaseDto | null = null;
-  purchaseToDelete: number | null = null;
-  purchaseHistory: PurchaseHistoryDto[] = [];
   isLoading = false;
+  isLoadingWarehouseItems = false;
   showAddForm = false;
   showDeleted = false;
   hasSelectedPurchases = false;
   selectAll = false;
-  sortColumn = 'purchaseNumber';
-  sortDirection = 'asc';
-  currentPage = 1;
-  totalPages = 1;
-  pageSize = 10;
-  newPurchaseForm: FormGroup;
-  editPurchaseForm: FormGroup;
-  nameFilter = new BehaviorSubject<string>('');
   nameFilterValue = '';
   statusFilter = '';
-  startDate = '';
-  endDate = '';
-  purchaseStatuses = [
+  startDate: string | null = null;
+  endDate: string | null = null;
+  currentPage = 1;
+  pageSize = 10;
+  totalPages = 1;
+  sortColumn = 'purchaseNumber';
+  sortDirection = 'asc';
+
+  newPurchaseForm: FormGroup;
+  editPurchaseForm: FormGroup;
+  purchases: Purchase[] = [];
+  filteredPurchases: Purchase[] = [];
+  contractors: Contractor[] = [];
+  warehouseItems: WarehouseItem[] = [];
+  selectedPurchase: Purchase | null = null;
+  purchaseToDelete: number | null = null;
+  purchaseHistory: PurchaseHistory[] = [];
+  purchaseStatuses: Status[] = [
     { value: '', display: 'Wszystkie' },
     { value: 'Draft', display: 'Szkic' },
     { value: 'Confirmed', display: 'Potwierdzone' },
-    { value: 'InProgress', display: 'W trakcie' },
-    { value: 'Received', display: 'Przyjęte' },
-    { value: 'Cancelled', display: 'Anulowane' }
+    { value: 'Received', display: 'Przyjęte' }
   ];
-  private apiUrl = 'https://localhost:7224/api';
 
   constructor(
-    private http: HttpClient,
     private fb: FormBuilder,
-    public router: Router,
-    private cdr: ChangeDetectorRef,
-    private snackBar: MatSnackBar,
-    private authService: AuthService
+    private http: HttpClient,
+    public router: Router
   ) {
     this.newPurchaseForm = this.fb.group({
       purchaseNumber: ['', Validators.required],
       contractorId: ['', Validators.required],
       orderDate: ['', Validators.required],
-      status: ['Draft', Validators.required],
-      createdBy: [{ value: '', disabled: true }, Validators.required],
+      createdBy: ['', Validators.required],
       purchaseItems: this.fb.array([])
     });
 
     this.editPurchaseForm = this.fb.group({
-      id: ['', Validators.required],
+      id: [0],
       purchaseNumber: ['', Validators.required],
       contractorId: ['', Validators.required],
       orderDate: ['', Validators.required],
-      status: ['', Validators.required],
-      createdBy: [{ value: '', disabled: true }, Validators.required],
+      createdBy: ['', Validators.required],
       purchaseItems: this.fb.array([])
     });
   }
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.loadData();
     this.loadContractors();
-    this.setCurrentUser();
-    this.nameFilter.pipe(debounceTime(300), distinctUntilChanged()).subscribe(() => this.applyFilters());
+    this.loadWarehouseItems();
   }
 
-  loadData() {
+  get purchaseItems(): FormArray {
+    return this.newPurchaseForm.get('purchaseItems') as FormArray;
+  }
+
+  get editPurchaseItems(): FormArray {
+    return this.editPurchaseForm.get('purchaseItems') as FormArray;
+  }
+
+  loadData(): void {
     this.isLoading = true;
-    this.http.get<PurchaseDto[]>(`${this.apiUrl}/purchases?showDeleted=${this.showDeleted}`).subscribe({
+    this.http.get<Purchase[]>(`api/purchases?showDeleted=${this.showDeleted}`).subscribe({
       next: (data) => {
         this.purchases = data.map(p => ({ ...p, selected: false }));
-        this.filteredPurchases = this.purchases;
-        this.totalPages = Math.ceil(this.purchases.length / this.pageSize);
-        this.updateHasSelectedPurchases();
+        this.applyFilters();
         this.isLoading = false;
-        this.cdr.markForCheck();
       },
-      error: (error) => {
-        this.snackBar.open(error.error?.message || 'Błąd ładowania danych.', 'Zamknij', { duration: 3000 });
+      error: () => {
         this.isLoading = false;
-        this.cdr.markForCheck();
       }
     });
   }
 
-  loadContractors() {
-    this.isLoading = true;
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${this.authService.getToken()}`
-    });
-    this.http.get<ContractorDto[]>(`${this.apiUrl}/contractors`, { headers }).subscribe({
+  loadContractors(): void {
+    this.http.get<Contractor[]>('api/contractors').subscribe({
       next: (data) => {
-        this.contractors = data.filter(c => !c.isDeleted && (c.type === 'Supplier' || c.type === 'Both'));
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      },
-      error: (error) => {
-        let message = 'Nie udało się załadować dostawców.';
-        if (error.status === 401) {
-          message = 'Brak autoryzacji. Zaloguj się ponownie.';
-          this.router.navigate(['/login']);
-        } else if (error.status === 404) {
-          message = 'Endpoint kontrahentów nie znaleziony.';
-        } else if (error.status === 500) {
-          message = 'Błąd serwera. Sprawdź konsolę.';
-        }
-        console.error('Błąd ładowania dostawców:', {
-          status: error.status,
-          statusText: error.statusText,
-          message: error.message,
-          details: error.error
-        });
-        this.snackBar.open(message, 'Zamknij', { duration: 5000 });
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.contractors = data.filter(c => c.type === 'Supplier' || c.type === 'Both');
       }
     });
   }
 
-  setCurrentUser() {
-    const fullName = this.authService.getCurrentUserFullName();
-    if (fullName && fullName !== 'Unknown') {
-      this.newPurchaseForm.patchValue({ createdBy: fullName });
-      this.editPurchaseForm.patchValue({ createdBy: fullName });
-    } else {
-      this.snackBar.open('Brak zalogowanego użytkownika.', 'Zamknij', { duration: 3000 });
-    }
-    this.cdr.markForCheck();
+  loadWarehouseItems(): void {
+    this.isLoadingWarehouseItems = true;
+    this.http.get<WarehouseItem[]>('api/warehouseitems').subscribe({
+      next: (data) => {
+        this.warehouseItems = data;
+        this.isLoadingWarehouseItems = false;
+      },
+      error: () => {
+        this.isLoadingWarehouseItems = false;
+      }
+    });
   }
 
-  toggleSelectAll(event: Event) {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.filteredPurchases.forEach(p => p.selected = checked);
-    this.selectAll = checked;
-    this.updateHasSelectedPurchases();
-  }
-
-  updateHasSelectedPurchases() {
-    this.hasSelectedPurchases = this.filteredPurchases.some(p => p.selected);
-    this.cdr.markForCheck();
-  }
-
-  applyFilters() {
-    this.nameFilter.next(this.nameFilterValue);
+  applyFilters(): void {
     this.filteredPurchases = this.purchases.filter(p => {
-      const matchesName = this.nameFilterValue
-        ? p.contractorName.toLowerCase().includes(this.nameFilterValue.toLowerCase())
-        : true;
+      const matchesName = this.nameFilterValue ? p.contractorName.toLowerCase().includes(this.nameFilterValue.toLowerCase()) : true;
       const matchesStatus = this.statusFilter ? p.status === this.statusFilter : true;
       const matchesStartDate = this.startDate ? new Date(p.orderDate) >= new Date(this.startDate) : true;
       const matchesEndDate = this.endDate ? new Date(p.orderDate) <= new Date(this.endDate) : true;
       return matchesName && matchesStatus && matchesStartDate && matchesEndDate;
     });
-    this.currentPage = 1;
+
+    this.sortTable(this.sortColumn);
     this.totalPages = Math.ceil(this.filteredPurchases.length / this.pageSize);
-    this.updateHasSelectedPurchases();
-    this.cdr.markForCheck();
+    this.currentPage = 1;
   }
 
-  sortTable(column: string) {
+  sortTable(column: string): void {
     if (this.sortColumn === column) {
       this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
       this.sortColumn = column;
       this.sortDirection = 'asc';
     }
+
     this.filteredPurchases.sort((a, b) => {
-      const valA = a[column as keyof PurchaseDto];
-      const valB = b[column as keyof PurchaseDto];
+      const valA = a[column as keyof Purchase];
+      const valB = b[column as keyof Purchase];
+      const modifier = this.sortDirection === 'asc' ? 1 : -1;
+
       if (typeof valA === 'string' && typeof valB === 'string') {
-        return this.sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        return valA.localeCompare(valB) * modifier;
+      } else if (typeof valA === 'number' && typeof valB === 'number') {
+        return (valA - valB) * modifier;
       }
-      return this.sortDirection === 'asc' ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
-    });
-    this.cdr.markForCheck();
-  }
-
-  prevPage() {
-    if (this.currentPage > 1) {
-      this.currentPage--;
-      this.cdr.markForCheck();
-    }
-  }
-
-  nextPage() {
-    if (this.currentPage < this.totalPages) {
-      this.currentPage++;
-      this.cdr.markForCheck();
-    }
-  }
-
-  deleteSelected() {
-    const selectedIds = this.filteredPurchases.filter(p => p.selected).map(p => p.id);
-    if (selectedIds.length === 0) return;
-    this.isLoading = true;
-    selectedIds.forEach(id => {
-      this.http.delete(`${this.apiUrl}/purchases/${id}`).subscribe({
-        next: () => {
-          this.purchases = this.purchases.filter(p => p.id !== id);
-          this.applyFilters();
-          this.snackBar.open('Wybrane zamówienia usunięte.', 'Zamknij', { duration: 3000 });
-          this.isLoading = false;
-          this.cdr.markForCheck();
-        },
-        error: (error) => {
-          this.snackBar.open(error.error?.message || 'Błąd usuwania zamówienia.', 'Zamknij', { duration: 3000 });
-          this.isLoading = false;
-          this.cdr.markForCheck();
-        }
-      });
+      return 0;
     });
   }
 
-  showDetails(purchase: PurchaseDto) {
-    this.selectedPurchase = purchase;
-    this.http.get<PurchaseHistoryDto[]>(`${this.apiUrl}/purchases/${purchase.id}/history`).subscribe({
-      next: (data) => {
-        this.purchaseHistory = data;
-        this.cdr.markForCheck();
-      },
-      error: (error) => {
-        this.snackBar.open(error.error?.message || 'Błąd ładowania historii.', 'Zamknij', { duration: 3000 });
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  closeDetails() {
-    this.selectedPurchase = null;
-    this.purchaseHistory = [];
-    this.cdr.markForCheck();
-  }
-
-  confirmDelete(id: number) {
-    this.purchaseToDelete = id;
-    this.cdr.markForCheck();
-  }
-
-  cancelDelete() {
-    this.purchaseToDelete = null;
-    this.cdr.markForCheck();
-  }
-
-  deletePurchase(id: number) {
-    this.isLoading = true;
-    this.http.delete(`${this.apiUrl}/purchases/${id}`).subscribe({
-      next: () => {
-        this.purchases = this.purchases.filter(p => p.id !== id);
-        this.applyFilters();
-        this.purchaseToDelete = null;
-        this.snackBar.open('Zamówienie usunięte.', 'Zamknij', { duration: 3000 });
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      },
-      error: (error) => {
-        this.snackBar.open(error.error?.message || 'Błąd usuwania zamówienia.', 'Zamknij', { duration: 3000 });
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  startEdit(purchase: PurchaseDto) {
-    this.editPurchaseForm.patchValue(purchase);
-    const items = this.editPurchaseForm.get('purchaseItems') as FormArray;
-    items.clear();
-    purchase.purchaseItems.forEach(item => {
-      items.push(this.fb.group({
-        id: [item.id],
-        warehouseItemId: [item.warehouseItemId, Validators.required],
-        warehouseItemName: [item.warehouseItemName],
-        quantity: [item.quantity, Validators.required],
-        unitPrice: [item.unitPrice, Validators.required],
-        vatRate: [item.vatRate, Validators.required],
-        totalPrice: [item.totalPrice]
-      }));
-    });
-    this.setCurrentUser();
-    this.cdr.markForCheck();
-  }
-
-  confirmPurchase(id: number) {
-    this.isLoading = true;
-    this.http.post(`${this.apiUrl}/purchases/${id}/confirm`, {}).subscribe({
-      next: () => {
-        this.loadData();
-        this.snackBar.open('Zamówienie potwierdzone.', 'Zamknij', { duration: 3000 });
-      },
-      error: (error) => {
-        this.snackBar.open(error.error?.message || 'Błąd potwierdzania zamówienia.', 'Zamknij', { duration: 3000 });
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  receivePurchase(id: number) {
-    this.isLoading = true;
-    this.http.post(`${this.apiUrl}/purchases/${id}/receive`, {}).subscribe({
-      next: () => {
-        this.loadData();
-        this.snackBar.open('Zamówienie przyjęte.', 'Zamknij', { duration: 3000 });
-      },
-      error: (error) => {
-        this.snackBar.open(error.error?.message || 'Błąd przyjmowania sprzedaży.', 'Zamknij', { duration: 3000 });
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  restorePurchase(id: number) {
-    this.isLoading = true;
-    this.http.post(`${this.apiUrl}/purchases/${id}/restore`, {}).subscribe({
-      next: () => {
-        this.loadData();
-        this.snackBar.open('Zamówienie przywrócone.', 'Zamknij', { duration: 3000 });
-      },
-      error: (error) => {
-        this.snackBar.open(error.error?.message || 'Błąd przywracania zamówienia.', 'Zamknij', { duration: 3000 });
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  updateStatus(purchase: PurchaseDto) {
-    this.isLoading = true;
-    this.http.put(`${this.apiUrl}/purchases/${purchase.id}/status`, { status: purchase.status }).subscribe({
-      next: () => {
-        this.loadData();
-        this.snackBar.open('Status zaktualizowany.', 'Zamknij', { duration: 3000 });
-      },
-      error: (error) => {
-        this.snackBar.open(error.error?.message || 'Błąd aktualizacji statusu.', 'Zamknij', { duration: 3000 });
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  getStatusDisplay(status: string) {
-    const statusObj = this.purchaseStatuses.find(s => s.value === status);
-    return statusObj ? statusObj.display : status;
-  }
-
-  get purchaseItems() {
-    return this.newPurchaseForm.get('purchaseItems') as FormArray;
-  }
-
-  get editPurchaseItems() {
-    return this.editPurchaseForm.get('purchaseItems') as FormArray;
-  }
-
-  addPurchaseItem() {
-    this.purchaseItems.push(this.fb.group({
+  addPurchaseItem(): void {
+    const item = this.fb.group({
       warehouseItemId: ['', Validators.required],
-      warehouseItemName: [''],
-      quantity: [1, Validators.required],
+      quantity: [1, [Validators.required, Validators.min(1)]],
       unitPrice: [0, Validators.required],
-      vatRate: [23, Validators.required],
-      totalPrice: [0]
-    }));
-    this.cdr.markForCheck();
+      vatRate: [23, [Validators.required, Validators.min(0)]],
+      totalPrice: [0, Validators.required]
+    });
+    this.purchaseItems.push(item);
   }
 
-  addEditPurchaseItem() {
-    this.editPurchaseItems.push(this.fb.group({
-      warehouseItemId: ['', Validators.required],
-      warehouseItemName: [''],
-      quantity: [1, Validators.required],
-      unitPrice: [0, Validators.required],
-      vatRate: [23, Validators.required],
-      totalPrice: [0]
-    }));
-    this.cdr.markForCheck();
-  }
-
-  removePurchaseItem(index: number) {
+  removePurchaseItem(index: number): void {
     this.purchaseItems.removeAt(index);
-    this.cdr.markForCheck();
   }
 
-  removeEditPurchaseItem(index: number) {
+  addEditPurchaseItem(): void {
+    const item = this.fb.group({
+      warehouseItemId: ['', Validators.required],
+      quantity: [1, [Validators.required, Validators.min(1)]],
+      unitPrice: [0, Validators.required],
+      vatRate: [23, [Validators.required, Validators.min(0)]],
+      totalPrice: [0, Validators.required]
+    });
+    this.editPurchaseItems.push(item);
+  }
+
+  removeEditPurchaseItem(index: number): void {
     this.editPurchaseItems.removeAt(index);
-    this.cdr.markForCheck();
   }
 
-  submitNewPurchase() {
+  updatePurchaseItem(control: AbstractControl): void {
+    const item = control as FormGroup;
+    const warehouseItemId = item.get('warehouseItemId')?.value;
+    const quantity = item.get('quantity')?.value || 1;
+    const vatRate = item.get('vatRate')?.value || 23;
+
+    if (warehouseItemId) {
+      const warehouseItem = this.warehouseItems.find(wi => wi.id === warehouseItemId);
+      if (warehouseItem) {
+        const unitPrice = warehouseItem.price;
+        const totalPrice = quantity * unitPrice * (1 + vatRate / 100);
+        item.patchValue({
+          unitPrice,
+          totalPrice
+        });
+      }
+    }
+  }
+
+  updateEditPurchaseItem(control: AbstractControl): void {
+    const item = control as FormGroup;
+    const warehouseItemId = item.get('warehouseItemId')?.value;
+    const quantity = item.get('quantity')?.value || 1;
+    const vatRate = item.get('vatRate')?.value || 23;
+
+    if (warehouseItemId) {
+      const warehouseItem = this.warehouseItems.find(wi => wi.id === warehouseItemId);
+      if (warehouseItem) {
+        const unitPrice = warehouseItem.price;
+        const totalPrice = quantity * unitPrice * (1 + vatRate / 100);
+        item.patchValue({
+          unitPrice,
+          totalPrice
+        });
+      }
+    }
+  }
+
+  submitNewPurchase(): void {
     if (this.newPurchaseForm.valid) {
       this.isLoading = true;
-      const headers = new HttpHeaders({
-        'Authorization': `Bearer ${this.authService.getToken()}`
-      });
-      this.http.post(`${this.apiUrl}/purchases`, this.newPurchaseForm.getRawValue(), { headers }).subscribe({
+      this.http.post<Purchase>('api/purchases', this.newPurchaseForm.value).subscribe({
         next: () => {
-          this.loadData();
-          this.newPurchaseForm.reset();
-          this.setCurrentUser();
-          this.showAddForm = false;
-          this.snackBar.open('Zamówienie dodane.', 'Zamknij', { duration: 3000 });
-        },
-        error: (error) => {
-          this.snackBar.open(error.error?.message || 'Błąd dodawania zamówienia.', 'Zamknij', { duration: 3000 });
           this.isLoading = false;
-          this.cdr.markForCheck();
+          this.showAddForm = false;
+          this.newPurchaseForm.reset();
+          this.purchaseItems.clear();
+          this.loadData();
+        },
+        error: () => {
+          this.isLoading = false;
         }
       });
     }
   }
 
-  submitEditPurchase() {
+  submitEditPurchase(): void {
     if (this.editPurchaseForm.valid) {
       this.isLoading = true;
-      const headers = new HttpHeaders({
-        'Authorization': `Bearer ${this.authService.getToken()}`
-      });
-      this.http.put(`${this.apiUrl}/purchases/${this.editPurchaseForm.value.id}`, this.editPurchaseForm.getRawValue(), { headers }).subscribe({
+      const id = this.editPurchaseForm.get('id')?.value;
+      this.http.put(`api/purchases/${id}`, this.editPurchaseForm.value).subscribe({
         next: () => {
-          this.loadData();
-          this.editPurchaseForm.reset();
-          this.setCurrentUser();
-          this.snackBar.open('Zamówienie zaktualizowane.', 'Zamknij', { duration: 3000 });
-        },
-        error: (error) => {
-          this.snackBar.open(error.error?.message || 'Błąd aktualizacji zamówienia.', 'Zamknij', { duration: 3000 });
           this.isLoading = false;
-          this.cdr.markForCheck();
+          this.editPurchaseForm.reset();
+          this.editPurchaseItems.clear();
+          this.loadData();
+        },
+        error: () => {
+          this.isLoading = false;
         }
       });
     }
+  }
+
+  startEdit(purchase: Purchase): void {
+    this.editPurchaseForm.patchValue({
+      id: purchase.id,
+      purchaseNumber: purchase.purchaseNumber,
+      contractorId: purchase.contractorId,
+      orderDate: purchase.orderDate,
+      createdBy: purchase.createdBy
+    });
+
+    this.editPurchaseItems.clear();
+    purchase.purchaseItems.forEach(item => {
+      this.editPurchaseItems.push(this.fb.group({
+        warehouseItemId: [item.warehouseItemId, Validators.required],
+        quantity: [item.quantity, [Validators.required, Validators.min(1)]],
+        unitPrice: [item.unitPrice, Validators.required],
+        vatRate: [item.vatRate, [Validators.required, Validators.min(0)]],
+        totalPrice: [item.totalPrice, Validators.required]
+      }));
+    });
+  }
+
+  confirmDelete(id: number): void {
+    this.purchaseToDelete = id;
+  }
+
+  deletePurchase(id: number): void {
+    this.isLoading = true;
+    this.http.delete(`api/purchases/${id}`).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.purchaseToDelete = null;
+        this.loadData();
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  cancelDelete(): void {
+    this.purchaseToDelete = null;
+  }
+
+  deleteSelected(): void {
+    const selectedIds = this.purchases.filter(p => p.selected).map(p => p.id);
+    if (selectedIds.length > 0) {
+      this.isLoading = true;
+      const deleteRequests = selectedIds.map(id => this.http.delete(`api/purchases/${id}`).toPromise());
+      Promise.all(deleteRequests).then(() => {
+        this.isLoading = false;
+        this.loadData();
+      }).catch(() => {
+        this.isLoading = false;
+      });
+    }
+  }
+
+  confirmPurchase(id: number): void {
+    this.isLoading = true;
+    this.http.post(`api/purchases/confirm/${id}`, {}).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.loadData();
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  receivePurchase(id: number): void {
+    this.isLoading = true;
+    this.http.post(`api/purchases/receive/${id}`, {}).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.loadData();
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  restorePurchase(id: number): void {
+    this.isLoading = true;
+    this.http.post(`api/purchases/${id}/restore`, {}).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.loadData();
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  updateStatus(purchase: Purchase): void {
+    this.isLoading = true;
+    this.http.put(`api/purchases/${purchase.id}/status`, { status: purchase.status }).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.loadData();
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  showDetails(purchase: Purchase): void {
+    this.selectedPurchase = purchase;
+    this.http.get<PurchaseHistory[]>(`api/purchases/${purchase.id}/history`).subscribe({
+      next: (data) => {
+        this.purchaseHistory = data;
+      }
+    });
+  }
+
+  closeDetails(): void {
+    this.selectedPurchase = null;
+    this.purchaseHistory = [];
+  }
+
+  toggleSelectAll(event: Event): void {
+    this.selectAll = (event.target as HTMLInputElement).checked;
+    this.purchases.forEach(p => p.selected = this.selectAll);
+    this.updateHasSelectedPurchases();
+  }
+
+  updateHasSelectedPurchases(): void {
+    this.hasSelectedPurchases = this.purchases.some(p => p.selected);
+    this.selectAll = this.purchases.every(p => p.selected);
+  }
+
+  prevPage(): void {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+    }
+  }
+
+  nextPage(): void {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+    }
+  }
+
+  getStatusDisplay(status: string): string {
+    const statusObj = this.purchaseStatuses.find(s => s.value === status);
+    return statusObj ? statusObj.display : status;
   }
 }

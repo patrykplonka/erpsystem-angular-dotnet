@@ -4,10 +4,13 @@ using erpsystem.Server.Models;
 using erpsystem.Server.Models.DTOs;
 using erpsystem.Server.Data;
 using Microsoft.Extensions.Caching.Memory;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Globalization;
 
-namespace erIgnoreSystem.Server.Controllers
+namespace erpsystem.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -144,13 +147,24 @@ namespace erIgnoreSystem.Server.Controllers
                 .Where(wi => warehouseItemIds.Contains(wi.Id) && !wi.IsDeleted)
                 .ToDictionaryAsync(wi => wi.Id, wi => wi.Price);
 
-            var purchase = new Purchase
+            if (!DateTime.TryParseExact(purchaseDto.OrderDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var orderDate))
+            {
+                return BadRequest(new { message = "Nieprawidłowy format daty zamówienia. Oczekiwano: YYYY-MM-DD." });
+            }
+
+            if (!DateTime.TryParseExact(purchaseDto.CreatedDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var createdDate))
+            {
+                return BadRequest(new { message = "Nieprawidłowy format daty utworzenia. Oczekiwano: YYYY-MM-DD." });
+            }
+
+            var purchase = new erpsystem.Server.Models.Purchase
             {
                 PurchaseNumber = purchaseDto.PurchaseNumber,
                 ContractorId = purchaseDto.ContractorId,
                 OrderDate = purchaseDto.OrderDate,
                 Status = purchaseDto.Status,
                 CreatedBy = purchaseDto.CreatedBy,
+                CreatedDate = purchaseDto.CreatedDate,
                 PurchaseItems = purchaseDto.PurchaseItems.Select(pi =>
                 {
                     if (!warehouseItems.TryGetValue(pi.WarehouseItemId, out var unitPrice))
@@ -225,10 +239,21 @@ namespace erIgnoreSystem.Server.Controllers
                 .Where(wi => warehouseItemIds.Contains(wi.Id) && !wi.IsDeleted)
                 .ToDictionaryAsync(wi => wi.Id, wi => wi.Price);
 
+            if (!DateTime.TryParseExact(purchaseDto.OrderDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var orderDate))
+            {
+                return BadRequest(new { message = "Nieprawidłowy format daty zamówienia. Oczekiwano: YYYY-MM-DD." });
+            }
+
+            if (!DateTime.TryParseExact(purchaseDto.CreatedDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var createdDate))
+            {
+                return BadRequest(new { message = "Nieprawidłowy format daty utworzenia. Oczekiwano: YYYY-MM-DD." });
+            }
+
             purchase.PurchaseNumber = purchaseDto.PurchaseNumber;
             purchase.ContractorId = purchaseDto.ContractorId;
             purchase.OrderDate = purchaseDto.OrderDate;
             purchase.Status = purchaseDto.Status;
+            purchase.CreatedDate = purchaseDto.CreatedDate;
 
             _context.PurchaseItems.RemoveRange(purchase.PurchaseItems);
             purchase.PurchaseItems = purchaseDto.PurchaseItems.Select(pi =>
@@ -333,7 +358,7 @@ namespace erIgnoreSystem.Server.Controllers
             var cacheKey = $"PurchaseNumber_{DateTime.UtcNow:yyyyMMdd}";
             if (!_cache.TryGetValue(cacheKey, out string purchaseNumber))
             {
-                var today = DateTime.UtcNow.ToString("yyyyMMdd");
+                var today = DateTime.UtcNow.ToString("yyyyMM-dd", CultureInfo.InvariantCulture);
                 var prefix = "PO";
                 var pattern = $"{prefix}-{today}-%";
 
@@ -397,7 +422,6 @@ namespace erIgnoreSystem.Server.Controllers
                     CreatedBy = purchase.CreatedBy,
                     Status = "Completed"
                 };
-
                 _context.WarehouseMovements.Add(movement);
             }
 
@@ -417,12 +441,11 @@ namespace erIgnoreSystem.Server.Controllers
 
             _cache.Remove("Purchases");
             _cache.Remove($"Purchase_{id}");
-            _cache.Remove("WarehouseItemsAll");
 
-            return Ok(new { message = "Zamówienie zakupu zostało potwierdzone." });
+            return NoContent();
         }
 
-        [HttpPost("{id}/receive")]
+        [HttpPost("receive/{id}")]
         public async Task<IActionResult> ReceivePurchase(int id)
         {
             var purchase = await _context.Purchases
@@ -438,11 +461,6 @@ namespace erIgnoreSystem.Server.Controllers
             if (purchase.Status != "Confirmed")
             {
                 return BadRequest(new { message = "Tylko zamówienia w statusie Confirmed mogą być przyjęte." });
-            }
-
-            if (purchase.Status == "Received")
-            {
-                return BadRequest(new { message = "Zamówienie zostało już przyjęte." });
             }
 
             foreach (var item in purchase.PurchaseItems)
@@ -471,60 +489,30 @@ namespace erIgnoreSystem.Server.Controllers
 
             _cache.Remove("Purchases");
             _cache.Remove($"Purchase_{id}");
-            _cache.Remove("WarehouseItemsAll");
 
-            return Ok(new { message = "Zamówienie zakupu zostało przyjęte." });
-        }
-
-        [HttpGet("{id}/history")]
-        public async Task<IActionResult> GetPurchaseHistory(int id)
-        {
-            var cacheKey = $"PurchaseHistory_{id}";
-            if (!_cache.TryGetValue(cacheKey, out IEnumerable<PurchaseHistoryDto> history))
-            {
-                history = await _context.PurchaseHistory
-                    .Where(h => h.PurchaseId == id)
-                    .Select(h => new PurchaseHistoryDto
-                    {
-                        Id = h.Id,
-                        PurchaseId = h.PurchaseId,
-                        Action = h.Action,
-                        ModifiedBy = h.ModifiedBy,
-                        ModifiedDate = h.ModifiedDate,
-                        Details = h.Details
-                    })
-                    .ToListAsync();
-
-                var cacheOptions = new MemoryCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
-                };
-                _cache.Set(cacheKey, history, cacheOptions);
-            }
-
-            return Ok(history);
+            return NoContent();
         }
 
         [HttpPut("{id}/status")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] string newStatus)
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusDto statusDto)
         {
-            var purchase = await _context.Purchases.FindAsync(id);
-            if (purchase == null || purchase.IsDeleted)
+            var purchase = await _context.Purchases
+                .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
+
+            if (purchase == null)
+            {
                 return NotFound();
+            }
 
-            var validStatuses = new[] { "Draft", "Confirmed", "InProgress", "Received", "Cancelled" };
-            if (!validStatuses.Contains(newStatus))
-                return BadRequest(new { message = "Nieprawidłowy status." });
-
-            purchase.Status = newStatus;
+            purchase.Status = statusDto.Status;
 
             var history = new PurchaseHistory
             {
                 PurchaseId = purchase.Id,
-                Action = "StatusUpdated",
+                Action = "Status Updated",
                 ModifiedBy = "System",
                 ModifiedDate = DateTime.UtcNow,
-                Details = $"Status changed to {newStatus}."
+                Details = $"Purchase {purchase.PurchaseNumber} status changed to {statusDto.Status}."
             };
             _context.PurchaseHistory.Add(history);
 
@@ -533,7 +521,43 @@ namespace erIgnoreSystem.Server.Controllers
             _cache.Remove("Purchases");
             _cache.Remove($"Purchase_{id}");
 
-            return Ok(new { message = $"Status zmieniony na {newStatus}." });
+            return NoContent();
         }
+
+        [HttpGet("{id}/history")]
+        public async Task<ActionResult<IEnumerable<PurchaseHistoryDto>>> GetPurchaseHistory(int id)
+        {
+            var cacheKey = $"PurchaseHistory_{id}";
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<PurchaseHistoryDto> historyDtos))
+            {
+                var history = await _context.PurchaseHistory
+                    .Where(ph => ph.PurchaseId == id)
+                    .OrderByDescending(ph => ph.ModifiedDate)
+                    .ToListAsync();
+
+                historyDtos = history.Select(ph => new PurchaseHistoryDto
+                {
+                    Id = ph.Id,
+                    PurchaseId = ph.PurchaseId,
+                    Action = ph.Action,
+                    ModifiedBy = ph.ModifiedBy,
+                    ModifiedDate = ph.ModifiedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    Details = ph.Details
+                }).ToList();
+
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, historyDtos, cacheOptions);
+            }
+
+            return Ok(historyDtos);
+        }
+    }
+
+    public class UpdateStatusDto
+    {
+        public string Status { get; set; }
     }
 }
