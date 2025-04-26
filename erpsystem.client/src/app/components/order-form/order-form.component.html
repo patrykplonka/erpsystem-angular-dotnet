@@ -35,23 +35,23 @@
                 <div class="form-group">
                   <label for="orderType">Typ</label>
                   <select [(ngModel)]="order.orderType" id="orderType" name="orderType" required (ngModelChange)="generateOrderNumber()">
-                    <option value="Purchase">Zakup</option>
-                    <option value="Sale">Sprzedaż</option>
+                    <option value="Zakup">Zakup</option>
+                    <option value="Sprzedaż">Sprzedaż</option>
                   </select>
-                </div>
-                <div class="form-group">
-                  <label for="orderDate">Data</label>
-                  <input [(ngModel)]="order.orderDate" id="orderDate" name="orderDate" type="date" required>
                 </div>
               </div>
               <h3>Produkty</h3>
               <div class="form-grid">
                 <div class="form-group">
                   <label for="warehouseItem">Produkt</label>
-                  <select [(ngModel)]="newItem.warehouseItemId" id="warehouseItem" name="warehouseItem">
+                  <select [(ngModel)]="newItem.warehouseItemId" id="warehouseItem" name="warehouseItem" (ngModelChange)="onProductSelect()">
                     <option value="0" disabled>Wybierz produkt</option>
                     <option *ngFor="let item of warehouseItems" [value]="item.id">{{ item.name }} (Dostępne: {{ item.quantity }})</option>
                   </select>
+                </div>
+                <div class="form-group">
+                  <label for="unitPrice">Cena jednostkowa</label>
+                  <input [(ngModel)]="newItem.unitPrice" id="unitPrice" name="unitPrice" type="number" readonly>
                 </div>
                 <div class="form-group">
                   <label for="quantity">Ilość</label>
@@ -77,7 +77,7 @@
                     <td data-label="Produkt">{{ item.warehouseItemName }}</td>
                     <td data-label="Ilość">{{ item.quantity }}</td>
                     <td data-label="Cena jednostkowa">{{ item.unitPrice | currency:'PLN' }}</td>
-                    <td data-label="Stawka VAT">{{ item.vatRate * 100 }}%</td>
+                    <td data-label="Stawka VAT">{{ (item.vatRate * 100) | number:'1.0-0' }}%</td>
                     <td data-label="Całkowita cena">{{ item.totalPrice | currency:'PLN' }}</td>
                     <td data-label="Akcje" class="actions">
                       <button class="action-button delete-button" (click)="removeItem(i)">Usuń</button>
@@ -85,6 +85,9 @@
                   </tr>
                 </tbody>
               </table>
+              <div class="total-price" *ngIf="order.orderItems.length > 0">
+                <strong>Całkowita cena zamówienia: {{ getTotalOrderPrice() | currency:'PLN' }}</strong>
+              </div>
               <div class="form-buttons">
                 <button type="button" (click)="submitOrder()">Zapisz</button>
                 <button type="button" class="cancel-button" (click)="cancel()">Anuluj</button>

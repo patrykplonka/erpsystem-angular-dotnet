@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using erpsystem.Server.Data;
 using Microsoft.Extensions.Caching.Memory;
+using System.Globalization;
 using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
@@ -27,11 +28,7 @@ namespace erpsystem.Server.Controllers
         public async Task<ActionResult<PagedResult<OrderDto>>> GetPagedOrders(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string? contractorName = null,
-            [FromQuery] string? orderType = null,
-            [FromQuery] string? status = null,
-            [FromQuery] DateTime? startDate = null,
-            [FromQuery] DateTime? endDate = null)
+            [FromQuery] string? search = null)
         {
             var query = _context.Orders
                 .Include(o => o.Contractor)
@@ -39,16 +36,19 @@ namespace erpsystem.Server.Controllers
                 .ThenInclude(oi => oi.WarehouseItem)
                 .Where(o => !o.IsDeleted);
 
-            if (!string.IsNullOrEmpty(contractorName))
-                query = query.Where(o => o.Contractor.Name.Contains(contractorName));
-            if (!string.IsNullOrEmpty(orderType))
-                query = query.Where(o => o.OrderType == orderType);
-            if (!string.IsNullOrEmpty(status))
-                query = query.Where(o => o.Status == status);
-            if (startDate.HasValue)
-                query = query.Where(o => o.OrderDate >= startDate.Value);
-            if (endDate.HasValue)
-                query = query.Where(o => o.OrderDate <= endDate.Value);
+            if (!string.IsNullOrEmpty(search))
+            {
+                search = search.Trim().ToLower();
+                query = query.Where(o =>
+                    o.OrderNumber.ToLower().Contains(search) ||
+                    (o.OrderType == "Purchase" && "zakup".Contains(search) || o.OrderType == "Sale" && "sprzedaż".Contains(search)) ||
+                    (o.Status == "Draft" && "szkic".Contains(search) ||
+                     o.Status == "Pending" && "oczekujące".Contains(search) ||
+                     o.Status == "Confirmed" && "potwierdzone".Contains(search) ||
+                     o.Status == "Received" && "zrealizowane".Contains(search)));
+            }
+
+            query = query.OrderByDescending(o => o.OrderDate);
 
             var totalItems = await query.CountAsync();
             var orders = await query
@@ -56,16 +56,33 @@ namespace erpsystem.Server.Controllers
                 .Take(pageSize)
                 .ToListAsync();
 
+            // Perform client-side filtering for OrderDate and Contractor Name
+            if (!string.IsNullOrEmpty(search))
+            {
+                orders = orders.Where(o =>
+                    o.OrderDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture).ToLower().Contains(search) ||
+                    (o.Contractor != null && o.Contractor.Name != null && o.Contractor.Name.ToLower().Contains(search)))
+                    .ToList();
+                totalItems = orders.Count; // Update totalItems after client-side filtering
+            }
+
             var orderDtos = orders.Select(o => new OrderDto
             {
                 Id = o.Id,
                 OrderNumber = o.OrderNumber,
                 ContractorId = o.ContractorId,
                 ContractorName = o.Contractor?.Name ?? "Brak kontrahenta",
-                OrderType = o.OrderType,
+                OrderType = o.OrderType == "Purchase" ? "Zakup" : "Sprzedaż",
                 OrderDate = o.OrderDate,
                 TotalAmount = o.TotalAmount,
-                Status = o.Status,
+                Status = o.Status switch
+                {
+                    "Draft" => "Szkic",
+                    "Pending" => "Oczekujące",
+                    "Confirmed" => "Potwierdzone",
+                    "Received" => "Zrealizowane",
+                    _ => o.Status
+                },
                 CreatedBy = o.CreatedBy,
                 CreatedDate = o.CreatedDate,
                 IsDeleted = o.IsDeleted,
@@ -89,7 +106,7 @@ namespace erpsystem.Server.Controllers
         public async Task<ActionResult<OrderDto>> GetOrder(int id)
         {
             var cacheKey = $"Order_{id}";
-            if (!_cache.TryGetValue(cacheKey, out OrderDto orderDto))
+            if (!_cache.TryGetValue(cacheKey, out OrderDto? orderDto))
             {
                 var order = await _context.Orders
                     .Include(o => o.Contractor)
@@ -106,10 +123,17 @@ namespace erpsystem.Server.Controllers
                     OrderNumber = order.OrderNumber,
                     ContractorId = order.ContractorId,
                     ContractorName = order.Contractor?.Name ?? "Brak kontrahenta",
-                    OrderType = order.OrderType,
+                    OrderType = order.OrderType == "Purchase" ? "Zakup" : "Sprzedaż",
                     OrderDate = order.OrderDate,
                     TotalAmount = order.TotalAmount,
-                    Status = order.Status,
+                    Status = order.Status switch
+                    {
+                        "Draft" => "Szkic",
+                        "Pending" => "Oczekujące",
+                        "Confirmed" => "Potwierdzone",
+                        "Received" => "Zrealizowane",
+                        _ => order.Status
+                    },
                     CreatedBy = order.CreatedBy,
                     CreatedDate = order.CreatedDate,
                     IsDeleted = order.IsDeleted,
@@ -142,31 +166,37 @@ namespace erpsystem.Server.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            if (string.IsNullOrEmpty(orderDto.OrderNumber) || string.IsNullOrEmpty(orderDto.CreatedBy) || string.IsNullOrEmpty(orderDto.OrderType))
+                return BadRequest("OrderNumber, CreatedBy, and OrderType are required.");
+
+            if (orderDto.ContractorId == null)
+                return BadRequest("ContractorId is required.");
+
             var warehouseItemIds = orderDto.OrderItems.Select(oi => oi.WarehouseItemId).Distinct().ToList();
             var warehouseItems = await _context.WarehouseItems
                 .Where(wi => warehouseItemIds.Contains(wi.Id) && !wi.IsDeleted)
-                .ToDictionaryAsync(wi => wi.Id, wi => wi.Price);
+                .ToDictionaryAsync(wi => wi.Id, wi => new { wi.Price, wi.VatRate });
 
             var order = new Order
             {
                 OrderNumber = orderDto.OrderNumber,
-                ContractorId = orderDto.ContractorId,
-                OrderType = orderDto.OrderType,
+                ContractorId = orderDto.ContractorId.Value,
+                OrderType = orderDto.OrderType == "Zakup" ? "Purchase" : "Sale",
                 OrderDate = orderDto.OrderDate,
                 Status = "Pending",
                 CreatedBy = orderDto.CreatedBy,
                 OrderItems = orderDto.OrderItems.Select(oi =>
                 {
-                    if (!warehouseItems.TryGetValue(oi.WarehouseItemId, out var unitPrice))
+                    if (!warehouseItems.TryGetValue(oi.WarehouseItemId, out var item))
                         throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} nie istnieje lub jest usunięty.");
 
                     return new OrderItem
                     {
                         WarehouseItemId = oi.WarehouseItemId,
                         Quantity = oi.Quantity,
-                        UnitPrice = unitPrice,
-                        VatRate = oi.VatRate,
-                        TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate)
+                        UnitPrice = item.Price,
+                        VatRate = item.VatRate,
+                        TotalPrice = oi.Quantity * item.Price * (1 + item.VatRate)
                     };
                 }).ToList()
             };
@@ -202,7 +232,7 @@ namespace erpsystem.Server.Controllers
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.WarehouseItem)
-                .Include(o => o.Contractor) // Ensure Contractor is included
+                .Include(o => o.Contractor)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null)
@@ -213,6 +243,10 @@ namespace erpsystem.Server.Controllers
 
             order.Status = "Confirmed";
 
+            var totalNet = order.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice);
+            var totalVat = order.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice * oi.VatRate);
+            var totalGross = totalNet + totalVat;
+
             var invoice = new Invoice
             {
                 OrderId = order.Id,
@@ -220,10 +254,10 @@ namespace erpsystem.Server.Controllers
                 IssueDate = DateTime.UtcNow,
                 DueDate = DateTime.UtcNow.AddDays(14),
                 ContractorId = order.ContractorId,
-                ContractorName = order.Contractor?.Name ?? throw new InvalidOperationException("Contractor name cannot be null."), // Ensure ContractorName is set
-                TotalAmount = order.TotalAmount,
-                VatAmount = order.OrderItems.Sum(oi => oi.TotalPrice * oi.VatRate),
-                NetAmount = order.TotalAmount - order.OrderItems.Sum(oi => oi.TotalPrice * oi.VatRate),
+                ContractorName = order.Contractor?.Name ?? throw new InvalidOperationException("Contractor name cannot be null."),
+                TotalAmount = totalGross,
+                VatAmount = totalVat,
+                NetAmount = totalNet,
                 Status = "Issued",
                 CreatedBy = order.CreatedBy,
                 CreatedDate = DateTime.UtcNow
@@ -254,6 +288,12 @@ namespace erpsystem.Server.Controllers
             if (id != orderDto.Id)
                 return BadRequest();
 
+            if (string.IsNullOrEmpty(orderDto.OrderNumber) || string.IsNullOrEmpty(orderDto.CreatedBy) || string.IsNullOrEmpty(orderDto.OrderType))
+                return BadRequest("OrderNumber, CreatedBy, and OrderType are required.");
+
+            if (orderDto.ContractorId == null)
+                return BadRequest("ContractorId is required.");
+
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
                 .FirstOrDefaultAsync(o => o.Id == id);
@@ -264,28 +304,35 @@ namespace erpsystem.Server.Controllers
             var warehouseItemIds = orderDto.OrderItems.Select(oi => oi.WarehouseItemId).Distinct().ToList();
             var warehouseItems = await _context.WarehouseItems
                 .Where(wi => warehouseItemIds.Contains(wi.Id) && !wi.IsDeleted)
-                .ToDictionaryAsync(wi => wi.Id, wi => wi.Price);
+                .ToDictionaryAsync(wi => wi.Id, wi => new { wi.Price, wi.VatRate });
 
             order.OrderNumber = orderDto.OrderNumber;
-            order.ContractorId = orderDto.ContractorId;
-            order.OrderType = orderDto.OrderType;
+            order.ContractorId = orderDto.ContractorId.Value;
+            order.OrderType = orderDto.OrderType == "Zakup" ? "Purchase" : "Sale";
             order.OrderDate = orderDto.OrderDate;
-            order.Status = orderDto.Status;
+            order.Status = orderDto.Status switch
+            {
+                "Szkic" => "Draft",
+                "Oczekujące" => "Pending",
+                "Potwierdzone" => "Confirmed",
+                "Zrealizowane" => "Received",
+                _ => orderDto.Status
+            };
             order.IsDeleted = orderDto.IsDeleted;
 
             _context.OrderItems.RemoveRange(order.OrderItems);
             order.OrderItems = orderDto.OrderItems.Select(oi =>
             {
-                if (!warehouseItems.TryGetValue(oi.WarehouseItemId, out var unitPrice))
+                if (!warehouseItems.TryGetValue(oi.WarehouseItemId, out var item))
                     throw new InvalidOperationException($"Produkt o ID {oi.WarehouseItemId} nie istnieje lub jest usunięty.");
 
                 return new OrderItem
                 {
                     WarehouseItemId = oi.WarehouseItemId,
                     Quantity = oi.Quantity,
-                    UnitPrice = unitPrice,
-                    VatRate = oi.VatRate,
-                    TotalPrice = oi.Quantity * unitPrice * (1 + oi.VatRate)
+                    UnitPrice = item.Price,
+                    VatRate = item.VatRate,
+                    TotalPrice = oi.Quantity * item.Price * (1 + item.VatRate)
                 };
             }).ToList();
 
@@ -295,7 +342,7 @@ namespace erpsystem.Server.Controllers
             {
                 OrderId = order.Id,
                 Action = "Updated",
-                ModifiedBy = orderDto.CreatedBy ?? "System",
+                ModifiedBy = orderDto.CreatedBy,
                 ModifiedDate = DateTime.UtcNow,
                 Details = $"Order {order.OrderNumber} updated."
             };
@@ -381,7 +428,7 @@ namespace erpsystem.Server.Controllers
         public async Task<ActionResult<object>> GenerateOrderNumber([FromQuery] string orderType)
         {
             var prefix = orderType == "Purchase" ? "PUR" : "SAL";
-            var date = DateTime.Now.ToString("yyyyMMdd");
+            var date = DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
             var count = await _context.Orders
                 .CountAsync(o => o.OrderNumber.StartsWith($"{prefix}-{date}")) + 1;
             var orderNumber = $"{prefix}-{date}-{count:D4}";
@@ -391,7 +438,7 @@ namespace erpsystem.Server.Controllers
 
     public class PagedResult<T>
     {
-        public IEnumerable<T> Items { get; set; }
+        public required IEnumerable<T> Items { get; set; }
         public int TotalItems { get; set; }
     }
 }

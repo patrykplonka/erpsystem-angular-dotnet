@@ -40,10 +40,9 @@ export class OrdersComponent implements OnInit {
   isLoading = false;
   errorMessage: string | null = null;
   successMessage: string | null = null;
-  filterStatus = '';
-  filterType = '';
-  sortField: keyof OrderDto = 'orderNumber';
-  sortDirection: 'asc' | 'desc' = 'asc';
+  searchQuery: string = '';
+  sortField: keyof OrderDto = 'orderDate';
+  sortDirection: 'asc' | 'desc' = 'desc';
   page = 1;
   pageSize = 10;
   private _totalItems = 0;
@@ -68,6 +67,8 @@ export class OrdersComponent implements OnInit {
 
   ngOnInit() {
     this.currentUserEmail = this.authService.getCurrentUserEmail();
+    this.sortField = 'orderDate';
+    this.sortDirection = 'desc';
     this.loadOrders();
   }
 
@@ -79,15 +80,17 @@ export class OrdersComponent implements OnInit {
       .set('page', this.page.toString())
       .set('pageSize', this.pageSize.toString());
 
-    if (this.filterStatus) params = params.set('status', this.filterStatus);
-    if (this.filterType) params = params.set('orderType', this.filterType);
+    if (this.searchQuery) {
+      // Send searchQuery as a single 'search' parameter for flexible backend filtering
+      params = params.set('search', this.searchQuery);
+    }
 
     this.http.get<PagedResult<OrderDto>>(this.apiUrl, { params }).subscribe({
       next: (data) => {
         this.orders = data.items.filter(order => !order.isDeleted);
         this.deletedOrders = data.items.filter(order => order.isDeleted);
         this.totalItems = data.totalItems;
-        this.applyFiltersAndSort();
+        this.applySearchAndSort();
         this.isLoading = false;
       },
       error: (error) => {
@@ -97,14 +100,18 @@ export class OrdersComponent implements OnInit {
     });
   }
 
-  applyFiltersAndSort() {
+  applySearchAndSort() {
     let result = this.showDeleted ? [...this.deletedOrders] : [...this.orders];
 
-    if (this.filterStatus) {
-      result = result.filter(order => order.status.toLowerCase() === this.filterStatus.toLowerCase());
-    }
-    if (this.filterType) {
-      result = result.filter(order => order.orderType.toLowerCase() === this.filterType.toLowerCase());
+    if (this.searchQuery) {
+      const query = this.searchQuery.toLowerCase().trim();
+      result = result.filter(order =>
+        order.orderNumber.toLowerCase().includes(query) ||
+        order.contractorName.toLowerCase().includes(query) ||
+        order.orderType.toLowerCase().includes(query) ||
+        order.status.toLowerCase().includes(query) ||
+        order.orderDate.includes(query)
+      );
     }
 
     result.sort((a, b) => {
@@ -112,6 +119,11 @@ export class OrdersComponent implements OnInit {
       const valueB = b[this.sortField];
       const direction = this.sortDirection === 'asc' ? 1 : -1;
 
+      if (this.sortField === 'orderDate') {
+        const dateA = new Date(valueA as string).getTime();
+        const dateB = new Date(valueB as string).getTime();
+        return (dateB - dateA) * direction; // Newest first
+      }
       if (typeof valueA === 'string' && typeof valueB === 'string') {
         return valueA.localeCompare(valueB) * direction;
       }
@@ -126,9 +138,14 @@ export class OrdersComponent implements OnInit {
       this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
       this.sortField = field;
-      this.sortDirection = 'asc';
+      this.sortDirection = field === 'orderDate' ? 'desc' : 'asc';
     }
-    this.applyFiltersAndSort();
+    this.applySearchAndSort();
+  }
+
+  onSearchChange() {
+    this.page = 1;
+    this.loadOrders();
   }
 
   confirmOrder(id: number) {
@@ -159,7 +176,7 @@ export class OrdersComponent implements OnInit {
     this.http.delete(`https://localhost:7224/api/orders/${id}`).subscribe({
       next: () => {
         this.orders = this.orders.filter(order => order.id !== id);
-        this.applyFiltersAndSort();
+        this.applySearchAndSort();
         this.successMessage = 'Zamówienie usunięte.';
         this.errorMessage = null;
         this.isLoading = false;
@@ -189,14 +206,13 @@ export class OrdersComponent implements OnInit {
   toggleDeletedView() {
     this.showDeleted = !this.showDeleted;
     this.page = 1;
-    this.applyFiltersAndSort();
+    this.applySearchAndSort();
   }
 
   resetFilters() {
-    this.filterStatus = '';
-    this.filterType = '';
-    this.sortField = 'orderNumber';
-    this.sortDirection = 'asc';
+    this.searchQuery = '';
+    this.sortField = 'orderDate';
+    this.sortDirection = 'desc';
     this.page = 1;
     this.loadOrders();
   }
