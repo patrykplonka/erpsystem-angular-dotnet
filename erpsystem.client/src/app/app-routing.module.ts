@@ -10,7 +10,7 @@ import { ContractorsComponent } from './components/contractors/contractors.compo
 import { OrdersComponent } from './components/orders/orders.component';
 import { InvoiceComponent } from './components/invoice/invoice.component';
 import { OrderFormComponent } from './components/order-form/order-form.component';
-
+import { PurchasesComponent } from './components/purchases/purchases.component;
   
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
