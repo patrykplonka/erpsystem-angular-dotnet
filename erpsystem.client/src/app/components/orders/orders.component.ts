@@ -33,9 +33,11 @@ interface PagedResult<T> {
   standalone: true
 })
 export class OrdersComponent implements OnInit {
-  orders: OrderDto[] = [];
+  unconfirmedOrders: OrderDto[] = []; // Szkic, Oczekujące
+  confirmedOrders: OrderDto[] = []; // Potwierdzone, Zrealizowane
   deletedOrders: OrderDto[] = [];
-  filteredOrders: OrderDto[] = [];
+  filteredUnconfirmedOrders: OrderDto[] = [];
+  filteredConfirmedOrders: OrderDto[] = [];
   apiUrl = 'https://localhost:7224/api/orders/paged';
   isLoading = false;
   errorMessage: string | null = null;
@@ -67,9 +69,13 @@ export class OrdersComponent implements OnInit {
 
   ngOnInit() {
     this.currentUserEmail = this.authService.getCurrentUserEmail();
+    this.resetSort();
+    this.loadOrders();
+  }
+
+  resetSort() {
     this.sortField = 'orderDate';
     this.sortDirection = 'desc';
-    this.loadOrders();
   }
 
   loadOrders() {
@@ -81,15 +87,19 @@ export class OrdersComponent implements OnInit {
       .set('pageSize', this.pageSize.toString());
 
     if (this.searchQuery) {
-      // Send searchQuery as a single 'search' parameter for flexible backend filtering
       params = params.set('search', this.searchQuery);
     }
 
     this.http.get<PagedResult<OrderDto>>(this.apiUrl, { params }).subscribe({
       next: (data) => {
-        this.orders = data.items.filter(order => !order.isDeleted);
+        // Split orders by status
+        this.unconfirmedOrders = data.items.filter(order => !order.isDeleted && (order.status === 'Szkic' || order.status === 'Oczekujące'));
+        this.confirmedOrders = data.items.filter(order => !order.isDeleted && (order.status === 'Potwierdzone' || order.status === 'Zrealizowane'));
         this.deletedOrders = data.items.filter(order => order.isDeleted);
         this.totalItems = data.totalItems;
+        console.log('Unconfirmed orders:', this.unconfirmedOrders.map(o => ({ id: o.id, orderDate: o.orderDate, status: o.status })));
+        console.log('Confirmed orders:', this.confirmedOrders.map(o => ({ id: o.id, orderDate: o.orderDate, status: o.status })));
+        this.resetSort();
         this.applySearchAndSort();
         this.isLoading = false;
       },
@@ -101,36 +111,47 @@ export class OrdersComponent implements OnInit {
   }
 
   applySearchAndSort() {
-    let result = this.showDeleted ? [...this.deletedOrders] : [...this.orders];
+    let unconfirmedResult = this.showDeleted ? [...this.deletedOrders.filter(o => o.status === 'Szkic' || o.status === 'Oczekujące')] : [...this.unconfirmedOrders];
+    let confirmedResult = this.showDeleted ? [...this.deletedOrders.filter(o => o.status === 'Potwierdzone' || o.status === 'Zrealizowane')] : [...this.confirmedOrders];
 
     if (this.searchQuery) {
       const query = this.searchQuery.toLowerCase().trim();
-      result = result.filter(order =>
-        order.orderNumber.toLowerCase().includes(query) ||
-        order.contractorName.toLowerCase().includes(query) ||
-        order.orderType.toLowerCase().includes(query) ||
-        order.status.toLowerCase().includes(query) ||
-        order.orderDate.includes(query)
-      );
+      const filterFn = (order: OrderDto) =>
+        (order.orderNumber?.toLowerCase().includes(query) ?? false) ||
+        (order.contractorName?.toLowerCase().includes(query) ?? false) ||
+        (order.orderType?.toLowerCase().includes(query) ?? false) ||
+        (order.status?.toLowerCase().includes(query) ?? false) ||
+        (order.orderDate?.toLowerCase().includes(query) ?? false);
+
+      unconfirmedResult = unconfirmedResult.filter(filterFn);
+      confirmedResult = confirmedResult.filter(filterFn);
     }
 
-    result.sort((a, b) => {
+    const sortFn = (a: OrderDto, b: OrderDto) => {
       const valueA = a[this.sortField];
       const valueB = b[this.sortField];
       const direction = this.sortDirection === 'asc' ? 1 : -1;
 
       if (this.sortField === 'orderDate') {
-        const dateA = new Date(valueA as string).getTime();
-        const dateB = new Date(valueB as string).getTime();
-        return (dateB - dateA) * direction; // Newest first
+        const dateA = valueA ? new Date(valueA as string).getTime() : 0;
+        const dateB = valueB ? new Date(valueB as string).getTime() : 0;
+        console.log(`Sorting orderDate: ${valueA} (${dateA}) vs ${valueB} (${dateB}), direction: ${this.sortDirection}`);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return (dateB - dateA) * direction; // Newest first in desc
       }
       if (typeof valueA === 'string' && typeof valueB === 'string') {
         return valueA.localeCompare(valueB) * direction;
       }
       return ((valueA < valueB ? -1 : 1) * direction);
-    });
+    };
 
-    this.filteredOrders = result;
+    this.filteredUnconfirmedOrders = unconfirmedResult.sort(sortFn);
+    this.filteredConfirmedOrders = confirmedResult.sort(sortFn);
+
+    console.log('Sorted unconfirmed:', this.filteredUnconfirmedOrders.map(o => ({ id: o.id, orderDate: o.orderDate })));
+    console.log('Sorted confirmed:', this.filteredConfirmedOrders.map(o => ({ id: o.id, orderDate: o.orderDate })));
   }
 
   sortBy(field: keyof OrderDto) {
@@ -145,6 +166,7 @@ export class OrdersComponent implements OnInit {
 
   onSearchChange() {
     this.page = 1;
+    this.resetSort();
     this.loadOrders();
   }
 
@@ -158,6 +180,7 @@ export class OrdersComponent implements OnInit {
       next: () => {
         this.successMessage = 'Zamówienie potwierdzone.';
         this.errorMessage = null;
+        this.resetSort();
         this.loadOrders();
       },
       error: (error) => {
@@ -175,7 +198,9 @@ export class OrdersComponent implements OnInit {
     this.isLoading = true;
     this.http.delete(`https://localhost:7224/api/orders/${id}`).subscribe({
       next: () => {
-        this.orders = this.orders.filter(order => order.id !== id);
+        this.unconfirmedOrders = this.unconfirmedOrders.filter(order => order.id !== id);
+        this.confirmedOrders = this.confirmedOrders.filter(order => order.id !== id);
+        this.resetSort();
         this.applySearchAndSort();
         this.successMessage = 'Zamówienie usunięte.';
         this.errorMessage = null;
@@ -194,6 +219,7 @@ export class OrdersComponent implements OnInit {
       next: () => {
         this.successMessage = 'Zamówienie przywrócone.';
         this.errorMessage = null;
+        this.resetSort();
         this.loadOrders();
       },
       error: (error) => {
@@ -206,13 +232,13 @@ export class OrdersComponent implements OnInit {
   toggleDeletedView() {
     this.showDeleted = !this.showDeleted;
     this.page = 1;
+    this.resetSort();
     this.applySearchAndSort();
   }
 
   resetFilters() {
     this.searchQuery = '';
-    this.sortField = 'orderDate';
-    this.sortDirection = 'desc';
+    this.resetSort();
     this.page = 1;
     this.loadOrders();
   }
@@ -220,6 +246,7 @@ export class OrdersComponent implements OnInit {
   changePage(newPage: number) {
     if (newPage >= 1 && newPage <= this.totalPages) {
       this.page = newPage;
+      this.resetSort();
       this.loadOrders();
     }
   }
