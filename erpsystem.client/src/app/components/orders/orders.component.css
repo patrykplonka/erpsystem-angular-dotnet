@@ -82,20 +82,13 @@ header {
   color: #721c24;
 }
 
-.orders-list {
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.list-controls {
+.controls {
   display: flex;
   gap: 10px;
   margin-bottom: 15px;
 }
 
-.add-button, .toggle-deleted {
+.add-button, .toggle-deleted, .reset-filters {
   padding: 8px 14px;
   background: #3b82f6;
   color: #ffffff;
@@ -105,9 +98,10 @@ header {
   font-size: 13px;
   font-weight: 500;
   transition: background 0.2s;
+  text-decoration: none;
 }
 
-  .add-button:hover, .toggle-deleted:hover {
+  .add-button:hover, .toggle-deleted:hover, .reset-filters:hover {
     background: #2563eb;
   }
 
@@ -119,25 +113,49 @@ header {
     background: #4b5563;
   }
 
-.advanced-filters {
+.filters {
   display: flex;
   gap: 15px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+  align-items: flex-end;
 }
 
-  .advanced-filters select {
-    padding: 10px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s;
+  .filters .form-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 200px;
   }
 
-    .advanced-filters select:focus {
-      border-color: #3b82f6;
+    .filters .form-group label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #4b5563;
+      margin-bottom: 5px;
     }
+
+    .filters .form-group input {
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+      .filters .form-group input:focus {
+        border-color: #3b82f6;
+      }
+
+.reset-filters {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+  .reset-filters:hover {
+    background: #d1d5db;
+  }
 
 table {
   width: 100%;
@@ -200,6 +218,15 @@ tbody tr:hover {
   transition: background 0.2s;
 }
 
+.confirm-button {
+  background: #10b981;
+  color: #ffffff;
+}
+
+  .confirm-button:hover {
+    background: #059669;
+  }
+
 .edit-button {
   background: #3b82f6;
   color: #ffffff;
@@ -260,6 +287,13 @@ tbody tr:hover {
     font-size: 14px;
   }
 
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-size: 14px;
+}
+
 @media (max-width: 767px) {
   table {
     display: block;
@@ -298,6 +332,14 @@ tbody tr:hover {
     border-bottom: 1px solid #e5e7eb;
     margin-bottom: 10px;
   }
+
+  .filters {
+    flex-direction: column;
+  }
+
+    .filters .form-group {
+      width: 100%;
+    }
 }
 
 @media (min-width: 768px) {

@@ -49,9 +49,9 @@ interface OrderItemDto {
 interface CreateOrderDto {
   orderNumber: string;
   contractorId: number;
-  orderType: 'Purchase' | 'Sale';
+  orderType: 'Zakup' | 'Sprzedaż';
   orderDate: string;
-  status: 'Draft' | 'Confirmed' | 'Completed';
+  status: 'Oczekujące';
   createdBy: string;
   orderItems: OrderItemDto[];
 }
@@ -67,15 +67,15 @@ export class OrderFormComponent implements OnInit {
   order: CreateOrderDto = {
     orderNumber: '',
     contractorId: 0,
-    orderType: 'Purchase',
+    orderType: 'Zakup',
     orderDate: new Date().toISOString().split('T')[0],
-    status: 'Draft',
+    status: 'Oczekujące',
     createdBy: '',
     orderItems: []
   };
   contractors: ContractorDto[] = [];
   warehouseItems: WarehouseItemDto[] = [];
-  newItem: OrderItemDto = { warehouseItemId: 0, warehouseItemName: '', quantity: 1, unitPrice: 0, vatRate: 0, totalPrice: 0 };
+  newItem: OrderItemDto = { warehouseItemId: 0, warehouseItemName: '', quantity: 1, unitPrice: 0, vatRate: 0.23, totalPrice: 0 };
   errorMessage: string | null = null;
   successMessage: string | null = null;
   currentUserEmail: string | null = null;
@@ -107,7 +107,8 @@ export class OrderFormComponent implements OnInit {
   }
 
   generateOrderNumber() {
-    this.http.get<{ orderNumber: string }>(`${this.generateOrderNumberUrl}?orderType=${this.order.orderType}`, { headers: this.getHeaders() }).subscribe({
+    const apiOrderType = this.order.orderType === 'Zakup' ? 'Purchase' : 'Sale';
+    this.http.get<{ orderNumber: string }>(`${this.generateOrderNumberUrl}?orderType=${apiOrderType}`, { headers: this.getHeaders() }).subscribe({
       next: (data) => {
         this.order.orderNumber = data.orderNumber;
       },
@@ -132,27 +133,38 @@ export class OrderFormComponent implements OnInit {
     this.http.get<WarehouseItemDto[]>(this.warehouseApiUrl, { headers: this.getHeaders() }).subscribe({
       next: (data) => {
         this.warehouseItems = data.filter(p => !p.isDeleted && p.quantity > 0);
-        console.log('Loaded warehouseItems:', this.warehouseItems);
         if (this.warehouseItems.length === 0) {
           this.errorMessage = 'Brak dostępnych produktów w magazynie.';
         }
       },
       error: (error) => {
-        this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}. Sprawdź endpoint /api/warehouseitems.`;
+        this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}.`;
       }
     });
   }
 
+  onProductSelect() {
+    const itemId = Number(this.newItem.warehouseItemId);
+    const selectedItem = this.warehouseItems.find(p => p.id === itemId);
+    if (selectedItem) {
+      this.newItem.unitPrice = selectedItem.unitPrice;
+      this.newItem.vatRate = selectedItem.vatRate || 0.23;
+      this.newItem.warehouseItemName = selectedItem.name;
+    } else {
+      this.newItem.unitPrice = 0;
+      this.newItem.vatRate = 0.23;
+      this.newItem.warehouseItemName = '';
+    }
+  }
+
   addItem() {
-    console.log('addItem called, newItem:', this.newItem);
     if (!this.newItem.warehouseItemId || this.newItem.warehouseItemId === 0) {
       this.errorMessage = 'Wybierz produkt.';
       return;
     }
-    const itemId = Number(this.newItem.warehouseItemId); // Convert to number
+    const itemId = Number(this.newItem.warehouseItemId);
     const selectedItem = this.warehouseItems.find(p => p.id === itemId);
     if (!selectedItem) {
-      console.log('Selected item not found, itemId:', itemId, 'warehouseItems:', this.warehouseItems);
       this.errorMessage = 'Wybrany produkt nie istnieje.';
       return;
     }
@@ -160,9 +172,7 @@ export class OrderFormComponent implements OnInit {
       this.errorMessage = `Nieprawidłowa ilość. Dostępne: ${selectedItem.quantity}.`;
       return;
     }
-    this.newItem.vatRate = selectedItem.vatRate;
-    this.newItem.unitPrice = selectedItem.unitPrice;
-    this.newItem.totalPrice = this.newItem.quantity * selectedItem.unitPrice * (1 + selectedItem.vatRate);
+    this.newItem.totalPrice = this.newItem.quantity * this.newItem.unitPrice * (1 + this.newItem.vatRate);
     this.order.orderItems.push({
       warehouseItemId: itemId,
       warehouseItemName: selectedItem.name,
@@ -171,8 +181,7 @@ export class OrderFormComponent implements OnInit {
       vatRate: this.newItem.vatRate,
       totalPrice: this.newItem.totalPrice
     });
-    console.log('Item added, orderItems:', this.order.orderItems);
-    this.newItem = { warehouseItemId: 0, warehouseItemName: '', quantity: 1, unitPrice: 0, vatRate: 0, totalPrice: 0 };
+    this.newItem = { warehouseItemId: 0, warehouseItemName: '', quantity: 1, unitPrice: 0, vatRate: 0.23, totalPrice: 0 };
     this.errorMessage = null;
   }
 
@@ -180,8 +189,20 @@ export class OrderFormComponent implements OnInit {
     this.order.orderItems.splice(index, 1);
   }
 
+  getTotalOrderPrice(): number {
+    return this.order.orderItems.reduce((total, item) => total + item.totalPrice, 0);
+  }
+
+  getNetOrderPrice(): number {
+    return this.order.orderItems.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
+  }
+
+  getVatOrderPrice(): number {
+    return this.getTotalOrderPrice() - this.getNetOrderPrice();
+  }
+
   submitOrder() {
-    if (!this.order.orderNumber || !this.order.contractorId || !this.order.orderType || !this.order.orderDate || !this.order.status) {
+    if (!this.order.orderNumber || !this.order.contractorId || !this.order.orderType) {
       this.errorMessage = 'Wszystkie pola są wymagane.';
       return;
     }
@@ -189,7 +210,12 @@ export class OrderFormComponent implements OnInit {
       this.errorMessage = 'Dodaj przynajmniej jeden produkt.';
       return;
     }
-    this.http.post(this.apiUrl, this.order, { headers: this.getHeaders() }).subscribe({
+    const orderPayload = {
+      ...this.order,
+      orderType: this.order.orderType === 'Zakup' ? 'Purchase' : 'Sale',
+      status: 'Pending'
+    };
+    this.http.post(this.apiUrl, orderPayload, { headers: this.getHeaders() }).subscribe({
       next: () => {
         this.successMessage = 'Zamówienie zapisane.';
         this.errorMessage = null;

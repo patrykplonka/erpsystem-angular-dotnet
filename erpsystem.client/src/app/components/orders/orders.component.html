@@ -1,79 +1,75 @@
-<div class="orders-container">
-  <div class="dashboard-container">
-    <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
-    <main class="main-content">
-      <header>
-        <div>
-          <h1>Zamówienia</h1>
-          <p>Zarządzaj zamówieniami w systemie</p>
+<div class="dashboard-container">
+  <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
+  <main class="main-content">
+    <header>
+      <div>
+        <h1>Zamówienia</h1>
+        <p>Zarządzaj zamówieniami w systemie</p>
+      </div>
+      <div class="user-info">
+        <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+      </div>
+    </header>
+    <section class="orders-section">
+      <div class="messages">
+        <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+        <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+      </div>
+      <div class="controls">
+        <button class="toggle-deleted" (click)="toggleDeletedView()">
+          {{ showDeleted ? 'Pokaż aktywne' : 'Pokaż usunięte' }}
+        </button>
+        <a class="add-button" [routerLink]="['/orders/new']">Dodaj zamówienie</a>
+      </div>
+      <div class="filters">
+        <div class="form-group">
+          <label for="searchQuery">Wyszukaj</label>
+          <input [(ngModel)]="searchQuery" id="searchQuery" name="searchQuery" placeholder="Wpisz numer, kontrahenta, datę..." (ngModelChange)="onSearchChange()">
         </div>
-        <div class="user-info">
-          <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+        <button class="reset-filters" (click)="resetFilters()">Resetuj</button>
+      </div>
+      <div class="orders-table" *ngIf="!isLoading; else loading">
+        <table>
+          <thead>
+            <tr>
+              <th (click)="sortBy('orderNumber')">Numer zamówienia <span [ngClass]="sortField === 'orderNumber' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('contractorName')">Kontrahent <span [ngClass]="sortField === 'contractorName' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('orderType')">Typ <span [ngClass]="sortField === 'orderType' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('orderDate')">Data zamówienia <span [ngClass]="sortField === 'orderDate' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('totalAmount')">Kwota całkowita <span [ngClass]="sortField === 'totalAmount' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('status')">Status <span [ngClass]="sortField === 'status' ? sortDirection : ''"></span></th>
+              <th>Akcje</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let order of filteredOrders">
+              <td data-label="Numer zamówienia">{{ order.orderNumber }}</td>
+              <td data-label="Kontrahent">{{ order.contractorName }}</td>
+              <td data-label="Typ">{{ order.orderType }}</td>
+              <td data-label="Data zamówienia">{{ order.orderDate | date:'yyyy-MM-dd' }}</td>
+              <td data-label="Kwota całkowita">{{ order.totalAmount | currency:'PLN' }}</td>
+              <td data-label="Status">{{ order.status }}</td>
+              <td data-label="Akcje" class="actions">
+                <button *ngIf="!showDeleted && order.status === 'Oczekujące'" class="action-button confirm-button" (click)="confirmOrder(order.id)">Potwierdź</button>
+                <button *ngIf="!showDeleted" class="action-button edit-button" [routerLink]="['/orders/edit', order.id]">Edytuj</button>
+                <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteOrder(order.id)">Usuń</button>
+                <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreOrder(order.id)">Przywróć</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="no-orders" *ngIf="filteredOrders.length === 0">
+          Brak zamówień do wyświetlenia.
         </div>
-      </header>
-      <section class="orders-section">
-        <div class="messages">
-          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
-          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
-        </div>
-        <div class="orders-list">
-          <div class="list-controls">
-            <button class="add-button" [routerLink]="['/orders/new']">Dodaj zamówienie</button>
-            <button class="toggle-deleted" (click)="toggleDeletedView()">
-              {{ showDeleted ? "Pokaż aktywne" : "Pokaż usunięte" }}
-            </button>
-          </div>
-          <div class="advanced-filters">
-            <select [(ngModel)]="filterStatus" (ngModelChange)="loadOrders()">
-              <option value="">Wszystkie statusy</option>
-              <option value="Draft">Szkic</option>
-              <option value="Confirmed">Potwierdzone</option>
-              <option value="Completed">Zrealizowane</option>
-            </select>
-            <select [(ngModel)]="filterType" (ngModelChange)="loadOrders()">
-              <option value="">Wszystkie typy</option>
-              <option value="Purchase">Zakup</option>
-              <option value="Sale">Sprzedaż</option>
-            </select>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th (click)="sortBy('orderNumber')">Numer <span *ngIf="sortField === 'orderNumber'" [class.asc]="sortDirection === 'asc'">▼</span></th>
-                <th (click)="sortBy('contractorName')">Kontrahent <span *ngIf="sortField === 'contractorName'" [class.asc]="sortDirection === 'asc'">▼</span></th>
-                <th (click)="sortBy('orderType')">Typ <span *ngIf="sortField === 'orderType'" [class.asc]="sortDirection === 'asc'">▼</span></th>
-                <th (click)="sortBy('orderDate')">Data <span *ngIf="sortField === 'orderDate'" [class.asc]="sortDirection === 'asc'">▼</span></th>
-                <th (click)="sortBy('totalAmount')">Kwota <span *ngIf="sortField === 'totalAmount'" [class.asc]="sortDirection === 'asc'">▼</span></th>
-                <th (click)="sortBy('status')">Status <span *ngIf="sortField === 'status'" [class.asc]="sortDirection === 'asc'">▼</span></th>
-                <th>Akcje</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let order of filteredOrders">
-                <td data-label="Numer">{{ order.orderNumber }}</td>
-                <td data-label="Kontrahent">{{ order.contractorName }}</td>
-                <td data-label="Typ">{{ order.orderType }}</td>
-                <td data-label="Data">{{ order.orderDate | date:'yyyy-MM-dd' }}</td>
-                <td data-label="Kwota">{{ order.totalAmount | currency:'PLN' }}</td>
-                <td data-label="Status">{{ order.status }}</td>
-                <td data-label="Akcje" class="actions">
-                  <a *ngIf="!showDeleted" [routerLink]="['/orders/edit', order.id]" class="action-button edit-button">Edytuj</a>
-                  <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteOrder(order.id)">Usuń</button>
-                  <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreOrder(order.id)">Przywróć</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="no-orders" *ngIf="!isLoading && filteredOrders.length === 0">
-            Brak zamówień do wyświetlenia.
-          </div>
-          <div class="pagination" *ngIf="totalPages > 1">
-            <button (click)="changePage(page - 1)" [disabled]="page === 1">Poprzednia</button>
-            <span>Strona {{ page }} z {{ totalPages }}</span>
-            <button (click)="changePage(page + 1)" [disabled]="page >= totalPages">Następna</button>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
+      </div>
+      <ng-template #loading>
+        <div class="loading">Ładowanie...</div>
+      </ng-template>
+      <div class="pagination" *ngIf="totalPages > 1">
+        <button [disabled]="page === 1" (click)="changePage(page - 1)">Poprzednia</button>
+        <span>Strona {{ page }} z {{ totalPages }}</span>
+        <button [disabled]="page === totalPages" (click)="changePage(page + 1)">Następna</button>
+      </div>
+    </section>
+  </main>
 </div>
