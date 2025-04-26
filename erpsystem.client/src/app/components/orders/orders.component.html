@@ -26,7 +26,7 @@
           <div class="advanced-filters">
             <select [(ngModel)]="filterStatus" (ngModelChange)="loadOrders()">
               <option value="">Wszystkie statusy</option>
-              <option value="Draft">Szkic</option>
+              <option value="Pending">Oczekujące</option>
               <option value="Confirmed">Potwierdzone</option>
               <option value="Completed">Zrealizowane</option>
             </select>
@@ -57,6 +57,7 @@
                 <td data-label="Kwota">{{ order.totalAmount | currency:'PLN' }}</td>
                 <td data-label="Status">{{ order.status }}</td>
                 <td data-label="Akcje" class="actions">
+                  <button *ngIf="!showDeleted && order.status === 'Pending'" class="action-button confirm-button" (click)="confirmOrder(order.id)">Potwierdź</button>
                   <a *ngIf="!showDeleted" [routerLink]="['/orders/edit', order.id]" class="action-button edit-button">Edytuj</a>
                   <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteOrder(order.id)">Usuń</button>
                   <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreOrder(order.id)">Przywróć</button>

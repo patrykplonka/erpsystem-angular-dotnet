@@ -51,7 +51,7 @@ interface CreateOrderDto {
   contractorId: number;
   orderType: 'Purchase' | 'Sale';
   orderDate: string;
-  status: 'Draft' | 'Confirmed' | 'Completed';
+  status: 'Pending';
   createdBy: string;
   orderItems: OrderItemDto[];
 }
@@ -69,7 +69,7 @@ export class OrderFormComponent implements OnInit {
     contractorId: 0,
     orderType: 'Purchase',
     orderDate: new Date().toISOString().split('T')[0],
-    status: 'Draft',
+    status: 'Pending',
     createdBy: '',
     orderItems: []
   };
@@ -132,27 +132,24 @@ export class OrderFormComponent implements OnInit {
     this.http.get<WarehouseItemDto[]>(this.warehouseApiUrl, { headers: this.getHeaders() }).subscribe({
       next: (data) => {
         this.warehouseItems = data.filter(p => !p.isDeleted && p.quantity > 0);
-        console.log('Loaded warehouseItems:', this.warehouseItems);
         if (this.warehouseItems.length === 0) {
           this.errorMessage = 'Brak dostępnych produktów w magazynie.';
         }
       },
       error: (error) => {
-        this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}. Sprawdź endpoint /api/warehouseitems.`;
+        this.errorMessage = `Błąd ładowania produktów: ${error.status} ${error.message}.`;
       }
     });
   }
 
   addItem() {
-    console.log('addItem called, newItem:', this.newItem);
     if (!this.newItem.warehouseItemId || this.newItem.warehouseItemId === 0) {
       this.errorMessage = 'Wybierz produkt.';
       return;
     }
-    const itemId = Number(this.newItem.warehouseItemId); // Convert to number
+    const itemId = Number(this.newItem.warehouseItemId);
     const selectedItem = this.warehouseItems.find(p => p.id === itemId);
     if (!selectedItem) {
-      console.log('Selected item not found, itemId:', itemId, 'warehouseItems:', this.warehouseItems);
       this.errorMessage = 'Wybrany produkt nie istnieje.';
       return;
     }
@@ -171,7 +168,6 @@ export class OrderFormComponent implements OnInit {
       vatRate: this.newItem.vatRate,
       totalPrice: this.newItem.totalPrice
     });
-    console.log('Item added, orderItems:', this.order.orderItems);
     this.newItem = { warehouseItemId: 0, warehouseItemName: '', quantity: 1, unitPrice: 0, vatRate: 0, totalPrice: 0 };
     this.errorMessage = null;
   }
@@ -181,7 +177,7 @@ export class OrderFormComponent implements OnInit {
   }
 
   submitOrder() {
-    if (!this.order.orderNumber || !this.order.contractorId || !this.order.orderType || !this.order.orderDate || !this.order.status) {
+    if (!this.order.orderNumber || !this.order.contractorId || !this.order.orderType || !this.order.orderDate) {
       this.errorMessage = 'Wszystkie pola są wymagane.';
       return;
     }

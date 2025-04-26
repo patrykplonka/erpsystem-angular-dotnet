@@ -153,7 +153,7 @@ namespace erpsystem.Server.Controllers
                 ContractorId = orderDto.ContractorId,
                 OrderType = orderDto.OrderType,
                 OrderDate = orderDto.OrderDate,
-                Status = orderDto.Status,
+                Status = "Pending",
                 CreatedBy = orderDto.CreatedBy,
                 OrderItems = orderDto.OrderItems.Select(oi =>
                 {
@@ -194,6 +194,58 @@ namespace erpsystem.Server.Controllers
             orderDto.OrderItems.ForEach(oi => oi.OrderId = order.Id);
 
             return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, orderDto);
+        }
+
+        [HttpPost("confirm/{id}")]
+        public async Task<IActionResult> ConfirmOrder(int id)
+        {
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.WarehouseItem)
+                .Include(o => o.Contractor) // Ensure Contractor is included
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null)
+                return NotFound();
+
+            if (order.Status != "Pending")
+                return BadRequest("Only pending orders can be confirmed.");
+
+            order.Status = "Confirmed";
+
+            var invoice = new Invoice
+            {
+                OrderId = order.Id,
+                InvoiceNumber = $"INV-{order.OrderNumber}",
+                IssueDate = DateTime.UtcNow,
+                DueDate = DateTime.UtcNow.AddDays(14),
+                ContractorId = order.ContractorId,
+                ContractorName = order.Contractor?.Name ?? throw new InvalidOperationException("Contractor name cannot be null."), // Ensure ContractorName is set
+                TotalAmount = order.TotalAmount,
+                VatAmount = order.OrderItems.Sum(oi => oi.TotalPrice * oi.VatRate),
+                NetAmount = order.TotalAmount - order.OrderItems.Sum(oi => oi.TotalPrice * oi.VatRate),
+                Status = "Issued",
+                CreatedBy = order.CreatedBy,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            _context.Invoices.Add(invoice);
+
+            var history = new OrderHistory
+            {
+                OrderId = order.Id,
+                Action = "Confirmed",
+                ModifiedBy = "System",
+                ModifiedDate = DateTime.UtcNow,
+                Details = $"Order {order.OrderNumber} confirmed and invoice created."
+            };
+            _context.OrderHistory.Add(history);
+
+            await _context.SaveChangesAsync();
+            _cache.Remove("Orders");
+            _cache.Remove($"Order_{id}");
+
+            return NoContent();
         }
 
         [HttpPut("{id}")]
@@ -281,24 +333,21 @@ namespace erpsystem.Server.Controllers
             return NoContent();
         }
 
-        [HttpPost("confirm/{id}")]
-        public async Task<IActionResult> ConfirmOrder(int id)
+        [HttpPost("restore/{id}")]
+        public async Task<IActionResult> RestoreOrder(int id)
         {
             var order = await _context.Orders.FindAsync(id);
             if (order == null)
                 return NotFound();
 
-            if (order.Status != "Draft")
-                return BadRequest("Only draft orders can be confirmed.");
-
-            order.Status = "Confirmed";
+            order.IsDeleted = false;
             var history = new OrderHistory
             {
                 OrderId = order.Id,
-                Action = "Confirmed",
+                Action = "Restored",
                 ModifiedBy = "System",
                 ModifiedDate = DateTime.UtcNow,
-                Details = $"Order {order.OrderNumber} confirmed."
+                Details = $"Order {order.OrderNumber} restored."
             };
             _context.OrderHistory.Add(history);
 

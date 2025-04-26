@@ -200,6 +200,15 @@ tbody tr:hover {
   transition: background 0.2s;
 }
 
+.confirm-button {
+  background: #10b981;
+  color: #ffffff;
+}
+
+  .confirm-button:hover {
+    background: #059669;
+  }
+
 .edit-button {
   background: #3b82f6;
   color: #ffffff;

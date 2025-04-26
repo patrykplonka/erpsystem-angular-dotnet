@@ -91,10 +91,7 @@ export class OrdersComponent implements OnInit {
         this.isLoading = false;
       },
       error: (error) => {
-        const serverMessage = error.status === 405
-          ? 'Metoda GET nie jest dozwolona. Sprawdź konfigurację API.'
-          : (error.error?.message || error.message);
-        this.errorMessage = `Błąd ładowania zamówień: ${serverMessage} (Status: ${error.status})`;
+        this.errorMessage = `Błąd ładowania zamówień: ${error.status} ${error.message}`;
         this.isLoading = false;
       }
     });
@@ -132,6 +129,25 @@ export class OrdersComponent implements OnInit {
       this.sortDirection = 'asc';
     }
     this.applyFiltersAndSort();
+  }
+
+  confirmOrder(id: number) {
+    if (!confirm('Czy na pewno chcesz potwierdzić to zamówienie?')) {
+      return;
+    }
+
+    this.isLoading = true;
+    this.http.post(`https://localhost:7224/api/orders/confirm/${id}`, {}).subscribe({
+      next: () => {
+        this.successMessage = 'Zamówienie potwierdzone.';
+        this.errorMessage = null;
+        this.loadOrders();
+      },
+      error: (error) => {
+        this.errorMessage = `Błąd potwierdzania zamówienia: ${error.message}`;
+        this.isLoading = false;
+      }
+    });
   }
 
   deleteOrder(id: number) {
