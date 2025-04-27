@@ -47,6 +47,12 @@ interface PurchaseHistoryDto {
 interface ContractorDto {
   id: number;
   name: string;
+  type?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  taxId?: string;
+  isDeleted?: boolean;
 }
 
 @Component({
@@ -144,6 +150,7 @@ export class PurchasesComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (error) => {
+        console.error('Błąd ładowania zamówień:', error);
         this.snackBar.open(error.error?.message || 'Błąd ładowania danych.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -153,12 +160,15 @@ export class PurchasesComponent implements OnInit {
 
   loadContractors() {
     this.isLoading = true;
-    const endpoint = `${environment.apiUrl}/contractors`; // Adjust this if the endpoint is different
+    const endpoint = `${environment.apiUrl}/contractors`;
     console.log('Próba ładowania kontrahentów z:', endpoint);
     this.http.get<ContractorDto[]>(endpoint).subscribe({
       next: (data) => {
         console.log('Kontrahenci załadowani:', data);
         this.contractors = data;
+        if (data.length === 0) {
+          this.snackBar.open('Brak dostępnych kontrahentów.', 'Zamknij', { duration: 5000 });
+        }
         this.isLoading = false;
         this.cdr.markForCheck();
       },
@@ -167,9 +177,14 @@ export class PurchasesComponent implements OnInit {
           status: error.status,
           statusText: error.statusText,
           message: error.message,
-          details: error.error
+          details: error.error,
+          url: endpoint
         });
-        this.snackBar.open(error.error?.message || 'Nie udało się załadować kontrahentów. Sprawdź konsolę.', 'Zamknij', { duration: 5000 });
+        this.snackBar.open(
+          error.error?.message || `Błąd ładowania kontrahentów (status: ${error.status}). Sprawdź konsolę.`,
+          'Zamknij',
+          { duration: 5000 }
+        );
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -262,6 +277,7 @@ export class PurchasesComponent implements OnInit {
           this.cdr.markForCheck();
         },
         error: (error) => {
+          console.error('Błąd usuwania zamówienia:', error);
           this.snackBar.open(error.error?.message || 'Błąd usuwania zamówienia.', 'Zamknij', { duration: 3000 });
           this.isLoading = false;
           this.cdr.markForCheck();
@@ -278,6 +294,7 @@ export class PurchasesComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (error) => {
+        console.error('Błąd ładowania historii:', error);
         this.snackBar.open(error.error?.message || 'Błąd ładowania historii.', 'Zamknij', { duration: 3000 });
         this.cdr.markForCheck();
       }
@@ -312,6 +329,7 @@ export class PurchasesComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (error) => {
+        console.error('Błąd usuwania zamówienia:', error);
         this.snackBar.open(error.error?.message || 'Błąd usuwania zamówienia.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -344,8 +362,11 @@ export class PurchasesComponent implements OnInit {
       next: () => {
         this.loadData();
         this.snackBar.open('Zamówienie potwierdzone.', 'Zamknij', { duration: 3000 });
+        this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
+        console.error('Błąd potwierdzania zamówienia:', error);
         this.snackBar.open(error.error?.message || 'Błąd potwierdzania zamówienia.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -359,8 +380,11 @@ export class PurchasesComponent implements OnInit {
       next: () => {
         this.loadData();
         this.snackBar.open('Zamówienie przyjęte.', 'Zamknij', { duration: 3000 });
+        this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
+        console.error('Błąd przyjmowania zamówienia:', error);
         this.snackBar.open(error.error?.message || 'Błąd przyjmowania zamówienia.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -374,8 +398,11 @@ export class PurchasesComponent implements OnInit {
       next: () => {
         this.loadData();
         this.snackBar.open('Zamówienie przywrócone.', 'Zamknij', { duration: 3000 });
+        this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
+        console.error('Błąd przywracania zamówienia:', error);
         this.snackBar.open(error.error?.message || 'Błąd przywracania zamówienia.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -385,12 +412,15 @@ export class PurchasesComponent implements OnInit {
 
   updateStatus(purchase: PurchaseDto) {
     this.isLoading = true;
-    this.http.put(`${environment.apiUrl}/purchases/${purchase.id}/status`, { status: purchase.status }).subscribe({
+    this.http.post(`${environment.apiUrl}/purchases/${purchase.id}/update-status`, { status: purchase.status }).subscribe({
       next: () => {
         this.loadData();
         this.snackBar.open('Status zaktualizowany.', 'Zamknij', { duration: 3000 });
+        this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
+        console.error('Błąd aktualizacji statusu:', error);
         this.snackBar.open(error.error?.message || 'Błąd aktualizacji statusu.', 'Zamknij', { duration: 3000 });
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -455,8 +485,11 @@ export class PurchasesComponent implements OnInit {
           this.setCurrentUser();
           this.showAddForm = false;
           this.snackBar.open('Zamówienie dodane.', 'Zamknij', { duration: 3000 });
+          this.isLoading = false;
+          this.cdr.markForCheck();
         },
         error: (error) => {
+          console.error('Błąd dodawania zamówienia:', error);
           this.snackBar.open(error.error?.message || 'Błąd dodawania zamówienia.', 'Zamknij', { duration: 3000 });
           this.isLoading = false;
           this.cdr.markForCheck();
@@ -474,8 +507,11 @@ export class PurchasesComponent implements OnInit {
           this.editPurchaseForm.reset();
           this.setCurrentUser();
           this.snackBar.open('Zamówienie zaktualizowane.', 'Zamknij', { duration: 3000 });
+          this.isLoading = false;
+          this.cdr.markForCheck();
         },
         error: (error) => {
+          console.error('Błąd aktualizacji zamówienia:', error);
           this.snackBar.open(error.error?.message || 'Błąd aktualizacji zamówienia.', 'Zamknij', { duration: 3000 });
           this.isLoading = false;
           this.cdr.markForCheck();

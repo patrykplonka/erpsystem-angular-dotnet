@@ -15,6 +15,10 @@
       <input type="date" [(ngModel)]="endDate" (ngModelChange)="applyFilters()" placeholder="Do">
     </div>
 
+    <div *ngIf="contractors.length === 0 && !isLoading" class="no-contractors">
+      <p>Brak dostępnych kontrahentów. Dodaj kontrahenta w sekcji zarządzania kontrahentami.</p>
+    </div>
+
     <form [formGroup]="newPurchaseForm" *ngIf="showAddForm" (ngSubmit)="submitNewPurchase()">
       <div class="form-container">
         <h2>Dodaj zamówienie</h2>
