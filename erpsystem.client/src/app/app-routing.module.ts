@@ -10,6 +10,7 @@ import { ContractorsComponent } from './components/contractors/contractors.compo
 import { OrdersComponent } from './components/orders/orders.component';
 import { InvoiceComponent } from './components/invoice/invoice.component'; 
   
+  
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
