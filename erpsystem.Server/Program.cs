@@ -5,9 +5,15 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using erpsystem.Server.Models;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
+
+// Configure CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -15,13 +21,14 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("https://localhost:55733", "http://localhost:4200")
               .AllowAnyHeader()
               .AllowAnyMethod();
-
     });
 });
 
+// Configure DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = true;
@@ -33,6 +40,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+// Configure Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -54,14 +62,21 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddControllers();
+// Configure Logging
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+    logging.SetMinimumLevel(LogLevel.Information);
+});
+
+// Add OpenAPI/Swagger
 builder.Services.AddOpenApi();
-builder.Services.AddMemoryCache();
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline.
 app.UseCors("AllowFrontend");
-
 
 if (app.Environment.IsDevelopment())
 {

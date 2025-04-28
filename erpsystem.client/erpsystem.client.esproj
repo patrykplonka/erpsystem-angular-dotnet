@@ -8,8 +8,11 @@
     <BuildOutputFolder>$(MSBuildProjectDirectory)\dist\erpsystem.client\browser\</BuildOutputFolder>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="src\assets\**" />
+    <TypeScriptConfiguration Remove="src\assets\**" />
+  </ItemGroup>
+  <ItemGroup>
     <Folder Include="assets\" />
-    <Folder Include="src\assets\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\jsPDF-master\jsPDF-master\.github\pull_request_template.md" />
