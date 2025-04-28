@@ -104,11 +104,13 @@ export class WarehouseMovementsComponent implements OnInit {
     this.http.get<OrderDto[]>('https://localhost:7224/api/orders').subscribe({
       next: (data) => {
         this.ordersToReceive = data.filter(order =>
-          order.orderType === 'Purchase' && order.status === 'Confirmed' && !order.isDeleted
+          order.orderType === 'Zakup' && order.status === 'Potwierdzone' && !order.isDeleted
         );
       },
       error: (error) => {
-        this.errorMessage = `Błąd ładowania zamówień do przyjęcia: ${error.message}`;
+        this.errorMessage = error.status === 405
+          ? 'Błąd: Serwer nie obsługuje żądania GET dla zamówień. Skontaktuj się z administratorem.'
+          : `Błąd ładowania zamówień do przyjęcia: ${error.message}`;
       }
     });
   }
@@ -127,26 +129,23 @@ export class WarehouseMovementsComponent implements OnInit {
       comment: ''
     }));
 
-    movements.forEach(movement => {
-      this.movementService.createMovement(movement).subscribe({
+    const movementObservables = movements.map(movement =>
+      this.movementService.createMovement(movement)
+    );
+
+    Promise.all(movementObservables.map(obs => obs.toPromise())).then(() => {
+      this.http.post(`https://localhost:7224/api/orders/${order.id}/receive`, {}).subscribe({
         next: () => {
-          console.log(`Ruch magazynowy dla produktu ${movement.warehouseItemId} utworzony.`);
+          this.successMessage = `Zamówienie ${order.orderNumber} zostało przyjęte.`;
+          this.loadOrdersToReceive();
+          this.loadMovements();
         },
         error: (error) => {
-          this.errorMessage = `Błąd podczas tworzenia ruchu magazynowego: ${error.message}`;
+          this.errorMessage = `Błąd podczas aktualizacji statusu zamówienia: ${error.status} ${error.statusText}`;
         }
       });
-    });
-
-    this.http.post(`https://localhost:7224/api/orders/${order.id}/receive`, {}).subscribe({
-      next: () => {
-        this.successMessage = `Zamówienie ${order.orderNumber} zostało przyjęte.`;
-        this.loadOrdersToReceive();
-        this.loadMovements();
-      },
-      error: (error) => {
-        this.errorMessage = `Błąd podczas aktualizacji statusu zamówienia: ${error.status} ${error.statusText}`;
-      }
+    }).catch(error => {
+      this.errorMessage = `Błąd podczas tworzenia ruchów magazynowych: ${error.message}`;
     });
   }
 
