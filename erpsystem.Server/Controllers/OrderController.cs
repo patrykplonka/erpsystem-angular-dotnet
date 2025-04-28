@@ -24,6 +24,62 @@ namespace erpsystem.Server.Controllers
             _cache = cache;
         }
 
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<OrderDto>>> GetOrders()
+        {
+            var cacheKey = "AllOrders";
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<OrderDto> orderDtos))
+            {
+                var orders = await _context.Orders
+                    .Include(o => o.Contractor)
+                    .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.WarehouseItem)
+                    .Where(o => !o.IsDeleted)
+                    .ToListAsync();
+
+                orderDtos = orders.Select(o => new OrderDto
+                {
+                    Id = o.Id,
+                    OrderNumber = o.OrderNumber,
+                    ContractorId = o.ContractorId,
+                    ContractorName = o.Contractor?.Name ?? "Brak kontrahenta",
+                    OrderType = o.OrderType == "Purchase" ? "Zakup" : "Sprzedaż",
+                    OrderDate = o.OrderDate,
+                    TotalAmount = o.TotalAmount,
+                    Status = o.Status switch
+                    {
+                        "Draft" => "Szkic",
+                        "Pending" => "Oczekujące",
+                        "Confirmed" => "Potwierdzone",
+                        "Received" => "Zrealizowane",
+                        _ => o.Status
+                    },
+                    CreatedBy = o.CreatedBy,
+                    CreatedDate = o.CreatedDate,
+                    IsDeleted = o.IsDeleted,
+                    OrderItems = o.OrderItems.Select(oi => new OrderItemDto
+                    {
+                        Id = oi.Id,
+                        OrderId = oi.OrderId,
+                        WarehouseItemId = oi.WarehouseItemId,
+                        WarehouseItemName = oi.WarehouseItem?.Name ?? "Brak produktu",
+                        Quantity = oi.Quantity,
+                        UnitPrice = oi.UnitPrice,
+                        VatRate = oi.VatRate,
+                        TotalPrice = oi.TotalPrice
+                    }).ToList()
+                }).ToList();
+
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+                };
+                _cache.Set(cacheKey, orderDtos, cacheOptions);
+            }
+
+            return Ok(orderDtos);
+        }
+
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResult<OrderDto>>> GetPagedOrders(
             [FromQuery] int page = 1,
@@ -56,14 +112,13 @@ namespace erpsystem.Server.Controllers
                 .Take(pageSize)
                 .ToListAsync();
 
-            // Perform client-side filtering for OrderDate and Contractor Name
             if (!string.IsNullOrEmpty(search))
             {
                 orders = orders.Where(o =>
                     o.OrderDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture).ToLower().Contains(search) ||
                     (o.Contractor != null && o.Contractor.Name != null && o.Contractor.Name.ToLower().Contains(search)))
                     .ToList();
-                totalItems = orders.Count; // Update totalItems after client-side filtering
+                totalItems = orders.Count;
             }
 
             var orderDtos = orders.Select(o => new OrderDto
@@ -254,7 +309,7 @@ namespace erpsystem.Server.Controllers
                 IssueDate = DateTime.UtcNow,
                 DueDate = DateTime.UtcNow.AddDays(14),
                 ContractorId = order.ContractorId,
-                ContractorName = order.Contractor?.Name ?? throw new InvalidOperationException("Contractor name cannot be null."),
+                ContractorName = order.Contractor?.Name ?? "Brak kontrahenta",
                 TotalAmount = totalGross,
                 VatAmount = totalVat,
                 NetAmount = totalNet,
@@ -278,6 +333,40 @@ namespace erpsystem.Server.Controllers
             await _context.SaveChangesAsync();
             _cache.Remove("Orders");
             _cache.Remove($"Order_{id}");
+
+            return NoContent();
+        }
+
+        [HttpPost("{id}/receive")]
+        public async Task<IActionResult> ReceiveOrder(int id)
+        {
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.WarehouseItem)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null)
+                return NotFound();
+
+            if (order.Status != "Confirmed")
+                return BadRequest("Only confirmed orders can be received.");
+
+            order.Status = "Received";
+
+            var history = new OrderHistory
+            {
+                OrderId = order.Id,
+                Action = "Received",
+                ModifiedBy = "System",
+                ModifiedDate = DateTime.UtcNow,
+                Details = $"Order {order.OrderNumber} received."
+            };
+            _context.OrderHistory.Add(history);
+
+            await _context.SaveChangesAsync();
+            _cache.Remove("Orders");
+            _cache.Remove($"Order_{id}");
+            _cache.Remove("AllOrders");
 
             return NoContent();
         }

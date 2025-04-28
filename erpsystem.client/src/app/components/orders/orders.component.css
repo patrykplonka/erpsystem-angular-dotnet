@@ -157,6 +157,16 @@ header {
     background: #d1d5db;
   }
 
+.orders-table {
+  margin-bottom: 30px;
+}
+
+  .orders-table h2 {
+    font-size: 18px;
+    color: #2c3e50;
+    margin-bottom: 10px;
+  }
+
 table {
   width: 100%;
   min-width: 600px;

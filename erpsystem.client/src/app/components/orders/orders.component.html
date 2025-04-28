@@ -28,7 +28,10 @@
         </div>
         <button class="reset-filters" (click)="resetFilters()">Resetuj</button>
       </div>
+
+      <!-- Unconfirmed Orders Table -->
       <div class="orders-table" *ngIf="!isLoading; else loading">
+        <h2>Zamówienia niepotwierdzone</h2>
         <table>
           <thead>
             <tr>
@@ -42,7 +45,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let order of filteredOrders">
+            <tr *ngFor="let order of filteredUnconfirmedOrders">
               <td data-label="Numer zamówienia">{{ order.orderNumber }}</td>
               <td data-label="Kontrahent">{{ order.contractorName }}</td>
               <td data-label="Typ">{{ order.orderType }}</td>
@@ -58,10 +61,48 @@
             </tr>
           </tbody>
         </table>
-        <div class="no-orders" *ngIf="filteredOrders.length === 0">
-          Brak zamówień do wyświetlenia.
+        <div class="no-orders" *ngIf="filteredUnconfirmedOrders.length === 0">
+          Brak niepotwierdzonych zamówień do wyświetlenia.
         </div>
       </div>
+
+      <!-- Confirmed Orders Table -->
+      <div class="orders-table" *ngIf="!isLoading; else loading">
+        <h2>Zamówienia potwierdzone</h2>
+        <table>
+          <thead>
+            <tr>
+              <th (click)="sortBy('orderNumber')">Numer zamówienia <span [ngClass]="sortField === 'orderNumber' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('contractorName')">Kontrahent <span [ngClass]="sortField === 'contractorName' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('orderType')">Typ <span [ngClass]="sortField === 'orderType' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('orderDate')">Data zamówienia <span [ngClass]="sortField === 'orderDate' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('totalAmount')">Kwota całkowita <span [ngClass]="sortField === 'totalAmount' ? sortDirection : ''"></span></th>
+              <th (click)="sortBy('status')">Status <span [ngClass]="sortField === 'status' ? sortDirection : ''"></span></th>
+              <th>Akcje</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let order of filteredConfirmedOrders">
+              <td data-label="Numer zamówienia">{{ order.orderNumber }}</td>
+              <td data-label="Kontrahent">{{ order.contractorName }}</td>
+              <td data-label="Typ">{{ order.orderType }}</td>
+              <td data-label="Data zamówienia">{{ order.orderDate | date:'yyyy-MM-dd' }}</td>
+              <td data-label="Kwota całkowita">{{ order.totalAmount | currency:'PLN' }}</td>
+              <td data-label="Status">{{ order.status }}</td>
+              <td data-label="Akcje" class="actions">
+                <button *ngIf="!showDeleted && order.status === 'Oczekujące'" class="action-button confirm-button" (click)="confirmOrder(order.id)">Potwierdź</button>
+                <button *ngIf="!showDeleted" class="action-button edit-button" [routerLink]="['/orders/edit', order.id]">Edytuj</button>
+                <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteOrder(order.id)">Usuń</button>
+                <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreOrder(order.id)">Przywróć</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="no-orders" *ngIf="filteredConfirmedOrders.length === 0">
+          Brak potwierdzonych zamówień do wyświetlenia.
+        </div>
+      </div>
+
       <ng-template #loading>
         <div class="loading">Ładowanie...</div>
       </ng-template>
