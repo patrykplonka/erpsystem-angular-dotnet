@@ -1,0 +1,114 @@
+<div class="warehouse-container">
+  <div class="dashboard-container">
+    <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
+    <main class="main-content">
+      <header>
+        <div>
+          <h1>Dodaj nowy ruch magazynowy</h1>
+          <p>Wypełnij formularz, aby dodać nowy ruch magazynowy</p>
+        </div>
+      </header>
+      <section class="warehouse-section">
+        <nav class="breadcrumb">
+          <a href="/movements">Ruchy magazynowe</a>
+          <span>></span>
+          <span>Dodaj nowy</span>
+        </nav>
+        <div class="messages">
+          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
+        <div class="movements-container">
+          <form class="add-movement-form">
+            <div class="form-group">
+              <label for="movementType">Typ ruchu</label>
+              <select [(ngModel)]="newMovement.movementType" name="movementType" id="movementType" required>
+                <option value="" disabled>Wybierz typ</option>
+                <option value="Przyjęcie Zewnętrzne">Przyjęcie Zewnętrzne (PZ)</option>
+                <option value="Przyjęcie Wewnętrzne">Przyjęcie Wewnętrzne (PW)</option>
+                <option value="Wydanie Zewnętrzne">Wydanie Zewnętrzne (WZ)</option>
+                <option value="Rozchód Wewnętrzny">Rozchód Wewnętrzny (RW)</option>
+                <option value="Przesunięcie Międzymagazynowe">Przesunięcie Międzymagazynowe (MM)</option>
+                <option value="Zwrot Wewnętrzny">Zwrot Wewnętrzny (ZW)</option>
+                <option value="Zwrot Konsygnacyjny">Zwrot Konsygnacyjny (ZK)</option>
+                <option value="Inwentaryzacja">Inwentaryzacja (INW)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="supplier">Dostawca</label>
+              <select [(ngModel)]="newMovement.supplier" name="supplier" id="supplier">
+                <option value="" disabled>Wybierz dostawcę</option>
+                <option *ngFor="let contractor of contractors" [value]="contractor.name">{{ contractor.name }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="documentNumber">Numer dokumentu</label>
+              <input type="text" [(ngModel)]="newMovement.documentNumber" name="documentNumber" id="documentNumber" readonly>
+            </div>
+            <div class="form-group">
+              <label for="description">Opis</label>
+              <input type="text" [(ngModel)]="newMovement.description" name="description" id="description">
+            </div>
+            <div class="form-group">
+              <label for="date">Data</label>
+              <input type="date" [(ngModel)]="newMovement.date" name="date" id="date" required>
+            </div>
+            <div class="form-group">
+              <label for="comment">Komentarz</label>
+              <textarea [(ngModel)]="newMovement.comment" name="comment" id="comment"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="warehouseItemId">Produkt</label>
+              <select [(ngModel)]="selectedProduct.warehouseItemId" name="warehouseItemId" id="warehouseItemId" (ngModelChange)="onProductChange()">
+                <option value="" disabled>Wybierz produkt</option>
+                <option *ngFor="let product of products" [value]="product.id">{{ product.name }} ({{ product.code }}) - {{ product.price | currency:'PLN' }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="productCode">Kod produktu</label>
+              <input type="text" [(ngModel)]="selectedProduct.productCode" name="productCode" id="productCode" readonly>
+            </div>
+            <div class="form-group">
+              <label for="productPrice">Cena jednostkowa</label>
+              <input type="text" [(ngModel)]="selectedProduct.price" name="productPrice" id="productPrice" readonly>
+            </div>
+            <div class="form-group">
+              <label for="quantity">Ilość</label>
+              <input type="number" [(ngModel)]="selectedProduct.quantity" name="quantity" id="quantity" required min="1">
+            </div>
+            <div class="form-buttons">
+              <button type="button" class="action-button add-button" (click)="addProductToList()">Dodaj produkt</button>
+            </div>
+            <table class="items-table" *ngIf="newMovement.items.length > 0">
+              <thead>
+                <tr>
+                  <th>Nazwa produktu</th>
+                  <th>Kod produktu</th>
+                  <th>Cena</th>
+                  <th>Ilość</th>
+                  <th>Akcje</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of newMovement.items; let i = index">
+                  <td>{{ item.productName }}</td>
+                  <td>{{ item.productCode }}</td>
+                  <td>{{ item.price | currency:'PLN' }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td><button class="remove-button" (click)="removeProduct(i)">Usuń</button></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="total-price" *ngIf="newMovement.items.length > 0">
+              Całkowita cena ruchu: {{ calculateTotalPrice() | currency:'PLN' }}
+            </div>
+          </form>
+          <div class="form-buttons">
+            <button type="button" class="action-button add-button" (click)="addMovement()">Dodaj ruch</button>
+            <button type="button" class="action-button cancel-button" (click)="cancel()">Anuluj</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

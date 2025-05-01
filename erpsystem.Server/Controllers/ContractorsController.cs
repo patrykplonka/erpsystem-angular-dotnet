@@ -4,8 +4,6 @@ using erpsystem.Server.Models;
 using erpsystem.Server.Models.DTOs;
 using erpsystem.Server.Data;
 using Microsoft.Extensions.Caching.Memory;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace erpsystem.Server.Controllers
 {

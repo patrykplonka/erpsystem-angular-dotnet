@@ -4,136 +4,68 @@
     <main class="main-content">
       <header>
         <div>
-          <h1>Witaj w systemie ERP</h1>
-          <p>Zarządzaj ruchami magazynowymi w jednym miejscu</p>
+          <h1>Ruchy magazynowe</h1>
+          <p>Lista wszystkich ruchów magazynowych</p>
         </div>
-        <div class="user-info">
-          <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
-        </div>
+        <button class="action-button add-button" (click)="navigateToAddMovement()">Dodaj ruch</button>
       </header>
       <section class="warehouse-section">
-        <div class="messages">
-          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
-          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+        <div class="filters">
+          <div class="form-group">
+            <label for="movementTypeFilter">Typ ruchu</label>
+            <input type="text" [(ngModel)]="movementTypeFilter" (input)="applyFilters()" id="movementTypeFilter">
+          </div>
+          <div class="form-group">
+            <label for="movementStatusFilter">Status</label>
+            <input type="text" [(ngModel)]="movementStatusFilter" (input)="applyFilters()" id="movementStatusFilter">
+          </div>
+          <div class="form-group">
+            <label for="movementUserFilter">Użytkownik</label>
+            <input type="text" [(ngModel)]="movementUserFilter" (input)="applyFilters()" id="movementUserFilter">
+          </div>
+          <div class="form-group">
+            <label for="movementMinQuantityFilter">Min. ilość</label>
+            <input type="number" [(ngModel)]="movementMinQuantityFilter" (input)="applyFilters()" id="movementMinQuantityFilter">
+          </div>
+          <div class="form-group">
+            <label for="movementMaxQuantityFilter">Max. ilość</label>
+            <input type="number" [(ngModel)]="movementMaxQuantityFilter" (input)="applyFilters()" id="movementMaxQuantityFilter">
+          </div>
+          <div class="form-group">
+            <label for="movementStartDateFilter">Data od</label>
+            <input type="date" [(ngModel)]="movementStartDateFilter" (input)="applyFilters()" id="movementStartDateFilter">
+          </div>
+          <div class="form-group">
+            <label for="movementEndDateFilter">Data do</label>
+            <input type="date" [(ngModel)]="movementEndDateFilter" (input)="applyFilters()" id="movementEndDateFilter">
+          </div>
         </div>
         <div class="movements-container">
-          <div class="orders-to-receive-section">
-            <h4>Zamówienia do przyjęcia</h4>
-            <table *ngIf="ordersToReceive.length > 0; else noOrders">
-              <thead>
-                <tr>
-                  <th>Numer zamówienia</th>
-                  <th>Kontrahent</th>
-                  <th>Data zamówienia</th>
-                  <th>Produkty</th>
-                  <th>Akcje</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let order of ordersToReceive">
-                  <td>{{ order.orderNumber }}</td>
-                  <td>{{ order.contractorName }}</td>
-                  <td>{{ order.orderDate | date:'dd.MM.yyyy' }}</td>
-                  <td>
-                    <ul>
-                      <li *ngFor="let item of order.orderItems">
-                        {{ item.warehouseItemName }} (Ilość: {{ item.quantity }})
-                      </li>
-                    </ul>
-                  </td>
-                  <td>
-                    <button class="action-button add-button" (click)="receiveOrder(order)">Przyjmij</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <ng-template #noOrders>
-              <p>Brak zamówień do przyjęcia.</p>
-            </ng-template>
-          </div>
-
-          <div class="action-buttons">
-            <button class="action-button add-button" (click)="toggleAddForm()">Dodaj ruch magazynowy</button>
-          </div>
-          <form *ngIf="isAddFormVisible" (ngSubmit)="addMovement()" class="add-movement-form">
-            <select [(ngModel)]="newMovement.warehouseItemId" name="warehouseItemId" (ngModelChange)="onProductChange()" required>
-              <option value="" disabled>Wybierz produkt</option>
-              <option *ngFor="let product of products" [value]="product.id">{{ product.name }}</option>
-            </select>
-            <input type="text" [(ngModel)]="newMovement.productCode" name="productCode" placeholder="Kod produktu" readonly>
-            <select [(ngModel)]="newMovement.movementType" name="movementType" required>
-              <option value="" disabled>Wybierz typ</option>
-              <option value="Przyjęcie Zewnętrzne">Przyjęcie Zewnętrzne (PZ)</option>
-              <option value="Przyjęcie Wewnętrzne">Przyjęcie Wewnętrzne (PW)</option>
-              <option value="Wydanie Zewnętrzne">Wydanie Zewnętrzne (WZ)</option>
-              <option value="Rozchód Wewnętrzny">Rozchód Wewnętrzny (RW)</option>
-              <option value="Przesunięcie Międzymagazynowe">Przesunięcie Międzymagazynowe (MM)</option>
-              <option value="Zwrot Wewnętrzny">Zwrot Wewnętrzny (ZW)</option>
-              <option value="Zwrot Konsygnacyjny">Zwrot Konsygnacyjny (ZK)</option>
-              <option value="Inwentaryzacja">Inwentaryzacja (INW)</option>
-            </select>
-            <input type="number" [(ngModel)]="newMovement.quantity" name="quantity" placeholder="Ilość" required min="1">
-            <input type="text" [(ngModel)]="newMovement.supplier" name="supplier" placeholder="Dostawca">
-            <input type="text" [(ngModel)]="newMovement.documentNumber" name="documentNumber" placeholder="Numer dokumentu" readonly>
-            <input type="text" [(ngModel)]="newMovement.description" name="description" placeholder="Opis">
-            <select [(ngModel)]="newMovement.status" name="status" required>
-              <option value="" disabled>Wybierz status</option>
-              <option value="Zaplanowane">Zaplanowane</option>
-              <option value="W trakcie">W trakcie</option>
-              <option value="Zakończone">Zakończone</option>
-            </select>
-            <textarea [(ngModel)]="newMovement.comment" name="comment" placeholder="Komentarz"></textarea>
-            <div class="form-buttons">
-              <button type="submit" class="action-button add-button">Dodaj</button>
-              <button type="button" class="action-button cancel-button" (click)="toggleAddForm()">Anuluj</button>
-            </div>
-          </form>
-
-          <div class="bulk-upload-section">
-            <h3>Masowe dodawanie ruchów z CSV</h3>
-            <input type="file" (change)="onFileChange($event)" accept=".csv">
-          </div>
-
-          <div class="advanced-filters">
-            <input [(ngModel)]="movementTypeFilter" placeholder="Filtruj po typie" (ngModelChange)="applyFilters()">
-            <input [(ngModel)]="movementStatusFilter" placeholder="Filtruj po statusie" (ngModelChange)="applyFilters()">
-            <input [(ngModel)]="movementStartDateFilter" type="date" placeholder="Od daty" (ngModelChange)="applyFilters()">
-            <input [(ngModel)]="movementEndDateFilter" type="date" placeholder="Do daty" (ngModelChange)="applyFilters()">
-            <input [(ngModel)]="movementUserFilter" placeholder="Filtruj po użytkowniku" (ngModelChange)="applyFilters()">
-          </div>
-          <h4>Ruchy magazynowe</h4>
-          <table>
+          <table class="items-table" *ngIf="filteredMovements.length > 0">
             <thead>
               <tr>
-                <th (click)="sortMovements('productName')">Nazwa produktu <span [ngClass]="{'sort-asc': movementSortField === 'productName' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'productName' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('productCode')">Kod produktu <span [ngClass]="{'sort-asc': movementSortField === 'productCode' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'productCode' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('movementType')">Typ przyjęcia <span [ngClass]="{'sort-asc': movementSortField === 'movementType' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'movementType' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('quantity')">Ilość <span [ngClass]="{'sort-asc': movementSortField === 'quantity' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'quantity' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('supplier')">Dostawca <span [ngClass]="{'sort-asc': movementSortField === 'supplier' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'supplier' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('documentNumber')">Numer dokumentu <span [ngClass]="{'sort-asc': movementSortField === 'documentNumber' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'documentNumber' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('description')">Opis <span [ngClass]="{'sort-asc': movementSortField === 'description' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'description' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('status')">Status <span [ngClass]="{'sort-asc': movementSortField === 'status' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'status' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('comment')">Komentarz <span [ngClass]="{'sort-asc': movementSortField === 'comment' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'comment' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('date')">Data <span [ngClass]="{'sort-asc': movementSortField === 'date' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'date' && movementSortDirection === 'desc'}"></span></th>
-                <th (click)="sortMovements('createdBy')">Użytkownik <span [ngClass]="{'sort-asc': movementSortField === 'createdBy' && movementSortDirection === 'asc', 'sort-desc': movementSortField === 'createdBy' && movementSortDirection === 'desc'}"></span></th>
+                <th (click)="sortMovements('movementType')">Typ ruchu</th>
+                <th (click)="sortMovements('supplier')">Dostawca</th>
+                <th (click)="sortMovements('documentNumber')">Numer dokumentu</th>
+                <th (click)="sortMovements('date')">Data</th>
+                <th (click)="sortMovements('quantity')">Ilość</th>
+                <th (click)="sortMovements('status')">Status</th>
+                <th (click)="sortMovements('productName')">Produkt</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let m of filteredMovements">
-                <td data-label="Nazwa produktu">{{ m.productName }}</td>
-                <td data-label="Kod produktu">{{ m.productCode }}</td>
-                <td data-label="Typ przyjęcia">{{ m.movementType }}</td>
-                <td data-label="Ilość">{{ m.quantity }}</td>
-                <td data-label="Dostawca">{{ m.supplier }}</td>
-                <td data-label="Numer dokumentu">{{ m.documentNumber }}</td>
-                <td data-label="Opis">{{ m.description }}</td>
-                <td data-label="Status">{{ m.status }}</td>
-                <td data-label="Komentarz">{{ m.comment }}</td>
-                <td data-label="Data">{{ m.date }}</td>
-                <td data-label="Użytkownik">{{ m.createdBy }}</td>
+              <tr *ngFor="let movement of filteredMovements">
+                <td>{{ movement.movementType }}</td>
+                <td>{{ movement.supplier }}</td>
+                <td>{{ movement.documentNumber }}</td>
+                <td>{{ movement.date }}</td>
+                <td>{{ movement.quantity }}</td>
+                <td>{{ movement.status }}</td>
+                <td>{{ movement.productName }} ({{ movement.productCode }})</td>
               </tr>
             </tbody>
           </table>
+          <div *ngIf="filteredMovements.length === 0">Brak ruchów magazynowych.</div>
         </div>
       </section>
     </main>

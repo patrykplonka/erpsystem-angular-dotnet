@@ -23,8 +23,6 @@ namespace erpsystem.Server.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateMovement([FromBody] WarehouseMovementsDTO movementDto)
         {
-            Console.WriteLine($"Received movementDto: {System.Text.Json.JsonSerializer.Serialize(movementDto)}");
-
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
@@ -75,7 +73,7 @@ namespace erpsystem.Server.Controllers
                 Date = movementDto.Date,
                 Description = movementDto.Description ?? string.Empty,
                 CreatedBy = string.IsNullOrEmpty(movementDto.CreatedBy) ? "Unknown" : movementDto.CreatedBy,
-                Status = movementDto.Status ?? "Planned",
+                Status = movementDto.Status ?? "Planned", // Keep default for backward compatibility
                 Comment = movementDto.Comment ?? string.Empty
             };
 
@@ -102,7 +100,6 @@ namespace erpsystem.Server.Controllers
                 Comment = movement.Comment
             };
 
-            Console.WriteLine($"Saved movement: {System.Text.Json.JsonSerializer.Serialize(responseDto)}");
             return Ok(responseDto);
         }
 
@@ -137,7 +134,6 @@ namespace erpsystem.Server.Controllers
                 _cache.Set(cacheKey, movements, cacheOptions);
             }
 
-            Console.WriteLine($"Returning all movements: {System.Text.Json.JsonSerializer.Serialize(movements)}");
             return Ok(movements);
         }
 
@@ -173,7 +169,6 @@ namespace erpsystem.Server.Controllers
                 _cache.Set(cacheKey, movements, cacheOptions);
             }
 
-            Console.WriteLine($"Returning movements for item {warehouseItemId}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
             return Ok(movements);
         }
 
@@ -218,7 +213,6 @@ namespace erpsystem.Server.Controllers
                 _cache.Set(cacheKey, movements, cacheOptions);
             }
 
-            Console.WriteLine($"Returning movements for period {start} to {end}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
             return Ok(movements);
         }
     }
