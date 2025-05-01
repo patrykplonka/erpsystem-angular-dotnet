@@ -18,94 +18,157 @@
           <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
           <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
         </div>
+        <div class="tabs">
+          <button class="tab-button" [class.active]="activeTab === 'form'" (click)="setActiveTab('form')">Formularz</button>
+          <button class="tab-button" [class.active]="activeTab === 'attachments'" (click)="setActiveTab('attachments')">Załączniki</button>
+        </div>
         <div class="movements-container">
-          <form class="add-movement-form">
-            <div class="form-group">
-              <label for="movementType">Typ ruchu</label>
-              <select [(ngModel)]="newMovement.movementType" name="movementType" id="movementType" required>
-                <option value="" disabled>Wybierz typ</option>
-                <option value="Przyjęcie Zewnętrzne">Przyjęcie Zewnętrzne (PZ)</option>
-                <option value="Przyjęcie Wewnętrzne">Przyjęcie Wewnętrzne (PW)</option>
-                <option value="Wydanie Zewnętrzne">Wydanie Zewnętrzne (WZ)</option>
-                <option value="Rozchód Wewnętrzny">Rozchód Wewnętrzny (RW)</option>
-                <option value="Przesunięcie Międzymagazynowe">Przesunięcie Międzymagazynowe (MM)</option>
-                <option value="Zwrot Wewnętrzny">Zwrot Wewnętrzny (ZW)</option>
-                <option value="Zwrot Konsygnacyjny">Zwrot Konsygnacyjny (ZK)</option>
-                <option value="Inwentaryzacja">Inwentaryzacja (INW)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="supplier">Dostawca</label>
-              <select [(ngModel)]="newMovement.supplier" name="supplier" id="supplier">
-                <option value="" disabled>Wybierz dostawcę</option>
-                <option *ngFor="let contractor of contractors" [value]="contractor.name">{{ contractor.name }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="documentNumber">Numer dokumentu</label>
-              <input type="text" [(ngModel)]="newMovement.documentNumber" name="documentNumber" id="documentNumber" readonly>
-            </div>
-            <div class="form-group">
-              <label for="description">Opis</label>
-              <input type="text" [(ngModel)]="newMovement.description" name="description" id="description">
-            </div>
-            <div class="form-group">
-              <label for="date">Data</label>
-              <input type="date" [(ngModel)]="newMovement.date" name="date" id="date" required>
-            </div>
-            <div class="form-group">
-              <label for="comment">Komentarz</label>
-              <textarea [(ngModel)]="newMovement.comment" name="comment" id="comment"></textarea>
-            </div>
-            <div class="form-group">
-              <label for="warehouseItemId">Produkt</label>
-              <select [(ngModel)]="selectedProduct.warehouseItemId" name="warehouseItemId" id="warehouseItemId" (ngModelChange)="onProductChange()">
-                <option value="" disabled>Wybierz produkt</option>
-                <option *ngFor="let product of products" [value]="product.id">{{ product.name }} ({{ product.code }}) - {{ product.price | currency:'PLN' }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="productCode">Kod produktu</label>
-              <input type="text" [(ngModel)]="selectedProduct.productCode" name="productCode" id="productCode" readonly>
-            </div>
-            <div class="form-group">
-              <label for="productPrice">Cena jednostkowa</label>
-              <input type="text" [(ngModel)]="selectedProduct.price" name="productPrice" id="productPrice" readonly>
-            </div>
-            <div class="form-group">
-              <label for="quantity">Ilość</label>
-              <input type="number" [(ngModel)]="selectedProduct.quantity" name="quantity" id="quantity" required min="1">
+          <div class="tab-content" *ngIf="activeTab === 'form'">
+            <div class="form-grid">
+              <div class="form-section contractor-section">
+                <h3>KONTRAHENT</h3>
+                <div class="contractor-details">
+                  <div class="form-group">
+                    <label>Dostawca</label>
+                    <div class="select-wrapper">
+                      <select [(ngModel)]="newMovement.supplier" name="supplier" (ngModelChange)="onSupplierChange()" required>
+                        <option value="" disabled>Wybierz kontrahenta</option>
+                        <option *ngFor="let contractor of contractors" [value]="contractor.name">{{ contractor.name }}</option>
+                      </select>
+                      <span class="icon">👤</span>
+                    </div>
+                  </div>
+                  <div class="contractor-info" *ngIf="selectedContractor">
+                    <p><strong>Nazwa:</strong> {{ selectedContractor.name }}</p>
+                    <p><strong>NIP:</strong> {{ selectedContractor.taxId }}</p>
+                    <p><strong>Adres:</strong> {{ selectedContractor.address }}</p>
+                    <p><strong>Email:</strong> {{ selectedContractor.email }}</p>
+                    <p><strong>Telefon:</strong> {{ selectedContractor.phone }}</p>
+                  </div>
+                  <div class="contractor-info" *ngIf="!selectedContractor && newMovement.supplier !== ''">
+                    <p>Brak szczegółów dla wybranego dostawcy.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="form-section movement-type-section">
+                <h3>TYP RUCHU</h3>
+                <div class="form-group">
+                  <label>Typ ruchu magazynowego</label>
+                  <div class="select-wrapper">
+                    <select [(ngModel)]="newMovement.movementType" name="movementType" required>
+                      <option value="" disabled>Wybierz typ ruchu</option>
+                      <option value="Przyjęcie Zewnętrzne">Przyjęcie Zewnętrzne</option>
+                      <option value="Przyjęcie Wewnętrzne">Przyjęcie Wewnętrzne</option>
+                      <option value="Wydanie Zewnętrzne">Wydanie Zewnętrzne</option>
+                      <option value="Rozchód Wewnętrzny">Rozchód Wewnętrzny</option>
+                      <option value="Przesunięcie Międzymagazynowe">Przesunięcie Międzymagazynowe</option>
+                      <option value="Zwrot Wewnętrzny">Zwrot Wewnętrzny</option>
+                      <option value="Zwrot Konsygnacyjny">Zwrot Konsygnacyjny</option>
+                      <option value="Inwentaryzacja">Inwentaryzacja</option>
+                    </select>
+                    <span class="icon">📦</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-section date-section">
+                <h3>DATA</h3>
+                <div class="form-group">
+                  <label>Data</label>
+                  <input type="date" [(ngModel)]="newMovement.date" name="date" required>
+                </div>
+              </div>
+              <div class="form-section summary-section">
+                <h3>RAZEM:</h3>
+                <div class="summary-row">
+                  <span>Razem</span>
+                  <span>{{ calculateGrossTotal() | currency:'PLN' }}</span>
+                </div>
+                <div class="summary-row">
+                  <span>VAT</span>
+                  <span>{{ calculateVatAmount() | currency:'PLN' }}</span>
+                </div>
+                <div class="summary-row">
+                  <span>Netto</span>
+                  <span>{{ calculateNetTotal() | currency:'PLN' }}</span>
+                </div>
+                <div class="summary-row">
+                  <span>Rabat</span>
+                  <span>{{ newMovement.discount }}%</span>
+                </div>
+                <p class="summary-note">Dokument w cenach: Netto Zmień na Brutto</p>
+              </div>
+              <div class="form-section invoice-section">
+                <h3>NUMER ZEWNĘTRZNY</h3>
+                <div class="form-group">
+                  <label>Numer faktury kosztowej</label>
+                  <input type="text" [(ngModel)]="newMovement.documentNumber" name="documentNumber" readonly>
+                </div>
+              </div>
+              <div class="form-section items-section">
+                <h3>POZYCJE</h3>
+                <div class="product-selection">
+                  <div class="form-group">
+                    <label>Produkt</label>
+                    <select [(ngModel)]="selectedProduct.warehouseItemId" name="warehouseItemId" (ngModelChange)="onProductChange()" required>
+                      <option value="" disabled>Wybierz produkt</option>
+                      <option *ngFor="let product of products" [value]="product.id">{{ product.name }} ({{ product.code }})</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Kod produktu</label>
+                    <input type="text" [(ngModel)]="selectedProduct.productCode" name="productCode" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label>Cena jednostkowa</label>
+                    <input type="text" [(ngModel)]="selectedProduct.unitPrice" name="productPrice" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label>Ilość</label>
+                    <input type="number" [(ngModel)]="selectedProduct.quantity" name="quantity" required min="1">
+                  </div>
+                  <button type="button" class="action-button add-button" (click)="addProductToList()">
+                    <span class="icon">+</span> Dodaj produkt
+                  </button>
+                </div>
+                <table class="items-table" *ngIf="newMovement.items.length > 0">
+                  <thead>
+                    <tr>
+                      <th>Nazwa produktu</th>
+                      <th>Kod produktu</th>
+                      <th>Cena</th>
+                      <th>Ilość</th>
+                      <th>Akcje</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let item of newMovement.items; let i = index">
+                      <td>{{ item.productName }}</td>
+                      <td>{{ item.productCode }}</td>
+                      <td>{{ item.unitPrice | currency:'PLN' }}</td>
+                      <td>{{ item.quantity }}</td>
+                      <td><button class="remove-button" (click)="removeProduct(i)">Usuń</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="form-section description-section">
+                <h3>OPIS</h3>
+                <div class="form-group">
+                  <label>Dodaj informację, która będzie umieszczona na dokumencie</label>
+                  <textarea [(ngModel)]="newMovement.description" name="description"></textarea>
+                </div>
+              </div>
             </div>
             <div class="form-buttons">
-              <button type="button" class="action-button add-button" (click)="addProductToList()">Dodaj produkt</button>
+              <button type="button" class="action-button add-button" (click)="addMovement()">Dodaj ruch</button>
+              <button type="button" class="action-button cancel-button" (click)="cancel()">Anuluj</button>
             </div>
-            <table class="items-table" *ngIf="newMovement.items.length > 0">
-              <thead>
-                <tr>
-                  <th>Nazwa produktu</th>
-                  <th>Kod produktu</th>
-                  <th>Cena</th>
-                  <th>Ilość</th>
-                  <th>Akcje</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let item of newMovement.items; let i = index">
-                  <td>{{ item.productName }}</td>
-                  <td>{{ item.productCode }}</td>
-                  <td>{{ item.price | currency:'PLN' }}</td>
-                  <td>{{ item.quantity }}</td>
-                  <td><button class="remove-button" (click)="removeProduct(i)">Usuń</button></td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="total-price" *ngIf="newMovement.items.length > 0">
-              Całkowita cena ruchu: {{ calculateTotalPrice() | currency:'PLN' }}
+          </div>
+          <div class="tab-content" *ngIf="activeTab === 'attachments'">
+            <div class="form-section">
+              <h3>ZAŁĄCZNIKI</h3>
+              <p>Tutaj możesz dodać załączniki (funkcjonalność niezaimplementowana).</p>
             </div>
-          </form>
-          <div class="form-buttons">
-            <button type="button" class="action-button add-button" (click)="addMovement()">Dodaj ruch</button>
-            <button type="button" class="action-button cancel-button" (click)="cancel()">Anuluj</button>
           </div>
         </div>
       </section>

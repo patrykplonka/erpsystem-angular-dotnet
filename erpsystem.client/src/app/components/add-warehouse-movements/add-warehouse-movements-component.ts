@@ -16,9 +16,10 @@ import { WarehouseMovementType } from '../warehouse-movements/warehouse-movement
   styleUrls: ['./add-warehouse-movement.component.css']
 })
 export class AddWarehouseMovementComponent implements OnInit {
+  activeTab: string = 'form';
   newMovement: WarehouseMovement = {
     id: 0,
-    items: [], // Added items array
+    items: [],
     movementType: '',
     supplier: '',
     documentNumber: '',
@@ -27,15 +28,17 @@ export class AddWarehouseMovementComponent implements OnInit {
     createdBy: '',
     status: 'Planned',
     comment: '',
-    orderId: null
+    vatRate: 0.23,
+    discount: 0
   };
   selectedProduct: MovementItem = {
     warehouseItemId: 0,
     productName: '',
     productCode: '',
-    price: 0,
+    unitPrice: 0,
     quantity: 0
   };
+  selectedContractor: ContractorDTO | null = null;
   products: Product[] = [];
   contractors: ContractorDTO[] = [];
   currentUserFullName: string = 'Unknown';
@@ -85,17 +88,21 @@ export class AddWarehouseMovementComponent implements OnInit {
     });
   }
 
+  onSupplierChange() {
+    this.selectedContractor = this.contractors.find(c => c.name === this.newMovement.supplier) || null;
+  }
+
   onProductChange() {
     const selectedId = Number(this.selectedProduct.warehouseItemId);
     const product = this.products.find(p => p.id === selectedId);
     if (product) {
       this.selectedProduct.productName = product.name;
       this.selectedProduct.productCode = product.code;
-      this.selectedProduct.price = product.price;
+      this.selectedProduct.unitPrice = product.unitPrice;
     } else {
       this.selectedProduct.productName = '';
       this.selectedProduct.productCode = '';
-      this.selectedProduct.price = 0;
+      this.selectedProduct.unitPrice = 0;
     }
   }
 
@@ -106,7 +113,7 @@ export class AddWarehouseMovementComponent implements OnInit {
         warehouseItemId: 0,
         productName: '',
         productCode: '',
-        price: 0,
+        unitPrice: 0,
         quantity: 0
       };
       this.successMessage = 'Produkt dodano do listy.';
@@ -119,8 +126,21 @@ export class AddWarehouseMovementComponent implements OnInit {
     this.newMovement.items.splice(index, 1);
   }
 
-  calculateTotalPrice(): number {
-    return this.newMovement.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  calculateNetTotal(): number {
+    return this.newMovement.items.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
+  }
+
+  calculateVatAmount(): number {
+    const netTotal = this.calculateNetTotal();
+    return netTotal * this.newMovement.vatRate;
+  }
+
+  calculateGrossTotal(): number {
+    const netTotal = this.calculateNetTotal();
+    const discountAmount = netTotal * (this.newMovement.discount / 100);
+    const discountedNet = netTotal - discountAmount;
+    const vatAmount = discountedNet * this.newMovement.vatRate;
+    return discountedNet + vatAmount;
   }
 
   generateDocumentNumber(): string {
@@ -134,8 +154,17 @@ export class AddWarehouseMovementComponent implements OnInit {
   }
 
   addMovement() {
+    // Validate required fields
     if (this.newMovement.items.length === 0) {
       this.errorMessage = 'Dodaj przynajmniej jeden produkt.';
+      return;
+    }
+    if (!this.newMovement.movementType) {
+      this.errorMessage = 'Wybierz typ ruchu magazynowego.';
+      return;
+    }
+    if (!this.newMovement.supplier) {
+      this.errorMessage = 'Wybierz dostawcę.';
       return;
     }
 
@@ -143,28 +172,31 @@ export class AddWarehouseMovementComponent implements OnInit {
       warehouseItemId: item.warehouseItemId,
       movementType: this.mapMovementTypeForApi(this.newMovement.movementType),
       quantity: item.quantity,
-      supplier: this.newMovement.supplier || '',
-      documentNumber: this.newMovement.documentNumber || '',
+      supplier: this.newMovement.supplier,
+      documentNumber: this.newMovement.documentNumber,
+      date: this.formatDateForApi(this.newMovement.date),
       description: this.newMovement.description || '',
       createdBy: this.currentUserFullName || 'Unknown',
-      date: this.formatDateForApi(this.newMovement.date),
+      status: this.mapStatusForApi(this.newMovement.status),
       comment: this.newMovement.comment || '',
-      orderId: this.newMovement.orderId ?? null,
-      status: this.mapStatusForApi(this.newMovement.status)
+      vatRate: this.newMovement.vatRate,
+      discount: this.newMovement.discount
     }));
 
     const movementObservables = movements.map(movement =>
       this.movementService.createMovement(movement)
     );
 
-    Promise.all(movementObservables.map(obs => obs.toPromise())).then(() => {
-      this.successMessage = 'Ruch magazynowy dodano pomyślnie.';
-      setTimeout(() => {
-        this.router.navigate(['/movements']);
-      }, 2000);
-    }).catch(error => {
-      this.errorMessage = `Błąd podczas dodawania ruchu: ${error.message}`;
-    });
+    Promise.all(movementObservables.map(obs => obs.toPromise()))
+      .then(() => {
+        this.successMessage = 'Ruch magazynowy dodano pomyślnie.';
+        setTimeout(() => {
+          this.router.navigate(['/movements']);
+        }, 2000);
+      })
+      .catch(error => {
+        this.errorMessage = error.error?.message || `Błąd podczas dodawania ruchu: ${error.status} - ${error.statusText || 'Nieznany błąd'}`;
+      });
   }
 
   cancel() {
@@ -180,6 +212,10 @@ export class AddWarehouseMovementComponent implements OnInit {
     this.router.navigate(['/login']);
   }
 
+  setActiveTab(tab: string) {
+    this.activeTab = tab;
+  }
+
   mapMovementTypeForApi(movementType: string): string {
     switch (movementType) {
       case 'Przyjęcie Zewnętrzne': return WarehouseMovementType.PZ;
@@ -190,7 +226,7 @@ export class AddWarehouseMovementComponent implements OnInit {
       case 'Zwrot Wewnętrzny': return WarehouseMovementType.ZW;
       case 'Zwrot Konsygnacyjny': return WarehouseMovementType.ZK;
       case 'Inwentaryzacja': return WarehouseMovementType.INW;
-      default: return movementType;
+      default: return '';
     }
   }
 
@@ -220,14 +256,15 @@ interface WarehouseMovement {
   createdBy: string;
   status: string;
   comment?: string;
-  orderId: number | null;
+  vatRate: number;
+  discount: number;
 }
 
 interface MovementItem {
   warehouseItemId: number;
   productName: string;
   productCode: string;
-  price: number;
+  unitPrice: number;
   quantity: number;
 }
 
@@ -236,7 +273,7 @@ interface Product {
   name: string;
   code: string;
   quantity: number;
-  price: number;
+  unitPrice: number;
   category: string;
   location: string;
 }
@@ -258,10 +295,11 @@ interface WarehouseMovementDTO {
   quantity: number;
   supplier: string;
   documentNumber: string;
+  date: string;
   description: string;
   createdBy: string;
-  date: string;
-  comment: string;
-  orderId: number | null;
   status: string;
+  comment: string;
+  vatRate?: number;
+  discount?: number;
 }
