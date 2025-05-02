@@ -4,6 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using erpsystem.Server.Data;
 using erpsystem.Server.Models.DTOs;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.Http;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Net.Mail;
 
 namespace erpsystem.Server.Controllers
 {
@@ -70,10 +77,10 @@ namespace erpsystem.Server.Controllers
                 Quantity = movementDto.Quantity,
                 Supplier = movementDto.Supplier ?? string.Empty,
                 DocumentNumber = movementDto.DocumentNumber ?? string.Empty,
-                Date = movementDto.Date,
+                Date = movementDto.Date, // DateTime includes time
                 Description = movementDto.Description ?? string.Empty,
                 CreatedBy = string.IsNullOrEmpty(movementDto.CreatedBy) ? "Unknown" : movementDto.CreatedBy,
-                Status = movementDto.Status ?? "Planned", // Keep default for backward compatibility
+                Status = movementDto.Status ?? "Planned",
                 Comment = movementDto.Comment ?? string.Empty
             };
 
@@ -101,6 +108,61 @@ namespace erpsystem.Server.Controllers
             };
 
             return Ok(responseDto);
+        }
+
+        [HttpPost("{movementId}/attachments")]
+        public async Task<IActionResult> UploadAttachment(int movementId, [FromForm] IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("Brak pliku lub plik jest pusty");
+
+            var movement = await _context.WarehouseMovements.FindAsync(movementId);
+            if (movement == null)
+                return NotFound("Ruch magazynowy nie istnieje");
+
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var fileName = $"{Guid.NewGuid()}_{file.FileName}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var attachment = new Attachment
+            {
+                MovementId = movementId,
+                FileName = file.FileName,
+                FilePath = $"/uploads/{fileName}",
+                FileSize = file.Length,
+                UploadDate = DateTime.UtcNow
+            };
+
+            _context.Attachments.Add(attachment);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { attachment.Id, attachment.FileName, attachment.FilePath, attachment.FileSize, attachment.UploadDate });
+        }
+
+        [HttpGet("{movementId}/attachments")]
+        public async Task<IActionResult> GetAttachments(int movementId)
+        {
+            var attachments = await _context.Attachments
+                .Where(a => a.MovementId == movementId)
+                .Select(a => new
+                {
+                    a.Id,
+                    a.FileName,
+                    a.FilePath,
+                    a.FileSize,
+                    a.UploadDate
+                })
+                .ToListAsync();
+
+            return Ok(attachments);
         }
 
         [HttpGet]
