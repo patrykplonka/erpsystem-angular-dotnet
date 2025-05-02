@@ -55,21 +55,6 @@ export class WarehouseMovementsComponent implements OnInit {
   movements: WarehouseMovement[] = [];
   products: Product[] = [];
   ordersToReceive: OrderDto[] = [];
-  newMovement: WarehouseMovement = {
-    id: 0,
-    warehouseItemId: 0,
-    productName: '',
-    productCode: '',
-    movementType: '',
-    quantity: 0,
-    supplier: '',
-    documentNumber: '',
-    description: '',
-    date: '',
-    createdBy: '',
-    status: '',
-    comment: ''
-  };
   currentUserEmail: string | null = null;
   currentUserFullName: string = 'Unknown';
   errorMessage: string | null = null;
@@ -83,7 +68,6 @@ export class WarehouseMovementsComponent implements OnInit {
   movementStartDateFilter: string = '';
   movementEndDateFilter: string = '';
   movementUserFilter: string = '';
-  isAddFormVisible: boolean = false;
 
   constructor(
     private http: HttpClient,
@@ -126,7 +110,8 @@ export class WarehouseMovementsComponent implements OnInit {
       createdBy: this.currentUserFullName || 'Unknown',
       date: this.formatDateForApi(new Date()),
       status: 'Completed',
-      comment: ''
+      comment: '',
+      orderId: order.id
     }));
 
     const movementObservables = movements.map(movement =>
@@ -164,35 +149,8 @@ export class WarehouseMovementsComponent implements OnInit {
     });
   }
 
-  onProductChange() {
-    const selectedId = Number(this.newMovement.warehouseItemId);
-    const selectedProduct = this.products.find(product => product.id === selectedId);
-    if (selectedProduct) {
-      this.newMovement.productName = selectedProduct.name;
-      this.newMovement.productCode = selectedProduct.code;
-    } else {
-      this.newMovement.productName = '';
-      this.newMovement.productCode = '';
-    }
-  }
-
-  toggleAddForm() {
-    this.isAddFormVisible = !this.isAddFormVisible;
-    if (this.isAddFormVisible) {
-      this.newMovement.documentNumber = this.generateDocumentNumber();
-    } else {
-      this.resetForm();
-    }
-  }
-
-  generateDocumentNumber(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const datePart = `${year}${month}${day}`;
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    return `DOC/${datePart}/${randomNum}`;
+  navigateToAddMovement() {
+    this.router.navigate(['/add-warehouse-movement']);
   }
 
   formatDate(date: string | Date): string {
@@ -272,50 +230,6 @@ export class WarehouseMovementsComponent implements OnInit {
   getProductCode(warehouseItemId: number): string {
     const product = this.products.find(p => p.id === warehouseItemId);
     return product ? product.code : 'Brak kodu';
-  }
-
-  addMovement() {
-    const movementToAdd = {
-      warehouseItemId: Number(this.newMovement.warehouseItemId),
-      movementType: this.mapMovementTypeForApi(this.newMovement.movementType),
-      quantity: this.newMovement.quantity,
-      supplier: this.newMovement.supplier || '',
-      documentNumber: this.newMovement.documentNumber || '',
-      description: this.newMovement.description || '',
-      createdBy: this.currentUserFullName || 'Unknown',
-      date: this.formatDateForApi(new Date()),
-      status: this.mapStatusForApi(this.newMovement.status as 'Zaplanowane' | 'W trakcie' | 'Zakończone'),
-      comment: this.newMovement.comment || ''
-    };
-
-    this.movementService.createMovement(movementToAdd).subscribe({
-      next: () => {
-        this.successMessage = 'Ruch magazynowy dodano pomyślnie.';
-        this.loadMovements();
-        this.toggleAddForm();
-      },
-      error: (error: any) => {
-        this.errorMessage = `Błąd podczas dodawania ruchu: ${error.status} - ${error.statusText || 'Nieznany błąd'}`;
-      }
-    });
-  }
-
-  resetForm() {
-    this.newMovement = {
-      id: 0,
-      warehouseItemId: 0,
-      productName: '',
-      productCode: '',
-      movementType: '',
-      quantity: 0,
-      supplier: '',
-      documentNumber: '',
-      description: '',
-      date: '',
-      createdBy: '',
-      status: '',
-      comment: ''
-    };
   }
 
   mapStatusFromApi(status: string): 'Zaplanowane' | 'W trakcie' | 'Zakończone' {
@@ -478,6 +392,16 @@ export class WarehouseMovementsComponent implements OnInit {
     });
     this.successMessage = 'Masowe dodawanie ruchów zakończone.';
   }
+
+  generateDocumentNumber(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const datePart = `${year}${month}${day}`;
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    return `DOC/${datePart}/${randomNum}`;
+  }
 }
 
 interface WarehouseMovement {
@@ -494,6 +418,7 @@ interface WarehouseMovement {
   createdBy: string;
   status: string;
   comment?: string;
+  orderId?: number | null;
 }
 
 interface Product {

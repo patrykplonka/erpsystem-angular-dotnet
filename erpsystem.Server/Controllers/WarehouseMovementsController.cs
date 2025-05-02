@@ -4,6 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using erpsystem.Server.Data;
 using erpsystem.Server.Models.DTOs;
 using Microsoft.Extensions.Caching.Memory;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace erpsystem.Server.Controllers
 {
@@ -23,8 +27,6 @@ namespace erpsystem.Server.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateMovement([FromBody] WarehouseMovementsDTO movementDto)
         {
-            Console.WriteLine($"Received movementDto: {System.Text.Json.JsonSerializer.Serialize(movementDto)}");
-
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
@@ -102,7 +104,6 @@ namespace erpsystem.Server.Controllers
                 Comment = movement.Comment
             };
 
-            Console.WriteLine($"Saved movement: {System.Text.Json.JsonSerializer.Serialize(responseDto)}");
             return Ok(responseDto);
         }
 
@@ -137,7 +138,6 @@ namespace erpsystem.Server.Controllers
                 _cache.Set(cacheKey, movements, cacheOptions);
             }
 
-            Console.WriteLine($"Returning all movements: {System.Text.Json.JsonSerializer.Serialize(movements)}");
             return Ok(movements);
         }
 
@@ -173,7 +173,6 @@ namespace erpsystem.Server.Controllers
                 _cache.Set(cacheKey, movements, cacheOptions);
             }
 
-            Console.WriteLine($"Returning movements for item {warehouseItemId}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
             return Ok(movements);
         }
 
@@ -218,7 +217,6 @@ namespace erpsystem.Server.Controllers
                 _cache.Set(cacheKey, movements, cacheOptions);
             }
 
-            Console.WriteLine($"Returning movements for period {start} to {end}: {System.Text.Json.JsonSerializer.Serialize(movements)}");
             return Ok(movements);
         }
     }

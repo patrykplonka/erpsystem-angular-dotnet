@@ -10,8 +10,7 @@ import { ContractorsComponent } from './components/contractors/contractors.compo
 import { OrdersComponent } from './components/orders/orders.component';
 import { InvoiceComponent } from './components/invoice/invoice.component';
 import { OrderFormComponent } from './components/order-form/order-form.component';
-import { PurchasesComponent } from './components/purchases/purchases.component';
-
+import { AddWarehouseMovementComponent } from './components/add-warehouse-movements/add-warehouse-movements-component';
   
   
 const routes: Routes = [
@@ -25,7 +24,7 @@ const routes: Routes = [
   { path: 'orders/new', component: OrderFormComponent, canActivate: [AuthGuard] },
   { path: 'orders/edit/:id', component: OrderFormComponent, canActivate: [AuthGuard] },
   { path: 'invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
-  { path: 'purchases', component: PurchasesComponent, canActivate: [AuthGuard] },
+  { path: 'add-warehouse-movement', component: AddWarehouseMovementComponent, canActivate: [AuthGuard]},
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: '**', redirectTo: '/login' }
 ];
