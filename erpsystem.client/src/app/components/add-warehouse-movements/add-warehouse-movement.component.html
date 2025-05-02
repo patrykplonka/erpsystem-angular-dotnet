@@ -18,12 +18,8 @@
           <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
           <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
         </div>
-        <div class="tabs">
-          <button class="tab-button" [class.active]="activeTab === 'form'" (click)="setActiveTab('form')">Formularz</button>
-          <button class="tab-button" [class.active]="activeTab === 'attachments'" (click)="setActiveTab('attachments')">Załączniki</button>
-        </div>
         <div class="movements-container">
-          <div class="tab-content" *ngIf="activeTab === 'form'">
+          <div class="tab-content">
             <div class="form-grid">
               <div class="form-section contractor-section">
                 <h3>KONTRAHENT</h3>
@@ -162,12 +158,6 @@
             <div class="form-buttons">
               <button type="button" class="action-button add-button" (click)="addMovement()">Dodaj ruch</button>
               <button type="button" class="action-button cancel-button" (click)="cancel()">Anuluj</button>
-            </div>
-          </div>
-          <div class="tab-content" *ngIf="activeTab === 'attachments'">
-            <div class="form-section">
-              <h3>ZAŁĄCZNIKI</h3>
-              <p>Tutaj możesz dodać załączniki (funkcjonalność niezaimplementowana).</p>
             </div>
           </div>
         </div>

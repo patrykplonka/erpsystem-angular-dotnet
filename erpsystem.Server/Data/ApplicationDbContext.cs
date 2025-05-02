@@ -21,5 +21,6 @@ namespace erpsystem.Server.Data
         public DbSet<Invoice> Invoices { get; set; }
 
 
+
     }
 }

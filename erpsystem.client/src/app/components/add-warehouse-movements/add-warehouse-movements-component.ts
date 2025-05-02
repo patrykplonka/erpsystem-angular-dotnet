@@ -16,7 +16,6 @@ import { WarehouseMovementType } from '../warehouse-movements/warehouse-movement
   styleUrls: ['./add-warehouse-movement.component.css']
 })
 export class AddWarehouseMovementComponent implements OnInit {
-  activeTab: string = 'form';
   newMovement: WarehouseMovement = {
     id: 0,
     items: [],
@@ -154,7 +153,6 @@ export class AddWarehouseMovementComponent implements OnInit {
   }
 
   addMovement() {
-    // Validate required fields
     if (this.newMovement.items.length === 0) {
       this.errorMessage = 'Dodaj przynajmniej jeden produkt.';
       return;
@@ -210,10 +208,6 @@ export class AddWarehouseMovementComponent implements OnInit {
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
-  }
-
-  setActiveTab(tab: string) {
-    this.activeTab = tab;
   }
 
   mapMovementTypeForApi(movementType: string): string {
