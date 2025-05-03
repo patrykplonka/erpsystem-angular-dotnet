@@ -23,9 +23,9 @@ export class AddWarehouseMovementComponent implements OnInit {
     supplier: '',
     documentNumber: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: this.formatDateTimeForInput(new Date()),
     createdBy: '',
-    status: 'Planned',
+    status: 'Completed',
     comment: '',
     vatRate: 0.23,
     discount: 0
@@ -229,13 +229,29 @@ export class AddWarehouseMovementComponent implements OnInit {
       case 'Zaplanowane': return 'Planned';
       case 'W trakcie': return 'InProgress';
       case 'Zakończone': return 'Completed';
-      default: return 'Planned';
+      default: return 'Completed';
     }
+  }
+
+  formatDateTimeForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
   formatDateForApi(date: string | Date): string {
     const d = new Date(date);
-    return d.toISOString();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    // Format as ISO-like string but keep local time by avoiding UTC conversion
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
   }
 }
 
