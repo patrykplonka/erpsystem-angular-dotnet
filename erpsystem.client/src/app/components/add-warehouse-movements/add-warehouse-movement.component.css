@@ -277,11 +277,13 @@ header {
   gap: 10px;
   align-items: flex-end;
   margin-bottom: 10px;
+  padding-right: 10px; 
 }
 
   .product-selection .form-group {
     flex: 1;
     min-width: 150px;
+    margin-right: 10px; 
   }
 
     .product-selection .form-group select,
@@ -293,9 +295,11 @@ header {
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: ８px 15px;
+    padding: 8px 15px;
     font-size: 13px;
     height: fit-content;
+    margin-left: auto; 
+    white-space: nowrap; 
   }
 
 .items-table {
@@ -422,6 +426,7 @@ header {
 
     .product-selection .form-group {
       min-width: 100%;
+      margin-right: 0; 
     }
 
   .form-buttons {

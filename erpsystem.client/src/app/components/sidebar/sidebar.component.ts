@@ -19,31 +19,31 @@ export class SidebarComponent {
   }
 
   goToProducts() {
-    this.navigate.emit('/products');
+    this.navigate.emit('products');
   }
 
   goToMovements() {
-    this.navigate.emit('/movements');
+    this.navigate.emit('movements');
   }
 
   goToReports() {
-    this.navigate.emit('/reports');
+    this.navigate.emit('reports');
   }
 
   goToContractors() {
-    this.navigate.emit('/contractors');
+    this.navigate.emit('contractors');
   }
 
   goToOrders() {
-    this.navigate.emit('/orders');
+    this.navigate.emit('orders');
   }
 
   goToPurchases() {
-    this.navigate.emit('/purchases'); 
+    this.navigate.emit('purchases');
   }
 
   goToInvoices() {
-    this.navigate.emit('/invoices');
+    this.navigate.emit('invoices');
   }
 
   logout() {

@@ -89,24 +89,18 @@ header {
   border: 1px solid #f5c6cb;
 }
 
-.low-stock-alert {
-  background: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeeba;
-}
-
 .forms-container {
   margin-bottom: 24px;
 }
 
-.edit-item-form {
+.add-item-form {
   background: #ffffff;
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-  .edit-item-form h3 {
+  .add-item-form h3 {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 16px;
@@ -149,8 +143,8 @@ header {
     font-size: 14px;
   }
 
-.edit-item-form input,
-.edit-item-form select {
+.add-item-form input,
+.add-item-form select {
   padding: 10px 12px;
   font-size: 14px;
   border: 1px solid #e0e0e0;
@@ -159,8 +153,8 @@ header {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-  .edit-item-form input:focus,
-  .edit-item-form select:focus {
+  .add-item-form input:focus,
+  .add-item-form select:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
   }
@@ -172,7 +166,7 @@ header {
   margin-top: 20px;
 }
 
-.edit-item-form button {
+.add-item-form button {
   background: #3b82f6;
   color: #ffffff;
   border: none;
@@ -183,138 +177,15 @@ header {
   transition: background 0.2s;
 }
 
-  .edit-item-form button:hover {
+  .add-item-form button:hover {
     background: #2563eb;
   }
 
-.edit-item-form .cancel-button {
+.add-item-form .cancel-button {
   background: #e0e0e0;
   color: #333;
 }
 
-  .edit-item-form .cancel-button:hover {
+  .add-item-form .cancel-button:hover {
     background: #d1d1d1;
-  }
-
-.controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.add-button,
-.toggle-deleted-button {
-  background: #3b82f6;
-  color: #ffffff;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-  .add-button:hover,
-  .toggle-deleted-button:hover {
-    background: #2563eb;
-  }
-
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  margin-bottom: 15px;
-}
-
-  .filters input,
-  .filters select {
-    padding: 10px 12px;
-    font-size: 14px;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    min-width: 150px;
-  }
-
-  .filters .range-filter {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-    .filters .range-filter label {
-      font-size: 14px;
-      color: #4b5563;
-    }
-
-    .filters .range-filter input[type="range"] {
-      width: 100%;
-    }
-
-.warehouse-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-  .warehouse-table th,
-  .warehouse-table td {
-    padding: 12px 15px;
-    text-align: left;
-    font-size: 14px;
-  }
-
-  .warehouse-table th {
-    background: #f8fafc;
-    color: #2c3e50;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-    .warehouse-table th:hover {
-      background: #e0e0e0;
-    }
-
-  .warehouse-table td {
-    border-bottom: 1px solid #e0e0e0;
-  }
-
-  .warehouse-table tbody tr:hover {
-    background: #f8fafc;
-  }
-
-.sort-asc::after {
-  content: ' ▲';
-  font-size: 12px;
-}
-
-.sort-desc::after {
-  content: ' ▼';
-  font-size: 12px;
-}
-
-.action-button {
-  background: #3b82f6;
-  color: #ffffff;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-right: 5px;
-  transition: background 0.2s;
-}
-
-  .action-button:hover {
-    background: #2563eb;
-  }
-
-.delete-button {
-  background: #ef4444;
-}
-
-  .delete-button:hover {
-    background: #dc2626;
   }

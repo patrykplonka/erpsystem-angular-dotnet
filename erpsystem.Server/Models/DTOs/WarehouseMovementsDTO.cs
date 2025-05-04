@@ -11,7 +11,7 @@
         public DateTime Date { get; set; }
         public string Description { get; set; } = string.Empty;
         public string CreatedBy { get; set; } = string.Empty;
-        public string? Status { get; set; } // Made optional
+        public string? Status { get; set; } 
         public string Comment { get; set; } = string.Empty;
     }
 }
