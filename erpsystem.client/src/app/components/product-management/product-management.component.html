@@ -1,276 +1,68 @@
-<div class="warehouse-container">
-  <div class="dashboard-container">
-    <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
-    <main class="main-content">
-      <header>
-        <div>
-          <h1>Witaj w systemie ERP</h1>
-          <p>Zarządzaj produktami w jednym miejscu</p>
-        </div>
-        <div class="user-info">
-          <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
-        </div>
-      </header>
-      <section class="warehouse-section">
-        <div class="messages">
-          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
-          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
-          <div class="alert low-stock-alert" *ngFor="let notification of notifications">{{ notification }}</div>
-        </div>
-        <div class="forms-container" *ngIf="showAddForm">
-          <div class="add-item-form">
-            <h3>Dodaj nowy produkt</h3>
-            <form>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="name">Nazwa</label>
-                  <input [(ngModel)]="newItem.name" id="name" placeholder="Nazwa" name="name" required>
-                </div>
-                <div class="form-group">
-                  <label for="category">Kategoria</label>
-                  <input [(ngModel)]="newItem.category" id="category" placeholder="Kategoria" name="category" required>
-                </div>
-                <div class="form-group">
-                  <label for="code">Kod</label>
-                  <input [(ngModel)]="newItem.code" id="code" placeholder="Kod" name="code" required>
-                </div>
-                <div class="form-group">
-                  <label for="batchNumber">Numer partii</label>
-                  <input [(ngModel)]="newItem.batchNumber" id="batchNumber" name="batchNumber" readonly>
-                </div>
-                <div class="form-group">
-                  <label for="location">Lokalizacja</label>
-                  <select [(ngModel)]="newItem.location" id="location" name="location" required>
-                    <option value="" disabled>Wybierz lokalizację</option>
-                    <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="warehouse">Magazyn</label>
-                  <select [(ngModel)]="newItem.warehouse" id="warehouse" name="warehouse" required>
-                    <option value="" disabled>Wybierz magazyn</option>
-                    <option *ngFor="let warehouse of availableWarehouses" [value]="warehouse">{{ warehouse }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="quantity">Ilość</label>
-                  <input [(ngModel)]="newItem.quantity" id="quantity" type="number" placeholder="Ilość" name="quantity" required min="0">
-                </div>
-                <div class="form-group">
-                  <label for="unitOfMeasure">Jednostka miary</label>
-                  <select [(ngModel)]="newItem.unitOfMeasure" id="unitOfMeasure" name="unitOfMeasure" required>
-                    <option value="" disabled>Wybierz jednostkę miary</option>
-                    <option *ngFor="let unit of availableUnitsOfMeasure" [value]="unit">{{ unit }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="unitPrice">Cena jednostkowa (netto)</label>
-                  <div class="input-with-unit">
-                    <input [(ngModel)]="newItem.unitPrice" id="unitPrice" type="number" placeholder="Cena jednostkowa (netto)" name="unitPrice" required min="0" step="0.01">
-                    <span class="unit">zł</span>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="purchaseCost">Koszt zakupu (netto)</label>
-                  <div class="input-with-unit">
-                    <input [(ngModel)]="newItem.purchaseCost" id="purchaseCost" type="number" placeholder="Koszt zakupu (netto)" name="purchaseCost" required min="0" step="0.01">
-                    <span class="unit">zł</span>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="vatRate">Stawka VAT</label>
-                  <select [(ngModel)]="newItem.vatRate" id="vatRate" name="vatRate" required>
-                    <option value="" disabled>Wybierz stawkę VAT</option>
-                    <option *ngFor="let vat of availableVatRates" [value]="vat.value">{{ vat.display }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="minimumStock">Minimalny stan</label>
-                  <input [(ngModel)]="newItem.minimumStock" id="minimumStock" type="number" placeholder="Minimalny stan" name="minimumStock" required min="0">
-                </div>
-                <div class="form-group">
-                  <label for="contractorId">Dostawca</label>
-                  <div *ngIf="availableSuppliers.length === 0">Brak dostawców do wyświetlenia.</div>
-                  <select [(ngModel)]="newItem.contractorId" id="contractorId" name="contractorId">
-                    <option [ngValue]="null">Brak dostawcy</option>
-                    <option *ngFor="let supplier of availableSuppliers" [ngValue]="supplier.id">{{ supplier.name }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="expirationDate">Data ważności</label>
-                  <input [(ngModel)]="newItem.expirationDate" id="expirationDate" type="date" name="expirationDate">
-                </div>
-              </div>
-              <div class="form-buttons">
-                <button type="button" (click)="addItem()">Dodaj produkt</button>
-                <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
-              </div>
-            </form>
+<div class="dashboard-container">
+  <app-sidebar (navigate)="navigateTo($event)"></app-sidebar>
+  <div class="main-content">
+    <header>
+      <h1>Zarządzanie produktami</h1>
+    </header>
+    <div class="warehouse-section">
+      <div *ngIf="loading" class="alert">Ładowanie...</div>
+      <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+      <div class="controls" *ngIf="!loading && !error">
+        <button class="add-button" (click)="navigateTo('add-product')">Dodaj produkt</button>
+        <input [(ngModel)]="searchTerm" (input)="filterItems()" placeholder="Szukaj produktu..." class="filters">
+      </div>
+      <table class="warehouse-table" *ngIf="!loading && !error && filteredItems.length">
+        <thead>
+          <tr>
+            <th>Nazwa</th>
+            <th>Kod</th>
+            <th>Ilość</th>
+            <th>Cena jednostkowa</th>
+            <th>Akcje</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of filteredItems">
+            <td>{{ item.name }}</td>
+            <td>{{ item.code }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.unitPrice | number }}</td>
+            <td>
+              <button class="action-button" (click)="editProduct(item)">Edytuj</button>
+              <button class="action-button delete-button" (click)="deleteProduct(item.id)">Usuń</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="!loading && !error && !filteredItems.length" class="alert">Brak produktów do wyświetlenia</div>
+
+      <div *ngIf="editItem" class="edit-item-form">
+        <h3>Edytuj produkt</h3>
+        <form>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="editName">Nazwa</label>
+              <input [(ngModel)]="editItem.name" name="editName" id="editName" placeholder="Nazwa" required>
+            </div>
+            <div class="form-group">
+              <label for="editCode">Kod</label>
+              <input [(ngModel)]="editItem.code" name="editCode" id="editCode" placeholder="Kod" required>
+            </div>
+            <div class="form-group">
+              <label for="editQuantity">Ilość</label>
+              <input [(ngModel)]="editItem.quantity" name="editQuantity" id="editQuantity" type="number" placeholder="Ilość" required>
+            </div>
+            <div class="form-group">
+              <label for="editUnitPrice">Cena jednostkowa</label>
+              <input [(ngModel)]="editItem.unitPrice" name="editUnitPrice" id="editUnitPrice" type="number" placeholder="Cena jednostkowa" required>
+            </div>
           </div>
-        </div>
-        <div class="forms-container" *ngIf="editItem">
-          <div class="edit-item-form">
-            <h3>Edytuj produkt</h3>
-            <form>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="editName">Nazwa</label>
-                  <input [(ngModel)]="editItem.name" id="editName" placeholder="Nazwa" name="editName" required>
-                </div>
-                <div class="form-group">
-                  <label for="editCategory">Kategoria</label>
-                  <input [(ngModel)]="editItem.category" id="editCategory" placeholder="Kategoria" name="editCategory" required>
-                </div>
-                <div class="form-group">
-                  <label for="editCode">Kod</label>
-                  <input [(ngModel)]="editItem.code" id="editCode" placeholder="Kod" name="editCode" required>
-                </div>
-                <div class="form-group">
-                  <label for="editBatchNumber">Numer partii</label>
-                  <input [(ngModel)]="editItem.batchNumber" id="editBatchNumber" name="editBatchNumber" readonly>
-                </div>
-                <div class="form-group">
-                  <label for="editLocation">Lokalizacja</label>
-                  <select [(ngModel)]="editItem.location" id="editLocation" name="editLocation" required>
-                    <option value="" disabled>Wybierz lokalizację</option>
-                    <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="editWarehouse">Magazyn</label>
-                  <select [(ngModel)]="editItem.warehouse" id="editWarehouse" name="editWarehouse" required>
-                    <option value="" disabled>Wybierz magazyn</option>
-                    <option *ngFor="let warehouse of availableWarehouses" [value]="warehouse">{{ warehouse }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="editQuantity">Ilość</label>
-                  <input [(ngModel)]="editItem.quantity" id="editQuantity" type="number" placeholder="Ilość" name="editQuantity" required min="0">
-                </div>
-                <div class="form-group">
-                  <label for="editUnitOfMeasure">Jednostka miary</label>
-                  <select [(ngModel)]="editItem.unitOfMeasure" id="editUnitOfMeasure" name="editUnitOfMeasure" required>
-                    <option value="" disabled>Wybierz jednostkę miary</option>
-                    <option *ngFor="let unit of availableUnitsOfMeasure" [value]="unit">{{ unit }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="editUnitPrice">Cena jednostkowa (netto)</label>
-                  <div class="input-with-unit">
-                    <input [(ngModel)]="editItem.unitPrice" id="editUnitPrice" type="number" placeholder="Cena jednostkowa (netto)" name="editUnitPrice" required min="0" step="0.01">
-                    <span class="unit">zł</span>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="editPurchaseCost">Koszt zakupu (netto)</label>
-                  <div class="input-with-unit">
-                    <input [(ngModel)]="editItem.purchaseCost" id="editPurchaseCost" type="number" placeholder="Koszt zakupu (netto)" name="editPurchaseCost" required min="0" step="0.01">
-                    <span class="unit">zł</span>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="editVatRate">Stawka VAT</label>
-                  <select [(ngModel)]="editItem.vatRate" id="editVatRate" name="editVatRate" required>
-                    <option value="" disabled>Wybierz stawkę VAT</option>
-                    <option *ngFor="let vat of availableVatRates" [value]="vat.value">{{ vat.display }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="editMinimumStock">Minimalny stan</label>
-                  <input [(ngModel)]="editItem.minimumStock" id="editMinimumStock" type="number" placeholder="Minimalny stan" name="editMinimumStock" required min="0">
-                </div>
-                <div class="form-group">
-                  <label for="editContractorId">Dostawca</label>
-                  <div *ngIf="availableSuppliers.length === 0">Brak dostawców do wyświetlenia.</div>
-                  <select [(ngModel)]="editItem.contractorId" id="editContractorId" name="editContractorId">
-                    <option [ngValue]="null">Brak dostawcy</option>
-                    <option *ngFor="let supplier of availableSuppliers" [ngValue]="supplier.id">{{ supplier.name }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="editExpirationDate">Data ważności</label>
-                  <input [(ngModel)]="editItem.expirationDate" id="editExpirationDate" type="date" name="editExpirationDate">
-                </div>
-              </div>
-              <div class="form-buttons">
-                <button type="button" (click)="updateItem()">Zapisz</button>
-                <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
-              </div>
-            </form>
+          <div class="form-buttons">
+            <button type="button" (click)="saveEdit()">Zapisz</button>
+            <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
           </div>
-        </div>
-        <div class="items-list">
-          <div class="list-controls">
-            <button class="add-button" (click)="toggleAddForm()">Dodaj produkt</button>
-            <button class="toggle-deleted" (click)="toggleDeletedView()">
-              {{ showDeleted ? "Pokaż aktywne" : "Pokaż usunięte" }}
-            </button>
-          </div>
-          <div class="advanced-filters">
-            <input [(ngModel)]="nameFilter" placeholder="Szukaj po nazwie lub kodzie" (ngModelChange)="applyFilters()">
-            <select [(ngModel)]="categoryFilter" (ngModelChange)="applyFilters()">
-              <option value="">Wszystkie kategorie</option>
-              <option *ngFor="let category of uniqueCategories" [value]="category">{{ category }}</option>
-            </select>
-            <select [(ngModel)]="locationFilter" (ngModelChange)="applyFilters()">
-              <option value="">Wszystkie lokalizacje</option>
-              <option *ngFor="let loc of availableLocations" [value]="loc.name">{{ loc.name }}</option>
-            </select>
-            <select [(ngModel)]="warehouseFilter" (ngModelChange)="applyFilters()">
-              <option value="">Wszystkie magazyny</option>
-              <option *ngFor="let warehouse of uniqueWarehouses" [value]="warehouse">{{ warehouse }}</option>
-            </select>
-            <label>Ilość: {{ minQuantityFilter || 0 }} - {{ maxQuantityFilter || maxQuantity }}</label>
-            <input type="range" [(ngModel)]="minQuantityFilter" [min]="0" [max]="maxQuantity" (ngModelChange)="applyFilters()">
-            <input type="range" [(ngModel)]="maxQuantityFilter" [min]="0" [max]="maxQuantity" (ngModelChange)="applyFilters()">
-            <label><input type="checkbox" [(ngModel)]="lowStockFilter" (ngModelChange)="applyFilters()"> Tylko niski stan</label>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th (click)="sortItems('name')">Nazwa <span [ngClass]="{'sort-asc': sortField === 'name' && sortDirection === 'asc', 'sort-desc': sortField === 'name' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('category')">Kategoria <span [ngClass]="{'sort-asc': sortField === 'category' && sortDirection === 'asc', 'sort-desc': sortField === 'category' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('code')">Kod <span [ngClass]="{'sort-asc': sortField === 'code' && sortDirection === 'asc', 'sort-desc': sortField === 'code' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('batchNumber')">Numer partii <span [ngClass]="{'sort-asc': sortField === 'batchNumber' && sortDirection === 'asc', 'sort-desc': sortField === 'batchNumber' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('location')">Lokalizacja <span [ngClass]="{'sort-asc': sortField === 'location' && sortDirection === 'asc', 'sort-desc': sortField === 'location' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('warehouse')">Magazyn <span [ngClass]="{'sort-asc': sortField === 'warehouse' && sortDirection === 'asc', 'sort-desc': sortField === 'warehouse' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('quantity')">Ilość <span [ngClass]="{'sort-asc': sortField === 'quantity' && sortDirection === 'asc', 'sort-desc': sortField === 'quantity' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('unitOfMeasure')">Jednostka miary <span [ngClass]="{'sort-asc': sortField === 'unitOfMeasure' && sortDirection === 'asc', 'sort-desc': sortField === 'unitOfMeasure' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('unitPrice')">Cena jednostkowa (netto) <span [ngClass]="{'sort-asc': sortField === 'unitPrice' && sortDirection === 'asc', 'sort-desc': sortField === 'unitPrice' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('purchaseCost')">Koszt zakupu (netto) <span [ngClass]="{'sort-asc': sortField === 'purchaseCost' && sortDirection === 'asc', 'sort-desc': sortField === 'purchaseCost' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('vatRate')">Stawka VAT <span [ngClass]="{'sort-asc': sortField === 'vatRate' && sortDirection === 'asc', 'sort-desc': sortField === 'vatRate' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('minimumStock')">Min. stan <span [ngClass]="{'sort-asc': sortField === 'minimumStock' && sortDirection === 'asc', 'sort-desc': sortField === 'minimumStock' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('contractorName')">Dostawca <span [ngClass]="{'sort-asc': sortField === 'contractorName' && sortDirection === 'asc', 'sort-desc': sortField === 'contractorName' && sortDirection === 'desc'}"></span></th>
-                <th (click)="sortItems('expirationDate')">Data ważności <span [ngClass]="{'sort-asc': sortField === 'expirationDate' && sortDirection === 'asc', 'sort-desc': sortField === 'expirationDate' && sortDirection === 'desc'}"></span></th>
-                <th>Akcje</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let item of filteredItems">
-                <td data-label="Nazwa">{{ item.name }}</td>
-                <td data-label="Kategoria">{{ item.category }}</td>
-                <td data-label="Kod">{{ item.code }}</td>
-                <td data-label="Numer partii">{{ item.batchNumber || '-' }}</td>
-                <td data-label="Lokalizacja">{{ item.location }}</td>
-                <td data-label="Magazyn">{{ item.warehouse }}</td>
-                <td data-label="Ilość">{{ item.quantity }}</td>
-                <td data-label="Jednostka miary">{{ item.unitOfMeasure }}</td>
-                <td data-label="Cena jednostkowa (netto)">{{ item.unitPrice }} zł</td>
-                <td data-label="Koszt zakupu (netto)">{{ item.purchaseCost }} zł</td>
-                <td data-label="Stawka VAT">{{ formatVatRate(item.vatRate) }}</td>
-                <td data-label="Min. stan">{{ item.minimumStock }}</td>
-                <td data-label="Dostawca">{{ item.contractorName || '-' }}</td>
-                <td data-label="Data ważności">{{ formatDate(item.expirationDate) }}</td>
-                <td data-label="Akcje" class="actions">
-                  <button *ngIf="!showDeleted" class="action-button edit-button" (click)="startEdit(item)">Edytuj</button>
-                  <button *ngIf="!showDeleted" class="action-button delete-button" (click)="deleteItem(item.id)">Usuń</button>
-                  <button *ngIf="showDeleted" class="action-button restore-button" (click)="restoreItem(item.id)">Przywróć</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
+        </form>
+      </div>
+    </div>
   </div>
 </div>

@@ -11,12 +11,13 @@ import { OrdersComponent } from './components/orders/orders.component';
 import { InvoiceComponent } from './components/invoice/invoice.component';
 import { OrderFormComponent } from './components/order-form/order-form.component';
 import { AddWarehouseMovementComponent } from './components/add-warehouse-movements/add-warehouse-movements-component';
-  
-  
+import { AddProductFormComponent } from './components/add-product-form/add-product-form-component';
+
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
   { path: 'products', component: ProductManagementComponent, canActivate: [AuthGuard] },
+  { path: 'add-product', component: AddProductFormComponent, canActivate: [AuthGuard] },
   { path: 'movements', component: WarehouseMovementsComponent, canActivate: [AuthGuard] },
   { path: 'reports', component: WarehouseReportsComponent, canActivate: [AuthGuard] },
   { path: 'contractors', component: ContractorsComponent, canActivate: [AuthGuard] },
@@ -24,7 +25,7 @@ const routes: Routes = [
   { path: 'orders/new', component: OrderFormComponent, canActivate: [AuthGuard] },
   { path: 'orders/edit/:id', component: OrderFormComponent, canActivate: [AuthGuard] },
   { path: 'invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
-  { path: 'add-warehouse-movement', component: AddWarehouseMovementComponent, canActivate: [AuthGuard]},
+  { path: 'add-warehouse-movement', component: AddWarehouseMovementComponent, canActivate: [AuthGuard] },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: '**', redirectTo: '/login' }
 ];
