@@ -159,6 +159,11 @@ header {
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
   }
 
+  .add-item-form input[readonly] {
+    background: #f5f5f5;
+    cursor: not-allowed;
+  }
+
 .form-buttons {
   display: flex;
   gap: 10px;

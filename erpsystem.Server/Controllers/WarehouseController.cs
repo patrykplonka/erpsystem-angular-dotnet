@@ -271,6 +271,7 @@ public class WarehouseController : ControllerBase
         return Ok(resultDto);
     }
 
+
     [HttpPost("move/{id}")]
     public async Task<IActionResult> MoveItem(int id, [FromBody] MoveItemRequest request)
     {
@@ -592,6 +593,27 @@ public class WarehouseController : ControllerBase
         }
 
         return Ok(lowStockItems);
+    }
+    [HttpGet("last-code")]
+    public async Task<IActionResult> GetLastCode()
+    {
+        var lastItem = await _context.WarehouseItems
+            .Where(i => !i.IsDeleted)
+            .OrderByDescending(i => i.Code)
+            .Select(i => new { i.Code })
+            .FirstOrDefaultAsync();
+        return Ok(new { code = lastItem?.Code ?? null });
+    }
+
+    [HttpGet("last-batch-number")]
+    public async Task<IActionResult> GetLastBatchNumber()
+    {
+        var lastItem = await _context.WarehouseItems
+            .Where(i => !i.IsDeleted)
+            .OrderByDescending(i => i.BatchNumber)
+            .Select(i => new { i.BatchNumber })
+            .FirstOrDefaultAsync();
+        return Ok(new { batchNumber = lastItem?.BatchNumber ?? null });
     }
 
     private string GetChangeDetails(WarehouseItem existingItem, UpdateWarehouseItemDto updateDto)

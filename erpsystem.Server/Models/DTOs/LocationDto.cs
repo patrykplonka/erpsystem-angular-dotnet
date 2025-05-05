@@ -12,6 +12,6 @@ namespace erpsystem.Server.Models.DTOs
 
         [Required(ErrorMessage = "Typ jest wymagany")]
         [StringLength(20, ErrorMessage = "Typ nie może przekraczać 20 znaków")]
-        public string Type { get; set; } = string.Empty; 
+        public string Type { get; set; } = string.Empty;
     }
 }
