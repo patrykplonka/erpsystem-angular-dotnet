@@ -5,76 +5,92 @@
       <h1>Dodaj produkt</h1>
     </header>
     <div class="warehouse-section">
+      <!-- Error Message -->
       <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
-      <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="add-item-form">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="name">Nazwa</label>
-            <input formControlName="name" id="name" placeholder="Nazwa" name="name" required>
+      <!-- Add Product Form -->
+      <div class="form-card">
+        <h3>Dodaj nowy produkt</h3>
+        <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="add-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="name">Nazwa</label>
+              <input formControlName="name" id="name" placeholder="Nazwa" name="name" required>
+            </div>
+            <div class="form-group">
+              <label for="code">Kod</label>
+              <input formControlName="code" id="code" placeholder="Kod" name="code" readonly>
+            </div>
+            <div class="form-group">
+              <label for="quantity">Ilość</label>
+              <input formControlName="quantity" id="quantity" type="number" placeholder="Ilość" name="quantity" required>
+            </div>
+            <div class="form-group">
+              <label for="unitPrice">Cena jednostkowa</label>
+              <input formControlName="unitPrice" id="unitPrice" type="number" placeholder="Cena jednostkowa" name="unitPrice" required>
+            </div>
+            <div class="form-group">
+              <label for="category">Kategoria</label>
+              <select formControlName="category" id="category" name="category" required>
+                <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+                <option value="Inna">Inna</option>
+              </select>
+              <input *ngIf="showNewCategoryInput" formControlName="newCategory" id="newCategory" placeholder="Wpisz nową kategorię" name="newCategory" (change)="onNewCategoryChange()">
+            </div>
+            <div class="form-group">
+              <label for="location">Lokalizacja</label>
+              <select formControlName="location" id="location" name="location" required>
+                <option *ngFor="let loc of getLocationsByType('Location')" [value]="loc.name">{{ loc.name }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="warehouse">Magazyn</label>
+              <select formControlName="warehouse" id="warehouse" name="warehouse" required>
+                <option *ngFor="let loc of getLocationsByType('Warehouse')" [value]="loc.name">{{ loc.name }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="unitOfMeasure">Jednostka miary</label>
+              <select formControlName="unitOfMeasure" id="unitOfMeasure" name="unitOfMeasure" required>
+                <option *ngFor="let unit of unitsOfMeasure" [value]="unit">{{ unit }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="minimumStock">Minimalny stan</label>
+              <input formControlName="minimumStock" id="minimumStock" type="number" placeholder="Minimalny stan" name="minimumStock" required>
+            </div>
+            <div class="form-group">
+              <label for="contractorId">Kontrahent</label>
+              <select formControlName="contractorId" id="contractorId" name="contractorId">
+                <option [value]="null">Brak</option>
+                <option *ngFor="let con of contractors" [value]="con.id">{{ con.name }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="batchNumber">Numer partii</label>
+              <input formControlName="batchNumber" id="batchNumber" placeholder="Numer partii" name="batchNumber" readonly>
+            </div>
+            <div class="form-group">
+              <label for="purchaseCost">Koszt zakupu</label>
+              <input formControlName="purchaseCost" id="purchaseCost" type="number" placeholder="Koszt zakupu" name="purchaseCost" required>
+            </div>
+            <div class="form-group">
+              <label for="vatRate">Stawka VAT</label>
+              <input formControlName="vatRate" id="vatRate" type="text" [value]="productForm.get('vatRate')?.value | percent" readonly>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="code">Kod</label>
-            <input formControlName="code" id="code" placeholder="Kod" name="code" required>
+          <div class="form-buttons">
+            <button type="submit" class="save-button" [disabled]="productForm.invalid">Dodaj produkt</button>
+            <button type="button" class="cancel-button" (click)="navigateTo('products')">Anuluj</button>
           </div>
-          <div class="form-group">
-            <label for="quantity">Ilość</label>
-            <input formControlName="quantity" id="quantity" type="number" placeholder="Ilość" name="quantity" required>
-          </div>
-          <div class="form-group">
-            <label for="unitPrice">Cena jednostkowa</label>
-            <input formControlName="unitPrice" id="unitPrice" type="number" placeholder="Cena jednostkowa" name="unitPrice" required>
-          </div>
-          <div class="form-group">
-            <label for="category">Kategoria</label>
-            <input formControlName="category" id="category" placeholder="Kategoria" name="category" required>
-          </div>
-          <div class="form-group">
-            <label for="location">Lokalizacja</label>
-            <select formControlName="location" id="location" name="location" required>
-              <option *ngFor="let loc of locations" [value]="loc.name">{{ loc.name }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="warehouse">Magazyn</label>
-            <input formControlName="warehouse" id="warehouse" placeholder="Magazyn" name="warehouse" required>
-          </div>
-          <div class="form-group">
-            <label for="unitOfMeasure">Jednostka miary</label>
-            <input formControlName="unitOfMeasure" id="unitOfMeasure" placeholder="Jednostka miary" name="unitOfMeasure" required>
-          </div>
-          <div class="form-group">
-            <label for="minimumStock">Minimalny stan</label>
-            <input formControlName="minimumStock" id="minimumStock" type="number" placeholder="Minimalny stan" name="minimumStock" required>
-          </div>
-          <div class="form-group">
-            <label for="contractorId">Kontrahent</label>
-            <select formControlName="contractorId" id="contractorId" name="contractorId">
-              <option [value]="null">Brak</option>
-              <option *ngFor="let con of contractors" [value]="con.id">{{ con.name }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="batchNumber">Numer partii</label>
-            <input formControlName="batchNumber" id="batchNumber" placeholder="Numer partii" name="batchNumber">
-          </div>
-          <div class="form-group">
-            <label for="expirationDate">Data ważności</label>
-            <input formControlName="expirationDate" id="expirationDate" type="date" name="expirationDate">
-          </div>
-          <div class="form-group">
-            <label for="purchaseCost">Koszt zakupu</label>
-            <input formControlName="purchaseCost" id="purchaseCost" type="number" placeholder="Koszt zakupu" name="purchaseCost" required>
-          </div>
-          <div class="form-group">
-            <label for="vatRate">Stawka VAT</label>
-            <input formControlName="vatRate" id="vatRate" type="number" placeholder="Stawka VAT" name="vatRate" required>
-          </div>
-        </div>
-        <div class="form-buttons">
-          <button type="submit" [disabled]="productForm.invalid">Dodaj produkt</button>
-          <button type="button" class="cancel-button" (click)="navigateTo('products')">Anuluj</button>
-        </div>
-      </form>
+        </form>
+      </div>
+      <!-- Debug Info -->
+      <div class="debug-info">
+        <p>Current Code: {{ productForm.get('code')?.value }}</p>
+        <p>Current Batch Number: {{ productForm.get('batchNumber')?.value }}</p>
+        <p>Next Code Number: {{ nextCodeNumber }}</p>
+        <p>Next Batch Number: {{ nextBatchNumber }}</p>
+      </div>
     </div>
   </div>
 </div>

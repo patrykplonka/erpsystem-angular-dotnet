@@ -5,60 +5,93 @@
       <h1>Zarządzanie produktami</h1>
     </header>
     <div class="warehouse-section">
-      <div *ngIf="loading" class="alert">Ładowanie...</div>
-      <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
-      <div class="controls" *ngIf="!loading && !error">
-        <button class="add-button" (click)="navigateTo('add-product')">Dodaj produkt</button>
-        <input [(ngModel)]="searchTerm" (input)="filterItems()" placeholder="Szukaj produktu..." class="filters">
+      <!-- Loading Spinner -->
+      <div *ngIf="loading" class="loading-spinner">
+        <span>Ładowanie...</span>
       </div>
-      <table class="warehouse-table" *ngIf="!loading && !error && filteredItems.length">
-        <thead>
-          <tr>
-            <th>Nazwa</th>
-            <th>Kod</th>
-            <th>Ilość</th>
-            <th>Cena jednostkowa</th>
-            <th>Akcje</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let item of filteredItems">
-            <td>{{ item.name }}</td>
-            <td>{{ item.code }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>{{ item.unitPrice | number }}</td>
-            <td>
-              <button class="action-button" (click)="editProduct(item)">Edytuj</button>
-              <button class="action-button delete-button" (click)="deleteProduct(item.id)">Usuń</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div *ngIf="!loading && !error && !filteredItems.length" class="alert">Brak produktów do wyświetlenia</div>
-
-      <div *ngIf="editItem" class="edit-item-form">
+      <!-- Error Message -->
+      <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+      <!-- Controls -->
+      <div class="controls" *ngIf="!loading && !error">
+        <button class="add-button" (click)="navigateTo('add-product')">
+          <span class="button-icon">+</span> Dodaj produkt
+        </button>
+        <input [(ngModel)]="searchTerm"
+               (input)="filterItems()"
+               placeholder="Szukaj produktu..."
+               class="search-input">
+      </div>
+      <!-- Product Table -->
+      <div class="table-container" *ngIf="!loading && !error">
+        <table class="warehouse-table" *ngIf="filteredItems.length">
+          <thead>
+            <tr>
+              <th>Nazwa</th>
+              <th>Kod</th>
+              <th>Ilość</th>
+              <th>Cena jednostkowa</th>
+              <th>Akcje</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of filteredItems; let i = index" [ngClass]="{'alternate-row': i % 2 === 1}">
+              <td>{{ item.name }}</td>
+              <td>{{ item.code }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.unitPrice | number }}</td>
+              <td class="action-buttons">
+                <button class="action-button edit-button" (click)="editProduct(item)">Edytuj</button>
+                <button class="action-button delete-button" (click)="deleteProduct(item.id)">Usuń</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="!filteredItems.length" class="no-data-message">
+          Brak produktów do wyświetlenia
+        </div>
+      </div>
+      <!-- Edit Form -->
+      <div *ngIf="editItem" class="edit-item-card">
         <h3>Edytuj produkt</h3>
-        <form>
+        <form class="edit-form">
           <div class="form-grid">
             <div class="form-group">
               <label for="editName">Nazwa</label>
-              <input [(ngModel)]="editItem.name" name="editName" id="editName" placeholder="Nazwa" required>
+              <input [(ngModel)]="editItem.name"
+                     name="editName"
+                     id="editName"
+                     placeholder="Nazwa"
+                     required>
             </div>
             <div class="form-group">
               <label for="editCode">Kod</label>
-              <input [(ngModel)]="editItem.code" name="editCode" id="editCode" placeholder="Kod" required>
+              <input [(ngModel)]="editItem.code"
+                     name="editCode"
+                     id="editCode"
+                     placeholder="Kod"
+                     required>
             </div>
             <div class="form-group">
               <label for="editQuantity">Ilość</label>
-              <input [(ngModel)]="editItem.quantity" name="editQuantity" id="editQuantity" type="number" placeholder="Ilość" required>
+              <input [(ngModel)]="editItem.quantity"
+                     name="editQuantity"
+                     id="editQuantity"
+                     type="number"
+                     placeholder="Ilość"
+                     required>
             </div>
             <div class="form-group">
               <label for="editUnitPrice">Cena jednostkowa</label>
-              <input [(ngModel)]="editItem.unitPrice" name="editUnitPrice" id="editUnitPrice" type="number" placeholder="Cena jednostkowa" required>
+              <input [(ngModel)]="editItem.unitPrice"
+                     name="editUnitPrice"
+                     id="editUnitPrice"
+                     type="number"
+                     placeholder="Cena jednostkowa"
+                     required>
             </div>
           </div>
           <div class="form-buttons">
-            <button type="button" (click)="saveEdit()">Zapisz</button>
+            <button type="button" class="save-button" (click)="saveEdit()">Zapisz</button>
             <button type="button" class="cancel-button" (click)="cancelEdit()">Anuluj</button>
           </div>
         </form>

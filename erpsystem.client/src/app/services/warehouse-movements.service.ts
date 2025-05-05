@@ -21,7 +21,7 @@ interface CreateWarehouseItemDto {
   name: string;
   code: string;
   quantity: number;
-  price: number; // Changed from unitPrice
+  price: number;
   category: string;
   location: string;
   warehouse: string;
