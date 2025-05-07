@@ -1,0 +1,59 @@
+<div class="contractors-container">
+  <div class="dashboard-container">
+    <app-sidebar (navigate)="navigateTo($event)"></app-sidebar>
+    <main class="main-content">
+      <header>
+        <div>
+          <h1>Dodaj kontrahenta</h1>
+          <p>Dodaj nowego kontrahenta do systemu</p>
+        </div>
+      </header>
+      <section class="contractors-section">
+        <div class="messages">
+          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
+        <div class="forms-container">
+          <div class="add-contractor-form">
+            <h3>Dodaj nowego kontrahenta</h3>
+            <form>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="name">Nazwa</label>
+                  <input [(ngModel)]="newContractor.name" id="name" name="name" placeholder="Nazwa" required>
+                </div>
+                <div class="form-group">
+                  <label for="type">Typ</label>
+                  <select [(ngModel)]="newContractor.type" id="type" name="type" required>
+                    <option value="" disabled>Wybierz typ</option>
+                    <option *ngFor="let type of contractorTypes" [value]="type.value">{{ type.display }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="email">Email</label>
+                  <input [(ngModel)]="newContractor.email" id="email" name="email" type="email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                  <label for="phone">Telefon</label>
+                  <input [(ngModel)]="newContractor.phone" id="phone" name="phone" placeholder="Telefon">
+                </div>
+                <div class="form-group">
+                  <label for="address">Adres</label>
+                  <input [(ngModel)]="newContractor.address" id="address" name="address" placeholder="Adres">
+                </div>
+                <div class="form-group">
+                  <label for="taxId">NIP</label>
+                  <input [(ngModel)]="newContractor.taxId" id="taxId" name="taxId" placeholder="NIP" required>
+                </div>
+              </div>
+              <div class="form-buttons">
+                <button type="button" (click)="addContractor()">Dodaj kontrahenta</button>
+                <button type="button" class="cancel-button" (click)="cancel()">Anuluj</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
