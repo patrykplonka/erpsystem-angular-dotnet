@@ -51,6 +51,22 @@ export class SidebarComponent {
     this.navigate.emit('purchase-invoices');
   }
 
+  goToCorrectiveInvoices() {
+    this.navigate.emit('corrective-invoices');
+  }
+
+  goToProFormaInvoices() {
+    this.navigate.emit('proforma-invoices');
+  }
+
+  goToAdvanceInvoices() {
+    this.navigate.emit('advance-invoices');
+  }
+
+  goToFinalInvoices() {
+    this.navigate.emit('final-invoices');
+  }
+
   logout() {
     this.logoutEvent.emit();
   }

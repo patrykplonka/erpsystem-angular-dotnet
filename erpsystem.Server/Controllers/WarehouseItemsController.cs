@@ -27,7 +27,7 @@ namespace erpsystem.Server.Controllers
         public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetWarehouseItems()
         {
             const string cacheKey = "WarehouseItemsAll";
-            if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto> items))
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto>? items))
             {
                 items = await _context.WarehouseItems
                     .Where(wi => !wi.IsDeleted)
@@ -44,7 +44,7 @@ namespace erpsystem.Server.Controllers
                         UnitOfMeasure = wi.UnitOfMeasure,
                         MinimumStock = wi.MinimumStock,
                         ContractorId = wi.ContractorId,
-                        ContractorName = wi.Contractor != null ? wi.Contractor.Name : null,
+                        ContractorName = wi.Contractor != null ? wi.Contractor.Name : string.Empty,
                         BatchNumber = wi.BatchNumber,
                         ExpirationDate = wi.ExpirationDate,
                         PurchaseCost = wi.PurchaseCost,
@@ -60,6 +60,7 @@ namespace erpsystem.Server.Controllers
                 _cache.Set(cacheKey, items, cacheOptions);
             }
 
+            items ??= Enumerable.Empty<WarehouseItemDto>();
             Console.WriteLine($"Returning {items.Count()} warehouse items: {string.Join(", ", items.Select(i => $"{{Id: {i.Id}, Name: {i.Name}, UnitPrice: {i.UnitPrice}}}"))}");
             return Ok(items);
         }

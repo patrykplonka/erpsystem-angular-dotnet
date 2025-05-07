@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Caching.Memory;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -23,7 +27,7 @@ public class WarehouseController : ControllerBase
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetItems()
     {
         const string cacheKey = "WarehouseItems";
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto> itemDtos))
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto>? itemDtos))
         {
             var items = await _context.WarehouseItems
                 .Where(i => !i.IsDeleted)
@@ -57,7 +61,7 @@ public class WarehouseController : ControllerBase
             _cache.Set(cacheKey, itemDtos, cacheOptions);
         }
 
-        return Ok(itemDtos);
+        return Ok(itemDtos ?? Enumerable.Empty<WarehouseItemDto>());
     }
 
     [HttpPost]
@@ -164,7 +168,7 @@ public class WarehouseController : ControllerBase
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetDeletedItems()
     {
         const string cacheKey = "DeletedWarehouseItems";
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto> itemDtos))
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto>? itemDtos))
         {
             var deletedItems = await _context.WarehouseItems
                 .Where(i => i.IsDeleted)
@@ -198,7 +202,7 @@ public class WarehouseController : ControllerBase
             _cache.Set(cacheKey, itemDtos, cacheOptions);
         }
 
-        return Ok(itemDtos);
+        return Ok(itemDtos ?? Enumerable.Empty<WarehouseItemDto>());
     }
 
     [HttpPut("{id}")]
@@ -270,7 +274,6 @@ public class WarehouseController : ControllerBase
 
         return Ok(resultDto);
     }
-
 
     [HttpPost("move/{id}")]
     public async Task<IActionResult> MoveItem(int id, [FromBody] MoveItemRequest request)
@@ -496,7 +499,7 @@ public class WarehouseController : ControllerBase
             return NotFound("Produkt nie istnieje.");
 
         var cacheKey = $"WarehouseMovements_{id}";
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseMovementsDTO> movements))
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseMovementsDTO>? movements))
         {
             movements = await _context.WarehouseMovements
                 .Where(m => m.WarehouseItemId == id)
@@ -523,14 +526,14 @@ public class WarehouseController : ControllerBase
             _cache.Set(cacheKey, movements, cacheOptions);
         }
 
-        return Ok(movements);
+        return Ok(movements ?? Enumerable.Empty<WarehouseMovementsDTO>());
     }
 
     [HttpGet("operation-logs")]
     public ActionResult<IEnumerable<OperationLogDto>> GetOperationLogs()
     {
         const string cacheKey = "OperationLogs";
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<OperationLogDto> logs))
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<OperationLogDto>? logs))
         {
             logs = _context.OperationLogs
                 .Select(l => new OperationLogDto
@@ -540,7 +543,7 @@ public class WarehouseController : ControllerBase
                     Operation = l.Operation,
                     ItemId = l.ItemId,
                     ItemName = l.ItemName,
-                    Timestamp = l.Timestamp.ToString("o"),
+                    Timestamp = l.Timestamp, // Keep as DateTime
                     Details = l.Details
                 })
                 .ToList();
@@ -552,14 +555,14 @@ public class WarehouseController : ControllerBase
             _cache.Set(cacheKey, logs, cacheOptions);
         }
 
-        return Ok(logs);
+        return Ok(logs ?? Enumerable.Empty<OperationLogDto>());
     }
 
     [HttpGet("low-stock")]
     public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetLowStockItems()
     {
         const string cacheKey = "LowStockItems";
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto> lowStockItems))
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<WarehouseItemDto>? lowStockItems))
         {
             lowStockItems = await _context.WarehouseItems
                 .Where(i => !i.IsDeleted && i.Quantity <= i.MinimumStock)
@@ -592,8 +595,9 @@ public class WarehouseController : ControllerBase
             _cache.Set(cacheKey, lowStockItems, cacheOptions);
         }
 
-        return Ok(lowStockItems);
+        return Ok(lowStockItems ?? Enumerable.Empty<WarehouseItemDto>());
     }
+
     [HttpGet("last-code")]
     public async Task<IActionResult> GetLastCode()
     {
@@ -602,7 +606,7 @@ public class WarehouseController : ControllerBase
             .OrderByDescending(i => i.Code)
             .Select(i => new { i.Code })
             .FirstOrDefaultAsync();
-        return Ok(new { code = lastItem?.Code ?? null });
+        return Ok(new { code = lastItem?.Code ?? string.Empty });
     }
 
     [HttpGet("last-batch-number")]
@@ -613,7 +617,7 @@ public class WarehouseController : ControllerBase
             .OrderByDescending(i => i.BatchNumber)
             .Select(i => new { i.BatchNumber })
             .FirstOrDefaultAsync();
-        return Ok(new { batchNumber = lastItem?.BatchNumber ?? null });
+        return Ok(new { batchNumber = lastItem?.BatchNumber ?? string.Empty });
     }
 
     private string GetChangeDetails(WarehouseItem existingItem, UpdateWarehouseItemDto updateDto)
@@ -639,5 +643,5 @@ public class WarehouseController : ControllerBase
 
 public class MoveItemRequest
 {
-    public string NewLocation { get; set; }
+    public required string NewLocation { get; set; }
 }

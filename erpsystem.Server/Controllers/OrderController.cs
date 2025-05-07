@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using erpsystem.Server.Data;
 using Microsoft.Extensions.Caching.Memory;
 using System.Globalization;
+using System;
 using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
@@ -28,7 +29,7 @@ namespace erpsystem.Server.Controllers
         public async Task<ActionResult<IEnumerable<OrderDto>>> GetOrders()
         {
             var cacheKey = "AllOrders";
-            if (!_cache.TryGetValue(cacheKey, out IEnumerable<OrderDto> orderDtos))
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<OrderDto>? orderDtos))
             {
                 var orders = await _context.Orders
                     .Include(o => o.Contractor)
@@ -77,7 +78,7 @@ namespace erpsystem.Server.Controllers
                 _cache.Set(cacheKey, orderDtos, cacheOptions);
             }
 
-            return Ok(orderDtos);
+            return Ok(orderDtos ?? Enumerable.Empty<OrderDto>());
         }
 
         [HttpGet("paged")]

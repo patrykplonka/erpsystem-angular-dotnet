@@ -1,0 +1,60 @@
+<div class="invoice-container">
+  <div class="dashboard-container">
+    <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
+    <main class="main-content">
+      <header>
+        <div>
+          <h1>Faktury</h1>
+          <p>Zarządzaj fakturami w systemie</p>
+        </div>
+        <div class="user-info">
+          <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
+        </div>
+      </header>
+      <section class="invoice-section">
+        <div class="messages">
+          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
+        <div class="filter-container">
+          <label for="invoiceTypeFilter">Filtruj według typu:</label>
+          <select id="invoiceTypeFilter" (change)="setFilter($event)">
+            <option value="all">Wszystkie</option>
+            <option value="sales">Sprzedaż</option>
+            <option value="purchase">Zakup</option>
+            <option value="corrective">Korygująca</option>
+            <option value="proforma">Pro Forma</option>
+            <option value="advance">Zaliczkowa</option>
+            <option value="final">Końcowa</option>
+          </select>
+        </div>
+        <div class="forms-container">
+          <table *ngIf="filteredInvoices.length > 0">
+            <thead>
+              <tr>
+                <th>Numer faktury</th>
+                <th>Typ</th>
+                <th>Kwota netto</th>
+                <th>Kwota VAT</th>
+                <th>Kwota brutto</th>
+                <th>Status</th>
+                <th>Utworzono przez</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let invoice of filteredInvoices">
+                <td data-label="Numer faktury">{{ invoice.invoiceNumber }}</td>
+                <td data-label="Typ">{{ invoice.invoiceType }}</td>
+                <td data-label="Kwota netto">{{ invoice.netAmount | currency:'PLN' }}</td>
+                <td data-label="Kwota VAT">{{ invoice.vatAmount | currency:'PLN' }}</td>
+                <td data-label="Kwota brutto">{{ invoice.totalAmount | currency:'PLN' }}</td>
+                <td data-label="Status">{{ invoice.status }}</td>
+                <td data-label="Utworzono przez">{{ invoice.createdBy }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p *ngIf="filteredInvoices.length === 0">Brak faktur do wyświetlenia.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

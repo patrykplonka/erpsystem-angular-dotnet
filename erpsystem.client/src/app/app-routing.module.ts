@@ -12,8 +12,7 @@ import { OrderFormComponent } from './components/order-form/order-form.component
 import { AddWarehouseMovementComponent } from './components/add-warehouse-movements/add-warehouse-movements-component';
 import { AddProductFormComponent } from './components/add-product-form/add-product-form-component';
 import { AddContractorComponent } from './components/add-contractor/add-contractor.component';
-import { PurchaseInvoiceComponent } from './components/purchase-invoice/purchase-invoice.component';
-import { SalesInvoiceComponent } from './components/sales-invoice/sales-invoice.component';
+import { InvoiceComponent } from './components/invoice/invoice.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -27,8 +26,13 @@ const routes: Routes = [
   { path: 'orders', component: OrdersComponent, canActivate: [AuthGuard] },
   { path: 'orders/new', component: OrderFormComponent, canActivate: [AuthGuard] },
   { path: 'orders/edit/:id', component: OrderFormComponent, canActivate: [AuthGuard] },
-  { path: 'sales-invoices', component: SalesInvoiceComponent, canActivate: [AuthGuard] },
-  { path: 'purchase-invoices', component: PurchaseInvoiceComponent, canActivate: [AuthGuard] },
+  { path: 'invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
+  { path: 'sales-invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
+  { path: 'purchase-invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
+  { path: 'corrective-invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
+  { path: 'proforma-invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
+  { path: 'advance-invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
+  { path: 'final-invoices', component: InvoiceComponent, canActivate: [AuthGuard] },
   { path: 'add-warehouse-movement', component: AddWarehouseMovementComponent, canActivate: [AuthGuard] },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: '**', redirectTo: '/login' }
