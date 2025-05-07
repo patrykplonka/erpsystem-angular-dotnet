@@ -108,7 +108,8 @@ namespace erpsystem.Server.Controllers
                 NetAmount = netAmount,
                 Status = "Draft",
                 CreatedBy = "System",
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = DateTime.UtcNow,
+                InvoiceType = contractor.Type == "Supplier" ? "Purchase" : "Sales" 
             };
 
             _context.Invoices.Add(invoice);
@@ -129,7 +130,8 @@ namespace erpsystem.Server.Controllers
                 Status = invoice.Status,
                 CreatedBy = invoice.CreatedBy,
                 CreatedDate = invoice.CreatedDate,
-                FilePath = invoice.FilePath
+                FilePath = invoice.FilePath,
+                InvoiceType = invoice.InvoiceType
             };
 
             return Ok(invoiceDto);
