@@ -18,5 +18,7 @@ namespace erpsystem.Server.Models
         public string? FilePath { get; set; }
         public string CreatedBy { get; set; }
         public DateTime CreatedDate { get; set; }
+
+        public string InvoiceType { get; set; }
     }
 }

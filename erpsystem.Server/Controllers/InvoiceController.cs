@@ -32,10 +32,17 @@ namespace erpsystem.Server.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<InvoiceDto[]>> GetInvoices()
+        public async Task<ActionResult<InvoiceDto[]>> GetInvoices([FromQuery] string? invoiceType = null)
         {
-            var invoices = await _context.Invoices
-                .Where(i => !string.IsNullOrEmpty(i.InvoiceNumber))
+            var query = _context.Invoices
+                .Where(i => !string.IsNullOrEmpty(i.InvoiceNumber));
+
+            if (!string.IsNullOrEmpty(invoiceType))
+            {
+                query = query.Where(i => i.InvoiceType == invoiceType);
+            }
+
+            var invoices = await query
                 .Select(i => new InvoiceDto
                 {
                     Id = i.Id,
@@ -51,7 +58,8 @@ namespace erpsystem.Server.Controllers
                     Status = i.Status,
                     FilePath = i.FilePath,
                     CreatedBy = i.CreatedBy,
-                    CreatedDate = i.CreatedDate
+                    CreatedDate = i.CreatedDate,
+                    InvoiceType = i.InvoiceType
                 })
                 .ToArrayAsync();
 
