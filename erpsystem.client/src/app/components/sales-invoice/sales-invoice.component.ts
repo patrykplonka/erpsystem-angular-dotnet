@@ -22,16 +22,17 @@ interface InvoiceDto {
   filePath: string | null;
   createdDate: Date;
   createdBy: string;
+  invoiceType: string; 
 }
 
 @Component({
-  selector: 'app-invoice',
+  selector: 'app-sales-invoice',
   standalone: true,
   imports: [CommonModule, FormsModule, SidebarComponent],
-  templateUrl: './invoice.component.html',
-  styleUrls: ['./invoice.component.css']
+  templateUrl: './sales-invoice.component.html',
+  styleUrls: ['./sales-invoice.component.css']
 })
-export class InvoiceComponent implements OnInit {
+export class SalesInvoiceComponent implements OnInit {
   invoices: InvoiceDto[] = [];
   filteredInvoices: InvoiceDto[] = [];
   currentUserEmail: string | null = null;
@@ -58,7 +59,7 @@ export class InvoiceComponent implements OnInit {
   }
 
   loadInvoices() {
-    this.http.get<InvoiceDto[]>('https://localhost:7224/api/invoices', {
+    this.http.get<InvoiceDto[]>('https://localhost:7224/api/invoices?invoiceType=Sales', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     }).subscribe({
       next: (data) => {
@@ -72,7 +73,7 @@ export class InvoiceComponent implements OnInit {
         this.applyFilters();
       },
       error: (error) => {
-        this.errorMessage = `Błąd ładowania faktur: ${error.status} ${error.message}`;
+        this.errorMessage = `Błąd ładowania faktur sprzedaży: ${error.status} ${error.message}`;
       }
     });
   }
@@ -83,12 +84,12 @@ export class InvoiceComponent implements OnInit {
       responseType: 'blob'
     }).subscribe({
       next: (blob) => {
-        saveAs(blob, `Invoice_${invoice.invoiceNumber}.pdf`);
-        this.successMessage = `Faktura ${invoice.invoiceNumber} została pobrana.`;
+        saveAs(blob, `Sales_Invoice_${invoice.invoiceNumber}.pdf`);
+        this.successMessage = `Faktura sprzedaży ${invoice.invoiceNumber} została pobrana.`;
         this.errorMessage = null;
       },
       error: (error) => {
-        this.errorMessage = 'Błąd podczas pobierania faktury.';
+        this.errorMessage = 'Błąd podczas pobierania faktury sprzedaży.';
         this.successMessage = null;
       }
     });

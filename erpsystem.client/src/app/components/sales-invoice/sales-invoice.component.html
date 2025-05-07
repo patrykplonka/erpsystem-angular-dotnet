@@ -4,8 +4,8 @@
     <main class="main-content">
       <header>
         <div>
-          <h1>Faktury</h1>
-          <p>Zarządzaj fakturami w systemie ERP</p>
+          <h1>Faktury sprzedaży</h1>
+          <p>Zarządzaj fakturami sprzedaży w systemie ERP</p>
         </div>
         <div class="user-info">
           <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
@@ -23,7 +23,7 @@
             <input [(ngModel)]="invoiceEndDateFilter" type="date" (ngModelChange)="applyFilters()">
             <input [(ngModel)]="invoiceUserFilter" placeholder="Filtruj po użytkowniku" (ngModelChange)="applyFilters()">
           </div>
-          <h4>Lista faktur</h4>
+          <h4>Lista faktur sprzedaży</h4>
           <table *ngIf="filteredInvoices.length > 0; else noInvoices">
             <thead>
               <tr>
@@ -59,7 +59,7 @@
             </tbody>
           </table>
           <ng-template #noInvoices>
-            <p>Brak faktur do wyświetlenia.</p>
+            <p>Brak faktur sprzedaży do wyświetlenia.</p>
           </ng-template>
         </div>
       </section>

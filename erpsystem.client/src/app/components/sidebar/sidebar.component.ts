@@ -10,12 +10,17 @@ import { CommonModule } from '@angular/common';
 })
 export class SidebarComponent {
   isWarehouseOpen = false;
+  isInvoicesOpen = false;
 
   @Output() navigate = new EventEmitter<string>();
   @Output() logoutEvent = new EventEmitter<void>();
 
   toggleWarehouseMenu() {
     this.isWarehouseOpen = !this.isWarehouseOpen;
+  }
+
+  toggleInvoicesMenu() {
+    this.isInvoicesOpen = !this.isInvoicesOpen;
   }
 
   goToProducts() {
@@ -38,12 +43,12 @@ export class SidebarComponent {
     this.navigate.emit('orders');
   }
 
-  goToPurchases() {
-    this.navigate.emit('purchases');
+  goToSalesInvoices() {
+    this.navigate.emit('sales-invoices');
   }
 
-  goToInvoices() {
-    this.navigate.emit('invoices');
+  goToPurchaseInvoices() {
+    this.navigate.emit('purchase-invoices');
   }
 
   logout() {
