@@ -315,7 +315,8 @@ namespace erpsystem.Server.Controllers
                 NetAmount = totalNet,
                 Status = "Issued",
                 CreatedBy = order.CreatedBy,
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = DateTime.UtcNow,
+                InvoiceType = order.OrderType == "Purchase" ? "Purchase" : "Sales"
             };
 
             _context.Invoices.Add(invoice);
