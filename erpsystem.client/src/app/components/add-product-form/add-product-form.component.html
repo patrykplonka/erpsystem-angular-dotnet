@@ -1,24 +1,23 @@
-<div class="dashboard-container">
-  <app-sidebar (navigate)="navigateTo($event)"></app-sidebar>
-  <div class="main-content">
-    <header>
-      <h1>Dodaj produkt</h1>
-    </header>
-    <div class="warehouse-section">
-      <!-- Error Message -->
-      <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
-      <!-- Add Product Form -->
-      <div class="form-card">
-        <h3>Dodaj nowy produkt</h3>
-        <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="add-form">
-          <div class="form-grid">
+<div class="warehouse-container">
+  <div class="dashboard-container">
+    <app-sidebar (navigate)="navigateTo($event)"></app-sidebar>
+    <main class="main-content">
+      <header>
+        <div>
+          <h1>Dodaj nowy produkt</h1>
+          <p>Wypełnij formularz, aby dodać nowy produkt</p>
+        </div>
+      </header>
+      <section class="warehouse-section">
+        <div class="filters">
+          <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="add-form">
             <div class="form-group">
-              <label for="name">Nazwa</label>
-              <input formControlName="name" id="name" placeholder="Nazwa" name="name" required>
+              <label for="name">Nazwa produktu</label>
+              <input formControlName="name" id="name" placeholder="Nazwa produktu" name="name" required>
             </div>
             <div class="form-group">
-              <label for="code">Kod</label>
-              <input formControlName="code" id="code" placeholder="Kod" name="code" readonly>
+              <label for="code">Kod produktu</label>
+              <input formControlName="code" id="code" placeholder="Kod produktu" name="code" readonly>
             </div>
             <div class="form-group">
               <label for="quantity">Ilość</label>
@@ -31,6 +30,7 @@
             <div class="form-group">
               <label for="category">Kategoria</label>
               <select formControlName="category" id="category" name="category" required>
+                <option value="">Wybierz kategorię</option>
                 <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
                 <option value="Inna">Inna</option>
               </select>
@@ -39,18 +39,21 @@
             <div class="form-group">
               <label for="location">Lokalizacja</label>
               <select formControlName="location" id="location" name="location" required>
+                <option value="">Wybierz lokalizację</option>
                 <option *ngFor="let loc of getLocationsByType('Location')" [value]="loc.name">{{ loc.name }}</option>
               </select>
             </div>
             <div class="form-group">
               <label for="warehouse">Magazyn</label>
               <select formControlName="warehouse" id="warehouse" name="warehouse" required>
+                <option value="">Wybierz magazyn</option>
                 <option *ngFor="let loc of getLocationsByType('Warehouse')" [value]="loc.name">{{ loc.name }}</option>
               </select>
             </div>
             <div class="form-group">
               <label for="unitOfMeasure">Jednostka miary</label>
               <select formControlName="unitOfMeasure" id="unitOfMeasure" name="unitOfMeasure" required>
+                <option value="">Wybierz jednostkę</option>
                 <option *ngFor="let unit of unitsOfMeasure" [value]="unit">{{ unit }}</option>
               </select>
             </div>
@@ -61,7 +64,7 @@
             <div class="form-group">
               <label for="contractorId">Kontrahent</label>
               <select formControlName="contractorId" id="contractorId" name="contractorId">
-                <option [value]="null">Brak</option>
+                <option [value]="null">Brak kontrahenta</option>
                 <option *ngFor="let con of contractors" [value]="con.id">{{ con.name }}</option>
               </select>
             </div>
@@ -77,20 +80,13 @@
               <label for="vatRate">Stawka VAT</label>
               <input formControlName="vatRate" id="vatRate" type="text" [value]="productForm.get('vatRate')?.value | percent" readonly>
             </div>
-          </div>
-          <div class="form-buttons">
-            <button type="submit" class="save-button" [disabled]="productForm.invalid">Dodaj produkt</button>
-            <button type="button" class="cancel-button" (click)="navigateTo('products')">Anuluj</button>
-          </div>
-        </form>
-      </div>
-      <!-- Debug Info -->
-      <div class="debug-info">
-        <p>Current Code: {{ productForm.get('code')?.value }}</p>
-        <p>Current Batch Number: {{ productForm.get('batchNumber')?.value }}</p>
-        <p>Next Code Number: {{ nextCodeNumber }}</p>
-        <p>Next Batch Number: {{ nextBatchNumber }}</p>
-      </div>
-    </div>
+            <div class="form-buttons">
+              <button type="submit" class="action-button add-button" [disabled]="productForm.invalid">Dodaj produkt</button>
+              <button type="button" class="action-button cancel-button" (click)="navigateTo('products')">Anuluj</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
   </div>
 </div>

@@ -16,13 +16,11 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 export class ContractorsComponent implements OnInit {
   contractors: ContractorDto[] = [];
   deletedContractors: ContractorDto[] = [];
-  newContractor: CreateContractorDto = { name: '', type: 'Supplier', email: '', phone: '', address: '', taxId: '' };
   editContractor: UpdateContractorDto | null = null;
   selectedContractor: ContractorDto | null = null;
   contractorToDelete: number | null = null;
   currentUserEmail: string | null = null;
   showDeleted: boolean = false;
-  showAddForm: boolean = false;
   nameFilter: string = '';
   typeFilter: string = '';
   errorMessage: string | null = null;
@@ -63,18 +61,6 @@ export class ContractorsComponent implements OnInit {
   getTypeDisplay(type: string): string {
     const typeObj = this.contractorTypes.find(t => t.value === type);
     return typeObj ? typeObj.display : type;
-  }
-
-  isValidNip(nip: string): boolean {
-    nip = nip.replace(/[\s-]/g, '');
-    if (nip.length !== 10 || !/^\d{10}$/.test(nip)) return false;
-    const weights = [6, 5, 7, 2, 3, 4, 5, 6, 7];
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-      sum += parseInt(nip[i]) * weights[i];
-    }
-    const checksum = sum % 11;
-    return checksum === parseInt(nip[9]);
   }
 
   applyFilters() {
@@ -131,26 +117,6 @@ export class ContractorsComponent implements OnInit {
     if (this.currentPage > 1) {
       this.currentPage--;
     }
-  }
-
-  addContractor() {
-    if (!this.newContractor.name || !this.newContractor.type || !this.newContractor.email || !this.newContractor.taxId) {
-      this.errorMessage = 'Nazwa, typ, email i NIP są wymagane.';
-      return;
-    }
-    if (!this.isValidNip(this.newContractor.taxId)) {
-      this.errorMessage = 'Podany NIP jest nieprawidłowy.';
-      return;
-    }
-    this.http.post<ContractorDto>(this.apiUrl, this.newContractor).subscribe({
-      next: (response) => {
-        this.successMessage = `Dodano kontrahenta: ${response.name}`;
-        this.errorMessage = null;
-        this.loadContractors();
-        this.toggleAddForm();
-      },
-      error: (error) => this.errorMessage = `Błąd dodawania kontrahenta: ${error.status} ${error.message}`
-    });
   }
 
   startEdit(contractor: ContractorDto) {
@@ -282,17 +248,20 @@ export class ContractorsComponent implements OnInit {
     this.currentPage = 1;
   }
 
-  toggleAddForm() {
-    this.showAddForm = !this.showAddForm;
-    this.errorMessage = null;
-    this.successMessage = null;
-    if (!this.showAddForm) {
-      this.newContractor = { name: '', type: 'Supplier', email: '', phone: '', address: '', taxId: '' };
-    }
-  }
-
   cancelEdit() {
     this.editContractor = null;
+  }
+
+  isValidNip(nip: string): boolean {
+    nip = nip.replace(/[\s-]/g, '');
+    if (nip.length !== 10 || !/^\d{10}$/.test(nip)) return false;
+    const weights = [6, 5, 7, 2, 3, 4, 5, 6, 7];
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += parseInt(nip[i]) * weights[i];
+    }
+    const checksum = sum % 11;
+    return checksum === parseInt(nip[9]);
   }
 
   navigateTo(page: string) {

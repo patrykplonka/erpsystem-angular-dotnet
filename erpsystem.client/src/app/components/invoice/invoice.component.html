@@ -1,66 +1,58 @@
-<div class="warehouse-container">
+<div class="invoice-container">
   <div class="dashboard-container">
     <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
     <main class="main-content">
       <header>
         <div>
           <h1>Faktury</h1>
-          <p>Zarządzaj fakturami w systemie ERP</p>
+          <p>Zarządzaj fakturami w systemie</p>
         </div>
         <div class="user-info">
           <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
         </div>
       </header>
-      <section class="warehouse-section">
+      <section class="invoice-section">
         <div class="messages">
-          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
           <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
         </div>
-        <div class="movements-container">
-          <div class="advanced-filters">
-            <input [(ngModel)]="invoiceStatusFilter" placeholder="Filtruj po statusie" (ngModelChange)="applyFilters()">
-            <input [(ngModel)]="invoiceStartDateFilter" type="date" (ngModelChange)="applyFilters()">
-            <input [(ngModel)]="invoiceEndDateFilter" type="date" (ngModelChange)="applyFilters()">
-            <input [(ngModel)]="invoiceUserFilter" placeholder="Filtruj po użytkowniku" (ngModelChange)="applyFilters()">
-          </div>
-          <h4>Lista faktur</h4>
-          <table *ngIf="filteredInvoices.length > 0; else noInvoices">
+        <div class="filter-container">
+          <label for="invoiceTypeFilter">Filtruj według typu:</label>
+          <select id="invoiceTypeFilter" (change)="setFilter($event)">
+            <option value="all">Wszystkie</option>
+            <option value="sales">Sprzedaż</option>
+            <option value="purchase">Zakup</option>
+            <option value="corrective">Korygująca</option>
+            <option value="proforma">Pro Forma</option>
+            <option value="advance">Zaliczkowa</option>
+            <option value="final">Końcowa</option>
+          </select>
+        </div>
+        <div class="forms-container">
+          <table *ngIf="filteredInvoices.length > 0">
             <thead>
               <tr>
-                <th (click)="sortInvoices('invoiceNumber')">Numer faktury <span [ngClass]="{'sort-asc': invoiceSortField === 'invoiceNumber' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'invoiceNumber' && invoiceSortDirection === 'desc'}"></span></th>
-                <th (click)="sortInvoices('orderId')">Zamówienie <span [ngClass]="{'sort-asc': invoiceSortField === 'orderId' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'orderId' && invoiceSortDirection === 'desc'}"></span></th>
-                <th (click)="sortInvoices('contractorName')">Kontrahent <span [ngClass]="{'sort-asc': invoiceSortField === 'contractorName' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'contractorName' && invoiceSortDirection === 'desc'}"></span></th>
-                <th (click)="sortInvoices('issueDate')">Data wystawienia <span [ngClass]="{'sort-asc': invoiceSortField === 'issueDate' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'issueDate' && invoiceSortDirection === 'desc'}"></span></th>
-                <th (click)="sortInvoices('dueDate')">Data płatności <span [ngClass]="{'sort-asc': invoiceSortField === 'dueDate' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'dueDate' && invoiceSortDirection === 'desc'}"></span></th>
-                <th (click)="sortInvoices('netAmount')">Kwota netto <span [ngClass]="{'sort-asc': invoiceSortField === 'netAmount' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'netAmount' && invoiceSortDirection === 'desc'}"></span></th>
-                <th (click)="sortInvoices('vatAmount')">VAT <span [ngClass]="{'sort-asc': invoiceSortField === 'vatAmount' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'vatAmount' && invoiceSortDirection === 'desc'}"></span></th>
-                <th (click)="sortInvoices('totalAmount')">Kwota brutto <span [ngClass]="{'sort-asc': invoiceSortField === 'totalAmount' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'totalAmount' && invoiceSortDirection === 'desc'}"></span></th>
-                <th (click)="sortInvoices('status')">Status <span [ngClass]="{'sort-asc': invoiceSortField === 'status' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'status' && invoiceSortDirection === 'desc'}"></span></th>
-                <th (click)="sortInvoices('createdBy')">Użytkownik <span [ngClass]="{'sort-asc': invoiceSortField === 'createdBy' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'createdBy' && invoiceSortDirection === 'desc'}"></span></th>
-                <th>Akcje</th>
+                <th>Numer faktury</th>
+                <th>Typ</th>
+                <th>Kwota netto</th>
+                <th>Kwota VAT</th>
+                <th>Kwota brutto</th>
+                <th>Status</th>
+                <th>Utworzono przez</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let invoice of filteredInvoices">
                 <td data-label="Numer faktury">{{ invoice.invoiceNumber }}</td>
-                <td data-label="Zamówienie">{{ invoice.orderId }}</td>
-                <td data-label="Kontrahent">{{ invoice.contractorName }}</td>
-                <td data-label="Data wystawienia">{{ formatDate(invoice.issueDate) }}</td>
-                <td data-label="Data płatności">{{ formatDate(invoice.dueDate) }}</td>
-                <td data-label="Kwota netto">{{ invoice.netAmount | number:'1.2-2' }} PLN</td>
-                <td data-label="VAT">{{ invoice.vatAmount | number:'1.2-2' }} PLN</td>
-                <td data-label="Kwota brutto">{{ invoice.totalAmount | number:'1.2-2' }} PLN</td>
+                <td data-label="Typ">{{ invoice.invoiceType }}</td>
+                <td data-label="Kwota netto">{{ invoice.netAmount | currency:'PLN' }}</td>
+                <td data-label="Kwota VAT">{{ invoice.vatAmount | currency:'PLN' }}</td>
+                <td data-label="Kwota brutto">{{ invoice.totalAmount | currency:'PLN' }}</td>
                 <td data-label="Status">{{ invoice.status }}</td>
-                <td data-label="Użytkownik">{{ invoice.createdBy }}</td>
-                <td data-label="Akcje">
-                  <button class="action-button add-button" (click)="downloadInvoice(invoice)">Pobierz PDF</button>
-                </td>
+                <td data-label="Utworzono przez">{{ invoice.createdBy }}</td>
               </tr>
             </tbody>
           </table>
-          <ng-template #noInvoices>
-            <p>Brak faktur do wyświetlenia.</p>
-          </ng-template>
+          <p *ngIf="filteredInvoices.length === 0">Brak faktur do wyświetlenia.</p>
         </div>
       </section>
     </main>

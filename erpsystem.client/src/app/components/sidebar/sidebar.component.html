@@ -14,7 +14,20 @@
     </li>
     <li><button (click)="goToContractors()">🤝 Kontrahenci</button></li>
     <li><button (click)="goToOrders()">🛒 Zamówienia</button></li>
-    <li><button (click)="goToInvoices()">💸 Faktury</button></li>
+    <li>
+      <button (click)="toggleInvoicesMenu()" [class.active]="isInvoicesOpen">
+        💸 Faktury
+        <span class="arrow" [class.open]="isInvoicesOpen">▼</span>
+      </button>
+      <ul *ngIf="isInvoicesOpen" class="submenu">
+        <li><button (click)="goToSalesInvoices()">Faktury sprzedaży</button></li>
+        <li><button (click)="goToPurchaseInvoices()">Faktury zakupu</button></li>
+        <li><button (click)="goToCorrectiveInvoices()">Faktury korygujące</button></li>
+        <li><button (click)="goToProFormaInvoices()">Faktury pro forma</button></li>
+        <li><button (click)="goToAdvanceInvoices()">Faktury zaliczkowe</button></li>
+        <li><button (click)="goToFinalInvoices()">Faktury końcowe</button></li>
+      </ul>
+    </li>
     <li><button (click)="logout()">🚪 Wyloguj</button></li>
   </ul>
 </aside>

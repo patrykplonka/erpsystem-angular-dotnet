@@ -1,0 +1,163 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Arial", sans-serif;
+}
+
+.contractors-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.dashboard-container {
+  display: flex;
+  flex: 1;
+  height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  background: #fff;
+  overflow-y: auto;
+  width: 100%;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  padding: 10px 20px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+  header h1 {
+    font-size: 24px;
+    color: #2c3e50;
+  }
+
+  header p {
+    font-size: 14px;
+    color: #666;
+  }
+
+.contractors-section {
+  padding: 0 10px;
+  flex: 1;
+}
+
+.messages {
+  margin-bottom: 20px;
+}
+
+.alert {
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.alert-danger {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.forms-container {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+.add-contractor-form {
+  max-width: 800px;
+}
+
+  .add-contractor-form h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #2c3e50;
+  }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+  .form-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 5px;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: #3b82f6;
+    }
+
+.form-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+  .form-buttons button {
+    padding: 8px 14px;
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+    .form-buttons button:hover {
+      background: #2563eb;
+    }
+
+  .form-buttons .cancel-button {
+    background: #e5e7eb;
+    color: #4b5563;
+  }
+
+    .form-buttons .cancel-button:hover {
+      background: #d1d5db;
+    }
+
+@media (min-width: 768px) {
+  .contractors-container {
+    flex-direction: row;
+  }
+
+  .main-content {
+    width: calc(100% - 250px);
+  }
+}

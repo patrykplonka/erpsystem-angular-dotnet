@@ -16,46 +16,6 @@
           <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
           <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
         </div>
-        <div class="forms-container" *ngIf="showAddForm">
-          <div class="add-contractor-form">
-            <h3>Dodaj nowego kontrahenta</h3>
-            <form>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="name">Nazwa</label>
-                  <input [(ngModel)]="newContractor.name" id="name" name="name" placeholder="Nazwa" required>
-                </div>
-                <div class="form-group">
-                  <label for="type">Typ</label>
-                  <select [(ngModel)]="newContractor.type" id="type" name="type" required>
-                    <option value="" disabled>Wybierz typ</option>
-                    <option *ngFor="let type of contractorTypes" [value]="type.value">{{ type.display }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="email">Email</label>
-                  <input [(ngModel)]="newContractor.email" id="email" name="email" type="email" placeholder="Email" required>
-                </div>
-                <div class="form-group">
-                  <label for="phone">Telefon</label>
-                  <input [(ngModel)]="newContractor.phone" id="phone" name="phone" placeholder="Telefon">
-                </div>
-                <div class="form-group">
-                  <label for="address">Adres</label>
-                  <input [(ngModel)]="newContractor.address" id="address" name="address" placeholder="Adres">
-                </div>
-                <div class="form-group">
-                  <label for="taxId">NIP</label>
-                  <input [(ngModel)]="newContractor.taxId" id="taxId" name="taxId" placeholder="NIP" required>
-                </div>
-              </div>
-              <div class="form-buttons">
-                <button type="button" (click)="addContractor()">Dodaj kontrahenta</button>
-                <button type="button" class="cancel-button" (click)="toggleAddForm()">Anuluj</button>
-              </div>
-            </form>
-          </div>
-        </div>
         <div class="forms-container" *ngIf="editContractor">
           <div class="edit-contractor-form">
             <h3>Edytuj kontrahenta</h3>
@@ -98,7 +58,7 @@
         </div>
         <div class="contractors-list">
           <div class="list-controls">
-            <button class="add-button" (click)="toggleAddForm()">Dodaj kontrahenta</button>
+            <button class="add-button" (click)="navigateTo('add-contractor')">Dodaj kontrahenta</button>
             <button class="toggle-deleted" (click)="toggleDeletedView()">
               {{ showDeleted ? "Pokaż aktywnych" : "Pokaż usuniętych" }}
             </button>
@@ -112,7 +72,7 @@
             <input [(ngModel)]="nameFilter" placeholder="Szukaj po nazwie" (ngModelChange)="applyFilters()">
             <select [(ngModel)]="typeFilter" (ngModelChange)="applyFilters()">
               <option value="">Wszystkie typy</option>
-              <option *ngFor="let type of contractorTypes" [value]="type.value">{{ type.display }}</option>
+              <option *ngFor="let type of contractorTypes" Cvalue]="type.value">{{ type.display }}</option>
             </select>
           </div>
           <table>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace erpsystem.Server.Models
 {
@@ -6,17 +7,26 @@ namespace erpsystem.Server.Models
     {
         public int Id { get; set; }
         public int OrderId { get; set; }
-        public string InvoiceNumber { get; set; }
+        [Required]
+        public required string InvoiceNumber { get; set; }
         public DateTime IssueDate { get; set; }
         public DateTime DueDate { get; set; }
         public int ContractorId { get; set; }
-        public string ContractorName { get; set; }
+        [Required]
+        public required string ContractorName { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal VatAmount { get; set; }
         public decimal NetAmount { get; set; }
-        public string Status { get; set; }
-        public string? FilePath { get; set; }
-        public string CreatedBy { get; set; }
+        [Required]
+        public required string Status { get; set; }
+        public string? FilePath { get; set; } 
+        [Required]
+        public required string CreatedBy { get; set; }
         public DateTime CreatedDate { get; set; }
+        [Required]
+        public required string InvoiceType { get; set; } 
+        public int? RelatedInvoiceId { get; set; }
+        public decimal? AdvanceAmount { get; set; }
+        public bool IsDeleted { get; set; } 
     }
 }

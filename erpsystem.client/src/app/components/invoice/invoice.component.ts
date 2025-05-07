@@ -1,49 +1,38 @@
 import { Component, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { AuthService } from '../../services/auth.service';
-import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Router, RouterModule } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
-import { saveAs } from 'file-saver';
+import { AuthService } from '../../services/auth.service';
 
 interface InvoiceDto {
   id: number;
   orderId: number;
   invoiceNumber: string;
-  issueDate: Date;
-  dueDate: Date;
-  contractorId: number;
-  contractorName: string;
+  invoiceType: string;
   totalAmount: number;
   vatAmount: number;
   netAmount: number;
   status: string;
-  filePath: string | null;
-  createdDate: Date;
   createdBy: string;
+  relatedInvoiceId?: number;
+  advanceAmount?: number;
 }
 
 @Component({
   selector: 'app-invoice',
-  standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './invoice.component.html',
-  styleUrls: ['./invoice.component.css']
+  styleUrls: ['./invoice.component.css'],
+  imports: [CommonModule, RouterModule, SidebarComponent],
+  standalone: true
 })
 export class InvoiceComponent implements OnInit {
   invoices: InvoiceDto[] = [];
   filteredInvoices: InvoiceDto[] = [];
+  invoiceTypeFilter: string = 'all';
   currentUserEmail: string | null = null;
-  currentUserFullName = 'Unknown';
+  apiUrl = 'https://localhost:7224/api/invoices';
   errorMessage: string | null = null;
-  successMessage: string | null = null;
-  invoiceSortField: keyof InvoiceDto = 'invoiceNumber';
-  invoiceSortDirection: 'asc' | 'desc' = 'asc';
-  invoiceStatusFilter = '';
-  invoiceStartDateFilter: string | null = null;
-  invoiceEndDateFilter: string | null = null;
-  invoiceUserFilter = '';
 
   constructor(
     private http: HttpClient,
@@ -52,24 +41,23 @@ export class InvoiceComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.loadInvoices();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
-    this.currentUserFullName = this.authService.getCurrentUserFullName();
+    this.loadInvoices();
+  }
+
+  private getHeaders(): HttpHeaders {
+    const token = localStorage.getItem('authToken');
+    return new HttpHeaders({
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json'
+    });
   }
 
   loadInvoices() {
-    this.http.get<InvoiceDto[]>('https://localhost:7224/api/invoices', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-    }).subscribe({
+    this.http.get<InvoiceDto[]>(this.apiUrl, { headers: this.getHeaders() }).subscribe({
       next: (data) => {
-        this.invoices = data.map(invoice => ({
-          ...invoice,
-          issueDate: new Date(invoice.issueDate),
-          dueDate: new Date(invoice.dueDate),
-          createdDate: new Date(invoice.createdDate),
-          status: this.mapStatusFromApi(invoice.status)
-        }));
-        this.applyFilters();
+        this.invoices = data;
+        this.filterInvoices();
       },
       error: (error) => {
         this.errorMessage = `Błąd ładowania faktur: ${error.status} ${error.message}`;
@@ -77,88 +65,35 @@ export class InvoiceComponent implements OnInit {
     });
   }
 
-  downloadInvoice(invoice: InvoiceDto) {
-    this.http.get(`https://localhost:7224/api/invoices/download/${invoice.id}`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      responseType: 'blob'
-    }).subscribe({
-      next: (blob) => {
-        saveAs(blob, `Invoice_${invoice.invoiceNumber}.pdf`);
-        this.successMessage = `Faktura ${invoice.invoiceNumber} została pobrana.`;
-        this.errorMessage = null;
-      },
-      error: (error) => {
-        this.errorMessage = 'Błąd podczas pobierania faktury.';
-        this.successMessage = null;
-      }
-    });
-  }
-
-  formatDate(date: Date): string {
-    return date.toLocaleString('pl-PL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  }
-
-  mapStatusFromApi(status: string): string {
-    switch (status) {
-      case 'Draft': return 'Szkic';
-      case 'Issued': return 'Wystawiona';
-      case 'Paid': return 'Zapłacona';
-      case 'Overdue': return 'Zaległa';
-      default: return status;
-    }
-  }
-
-  applyFilters() {
-    this.filteredInvoices = this.invoices.filter(i => {
-      const matchesStatus = !this.invoiceStatusFilter ||
-        this.mapStatusFromApi(i.status).toLowerCase().includes(this.invoiceStatusFilter.toLowerCase());
-      const matchesStartDate = !this.invoiceStartDateFilter ||
-        new Date(i.issueDate) >= new Date(this.invoiceStartDateFilter);
-      const matchesEndDate = !this.invoiceEndDateFilter ||
-        new Date(i.issueDate) <= new Date(this.invoiceEndDateFilter);
-      const matchesUser = !this.invoiceUserFilter ||
-        i.createdBy.toLowerCase().includes(this.invoiceUserFilter.toLowerCase());
-      return matchesStatus && matchesStartDate && matchesEndDate && matchesUser;
-    });
-
-    this.filteredInvoices.sort((a, b) => {
-      const valueA = a[this.invoiceSortField];
-      const valueB = b[this.invoiceSortField];
-      if (this.invoiceSortField === 'issueDate' || this.invoiceSortField === 'dueDate' || this.invoiceSortField === 'createdDate') {
-        return this.invoiceSortDirection === 'asc'
-          ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
-          : new Date(valueB as string).getTime() - new Date(valueA as string).getTime();
-      }
-      if (typeof valueA === 'string' && typeof valueB === 'string') {
-        return this.invoiceSortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-      }
-      if (typeof valueA === 'number' && typeof valueB === 'number') {
-        return this.invoiceSortDirection === 'asc' ? valueA - valueB : valueB - valueA;
-      }
-      return 0;
-    });
-  }
-
-  sortInvoices(field: keyof InvoiceDto) {
-    if (this.invoiceSortField === field) {
-      this.invoiceSortDirection = this.invoiceSortDirection === 'asc' ? 'desc' : 'asc';
+  filterInvoices() {
+    if (this.invoiceTypeFilter === 'all') {
+      this.filteredInvoices = this.invoices;
     } else {
-      this.invoiceSortField = field;
-      this.invoiceSortDirection = 'asc';
+      this.filteredInvoices = this.invoices.filter(i => i.invoiceType.toLowerCase() === this.invoiceTypeFilter);
     }
-    this.applyFilters();
+  }
+
+  setFilter(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.invoiceTypeFilter = target.value;
+    this.filterInvoices();
   }
 
   navigateTo(page: string) {
-    this.router.navigate([`/${page}`]);
+    const typeMap: { [key: string]: string } = {
+      'sales-invoices': 'sales',
+      'purchase-invoices': 'purchase',
+      'corrective-invoices': 'corrective',
+      'proforma-invoices': 'proforma',
+      'advance-invoices': 'advance',
+      'final-invoices': 'final'
+    };
+    this.setFilter({ target: { value: typeMap[page] || 'all' } } as any);
+    this.router.navigate(['invoices']);
   }
 
   logout() {
     this.authService.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(['login']);
   }
 }
