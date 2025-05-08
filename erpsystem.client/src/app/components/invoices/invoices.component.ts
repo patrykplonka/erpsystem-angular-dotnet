@@ -1,11 +1,12 @@
 import { Component, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { saveAs } from 'file-saver';
+import { catchError, retry, throwError } from 'rxjs';
 
 interface InvoiceDto {
   id: number;
@@ -23,16 +24,18 @@ interface InvoiceDto {
   createdDate: Date;
   createdBy: string;
   invoiceType: string;
+  relatedInvoiceId?: number;
+  advanceAmount?: number;
 }
 
 @Component({
-  selector: 'app-purchase-invoice',
+  selector: 'app-invoices',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
-  templateUrl: './purchase-invoice.component.html',
-  styleUrls: ['./purchase-invoice.component.css']
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  templateUrl: './invoices.component.html',
+  styleUrls: ['./invoices.component.css']
 })
-export class PurchaseInvoiceComponent implements OnInit {
+export class InvoicesComponent implements OnInit {
   invoices: InvoiceDto[] = [];
   filteredInvoices: InvoiceDto[] = [];
   currentUserEmail: string | null = null;
@@ -45,6 +48,8 @@ export class PurchaseInvoiceComponent implements OnInit {
   invoiceStartDateFilter: string | null = null;
   invoiceEndDateFilter: string | null = null;
   invoiceUserFilter = '';
+  invoiceTypeFilter: string = 'all';
+  apiUrl = 'https://localhost:7224/api/invoices';
 
   constructor(
     private http: HttpClient,
@@ -53,46 +58,82 @@ export class PurchaseInvoiceComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.loadInvoices();
     this.currentUserEmail = this.authService.getCurrentUserEmail();
     this.currentUserFullName = this.authService.getCurrentUserFullName();
+    this.loadInvoices();
+  }
+
+  private getHeaders(): HttpHeaders {
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+    return new HttpHeaders({
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json'
+    });
   }
 
   loadInvoices() {
-    this.http.get<InvoiceDto[]>('https://localhost:7224/api/invoices?invoiceType=Purchase', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-    }).subscribe({
-      next: (data) => {
-        this.invoices = data.map(invoice => ({
-          ...invoice,
-          issueDate: new Date(invoice.issueDate),
-          dueDate: new Date(invoice.dueDate),
-          createdDate: new Date(invoice.createdDate),
-          status: this.mapStatusFromApi(invoice.status)
-        }));
-        this.applyFilters();
-      },
-      error: (error) => {
-        this.errorMessage = `Błąd ładowania faktur zakupu: ${error.status} ${error.message}`;
-      }
-    });
+    const url = this.invoiceTypeFilter === 'all'
+      ? this.apiUrl
+      : `${this.apiUrl}?invoiceType=${this.invoiceTypeFilter}`;
+
+    this.http.get<InvoiceDto[]>(url, { headers: this.getHeaders() })
+      .pipe(
+        retry(2),
+        catchError((error) => {
+          let errorMsg = `Błąd ładowania faktur: ${error.status} ${error.message}`;
+          if (error.status === 0) {
+            errorMsg = 'Nie można połączyć się z serwerem. Sprawdź, czy backend działa na https://localhost:7224.';
+          } else if (error.status === 401) {
+            errorMsg = 'Brak autoryzacji. Sprawdź poprawność tokenu lub zaloguj się ponownie.';
+          } else if (error.status === 403) {
+            errorMsg = 'Brak uprawnień do wyświetlenia faktur.';
+          }
+          console.error('Error details:', error);
+          this.errorMessage = errorMsg;
+          return throwError(() => new Error(errorMsg));
+        })
+      )
+      .subscribe({
+        next: (data) => {
+          this.invoices = data.map(invoice => ({
+            ...invoice,
+            issueDate: new Date(invoice.issueDate),
+            dueDate: new Date(invoice.dueDate),
+            createdDate: new Date(invoice.createdDate),
+            status: this.mapStatusFromApi(invoice.status)
+          }));
+          this.applyFilters();
+          this.errorMessage = null;
+        }
+      });
   }
 
   downloadInvoice(invoice: InvoiceDto) {
-    this.http.get(`https://localhost:7224/api/invoices/download/${invoice.id}`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+    this.http.get(`${this.apiUrl}/${invoice.id}/download`, {
+      headers: this.getHeaders(),
       responseType: 'blob'
-    }).subscribe({
-      next: (blob) => {
-        saveAs(blob, `Purchase_Invoice_${invoice.invoiceNumber}.pdf`);
-        this.successMessage = `Faktura zakupu ${invoice.invoiceNumber} została pobrana.`;
-        this.errorMessage = null;
-      },
-      error: (error) => {
-        this.errorMessage = 'Błąd podczas pobierania faktury zakupu.';
-        this.successMessage = null;
-      }
-    });
+    })
+      .pipe(
+        catchError((error) => {
+          let errorMsg = `Błąd podczas pobierania faktury ${invoice.invoiceNumber}: ${error.status} ${error.message}`;
+          if (error.status === 404) {
+            errorMsg = `Faktura ${invoice.invoiceNumber} nie została znaleziona lub plik PDF nie został wygenerowany.`;
+          } else if (error.status === 401) {
+            errorMsg = 'Brak autoryzacji. Zaloguj się ponownie.';
+          }
+          console.error('Download error details:', error);
+          this.errorMessage = errorMsg;
+          this.successMessage = null;
+          return throwError(() => new Error(errorMsg));
+        })
+      )
+      .subscribe({
+        next: (blob) => {
+          saveAs(blob, `${invoice.invoiceType}_Invoice_${invoice.invoiceNumber}.pdf`);
+          this.successMessage = `Faktura ${invoice.invoiceNumber} została pobrana.`;
+          this.errorMessage = null;
+        }
+      });
   }
 
   formatDate(date: Date): string {
@@ -154,12 +195,33 @@ export class PurchaseInvoiceComponent implements OnInit {
     this.applyFilters();
   }
 
+  setFilter(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.invoiceTypeFilter = target.value;
+    this.loadInvoices();
+  }
+
   navigateTo(page: string) {
-    this.router.navigate([`/${page}`]);
+    const typeMap: { [key: string]: string } = {
+      'sales-invoices': 'sales',
+      'purchase-invoices': 'purchase',
+      'corrective-invoices': 'corrective',
+      'proforma-invoices': 'proforma',
+      'advance-invoices': 'advance',
+      'final-invoices': 'final'
+    };
+
+    if (typeMap[page]) {
+      this.invoiceTypeFilter = typeMap[page];
+      this.loadInvoices();
+      this.router.navigate(['/invoices']);
+    } else {
+      this.router.navigate([`/${page}`]);
+    }
   }
 
   logout() {
     this.authService.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(['login']);
   }
 }

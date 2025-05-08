@@ -1,20 +1,32 @@
-<div class="warehouse-container">
+<div class="invoice-container">
   <div class="dashboard-container">
     <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
     <main class="main-content">
       <header>
         <div>
-          <h1>Faktury sprzedaży</h1>
-          <p>Zarządzaj fakturami sprzedaży w systemie ERP</p>
+          <h1>Faktury</h1>
+          <p>Zarządzaj fakturami w systemie ERP</p>
         </div>
         <div class="user-info">
           <p>Zalogowany jako: <strong>{{ currentUserEmail || 'Brak danych użytkownika' }}</strong></p>
         </div>
       </header>
-      <section class="warehouse-section">
+      <section class="invoice-section">
         <div class="messages">
           <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
           <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
+        <div class="filter-container">
+          <label for="invoiceTypeFilter">Filtruj według typu:</label>
+          <select id="invoiceTypeFilter" (change)="setFilter($event)">
+            <option value="all">Wszystkie</option>
+            <option value="sales">Sprzedaż</option>
+            <option value="purchase">Zakup</option>
+            <option value="corrective">Korygująca</option>
+            <option value="proforma">Pro Forma</option>
+            <option value="advance">Zaliczkowa</option>
+            <option value="final">Końcowa</option>
+          </select>
         </div>
         <div class="movements-container">
           <div class="advanced-filters">
@@ -23,11 +35,12 @@
             <input [(ngModel)]="invoiceEndDateFilter" type="date" (ngModelChange)="applyFilters()">
             <input [(ngModel)]="invoiceUserFilter" placeholder="Filtruj po użytkowniku" (ngModelChange)="applyFilters()">
           </div>
-          <h4>Lista faktur sprzedaży</h4>
+          <h4>Lista faktur</h4>
           <table *ngIf="filteredInvoices.length > 0; else noInvoices">
             <thead>
               <tr>
                 <th (click)="sortInvoices('invoiceNumber')">Numer faktury <span [ngClass]="{'sort-asc': invoiceSortField === 'invoiceNumber' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'invoiceNumber' && invoiceSortDirection === 'desc'}"></span></th>
+                <th (click)="sortInvoices('invoiceType')">Typ <span [ngClass]="{'sort-asc': invoiceSortField === 'invoiceType' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'invoiceType' && invoiceSortDirection === 'desc'}"></span></th>
                 <th (click)="sortInvoices('orderId')">Zamówienie <span [ngClass]="{'sort-asc': invoiceSortField === 'orderId' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'orderId' && invoiceSortDirection === 'desc'}"></span></th>
                 <th (click)="sortInvoices('contractorName')">Kontrahent <span [ngClass]="{'sort-asc': invoiceSortField === 'contractorName' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'contractorName' && invoiceSortDirection === 'desc'}"></span></th>
                 <th (click)="sortInvoices('issueDate')">Data wystawienia <span [ngClass]="{'sort-asc': invoiceSortField === 'issueDate' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'issueDate' && invoiceSortDirection === 'desc'}"></span></th>
@@ -43,6 +56,7 @@
             <tbody>
               <tr *ngFor="let invoice of filteredInvoices">
                 <td data-label="Numer faktury">{{ invoice.invoiceNumber }}</td>
+                <td data-label="Typ">{{ invoice.invoiceType }}</td>
                 <td data-label="Zamówienie">{{ invoice.orderId }}</td>
                 <td data-label="Kontrahent">{{ invoice.contractorName }}</td>
                 <td data-label="Data wystawienia">{{ formatDate(invoice.issueDate) }}</td>
@@ -59,7 +73,7 @@
             </tbody>
           </table>
           <ng-template #noInvoices>
-            <p>Brak faktur sprzedaży do wyświetlenia.</p>
+            <p>Brak faktur do wyświetlenia.</p>
           </ng-template>
         </div>
       </section>
