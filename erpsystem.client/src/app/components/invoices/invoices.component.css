@@ -1,4 +1,11 @@
-.warehouse-container {
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Arial", sans-serif;
+}
+
+.invoice-container {
   display: flex;
   min-height: 100vh;
   background: #f3f4f6;
@@ -62,6 +69,24 @@ header {
   background: #fee2e2;
   color: #991b1b;
 }
+
+.filter-container {
+  margin-bottom: 20px;
+}
+
+  .filter-container label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #4b5563;
+    margin-right: 10px;
+  }
+
+  .filter-container select {
+    padding: 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+  }
 
 .movements-container {
   padding: 25px;

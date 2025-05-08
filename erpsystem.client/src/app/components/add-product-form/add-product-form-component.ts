@@ -105,7 +105,6 @@ export class AddProductFormComponent implements OnInit {
       vatRate: [{ value: 23, disabled: true }, [Validators.required, Validators.min(0)]]
     });
 
-    // Watch for category changes to toggle new category input
     this.productForm.get('category')?.valueChanges.subscribe(value => {
       this.showNewCategoryInput = value === 'Inna';
     });
@@ -145,7 +144,7 @@ export class AddProductFormComponent implements OnInit {
   }
 
   loadLastCodeAndBatchNumber(): void {
-    // Fetch last code
+
     this.http.get<{ code: string }>('https://localhost:7224/api/Warehouse/last-code').subscribe({
       next: (data) => {
         const fetchedCodeNumber = this.parseCodeNumber(data.code) + 1;
@@ -160,7 +159,7 @@ export class AddProductFormComponent implements OnInit {
       }
     });
 
-    // Fetch last batch number
+
     this.http.get<{ batchNumber: string }>('https://localhost:7224/api/Warehouse/last-batch-number').subscribe({
       next: (data) => {
         const fetchedBatchNumber = this.parseBatchNumber(data.batchNumber) + 1;
@@ -219,25 +218,25 @@ export class AddProductFormComponent implements OnInit {
         minimumStock: this.productForm.value.minimumStock,
         contractorId: this.productForm.value.contractorId,
         batchNumber: this.productForm.get('batchNumber')?.value,
-        expirationDate: null, // Explicitly set to null to match backend
+        expirationDate: null,
         purchaseCost: Number(this.productForm.value.purchaseCost),
-        vatRate: Number(this.productForm.get('vatRate')?.value) // Ensure numeric value (23)
+        vatRate: Number(this.productForm.get('vatRate')?.value) 
       };
       console.log('Submitting item:', newItem);
       this.warehouseService.addProduct(newItem).subscribe({
         next: () => {
           console.log('Product added. Current code number:', this.nextCodeNumber, 'batch number:', this.nextBatchNumber);
-          // Increment counters
+
           this.nextCodeNumber++;
           this.nextBatchNumber++;
-          // Save to localStorage
+
           localStorage.setItem('nextCodeNumber', this.nextCodeNumber.toString());
           localStorage.setItem('nextBatchNumber', this.nextBatchNumber.toString());
           console.log('Incremented to code number:', this.nextCodeNumber, 'batch number:', this.nextBatchNumber);
-          // Update form controls
+
           this.productForm.get('code')?.setValue(this.formatCode(this.nextCodeNumber), { emitEvent: false });
           this.productForm.get('batchNumber')?.setValue(this.formatBatchNumber(this.nextBatchNumber), { emitEvent: false });
-          // Reset other fields
+
           this.productForm.patchValue({
             name: '',
             quantity: 0,
@@ -257,14 +256,12 @@ export class AddProductFormComponent implements OnInit {
             formValid: this.productForm.valid,
             formValue: this.productForm.value
           });
-          // Temporarily disable navigation to verify incrementing
-          // this.router.navigate(['/products']);
+
         },
         error: (err: any) => {
           const errorMessage = err.error || 'Błąd dodawania produktu.';
           this.error = errorMessage;
           console.error('Error adding product:', err);
-          // If duplicate code error, try next code
           if (errorMessage.includes('Produkt o podanym kodzie już istnieje')) {
             this.nextCodeNumber++;
             this.nextBatchNumber++;
