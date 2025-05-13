@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component, Output, EventEmitter, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 export class SidebarComponent {
   isWarehouseOpen = false;
   isInvoicesOpen = false;
+  @Input() isLoading: boolean = false;
 
   @Output() navigate = new EventEmitter<string>();
   @Output() logoutEvent = new EventEmitter<void>();

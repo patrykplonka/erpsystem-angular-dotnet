@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { Router, RouterModule } from '@angular/router';
@@ -49,12 +49,14 @@ export class InvoicesComponent implements OnInit {
   invoiceEndDateFilter: string | null = null;
   invoiceUserFilter = '';
   invoiceTypeFilter: string = 'all';
+  isLoading: boolean = false;
   apiUrl = 'https://localhost:7224/api/invoices';
 
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
@@ -72,6 +74,14 @@ export class InvoicesComponent implements OnInit {
   }
 
   loadInvoices() {
+    if (this.isLoading) {
+      console.log('Load invoices skipped: already loading');
+      return;
+    }
+    this.isLoading = true;
+    this.invoices = []; // Reset danych
+    this.filteredInvoices = []; // Reset danych
+    console.log('Loading invoices with invoiceTypeFilter:', this.invoiceTypeFilter);
     const url = this.invoiceTypeFilter === 'all'
       ? this.apiUrl
       : `${this.apiUrl}?invoiceType=${this.invoiceTypeFilter}`;
@@ -90,11 +100,14 @@ export class InvoicesComponent implements OnInit {
           }
           console.error('Error details:', error);
           this.errorMessage = errorMsg;
+          this.isLoading = false;
+          this.cdr.detectChanges();
           return throwError(() => new Error(errorMsg));
         })
       )
       .subscribe({
         next: (data) => {
+          console.log('Received invoices:', data);
           this.invoices = data.map(invoice => ({
             ...invoice,
             issueDate: new Date(invoice.issueDate),
@@ -103,6 +116,8 @@ export class InvoicesComponent implements OnInit {
             status: this.mapStatusFromApi(invoice.status)
           }));
           this.applyFilters();
+          this.isLoading = false;
+          this.cdr.detectChanges();
           this.errorMessage = null;
         }
       });
@@ -155,7 +170,8 @@ export class InvoicesComponent implements OnInit {
   }
 
   applyFilters() {
-    this.filteredInvoices = this.invoices.filter(i => {
+    console.log('Applying filters to invoices:', this.invoices);
+    this.filteredInvoices = [...this.invoices].filter(i => {
       const matchesStatus = !this.invoiceStatusFilter ||
         this.mapStatusFromApi(i.status).toLowerCase().includes(this.invoiceStatusFilter.toLowerCase());
       const matchesStartDate = !this.invoiceStartDateFilter ||
@@ -183,6 +199,8 @@ export class InvoicesComponent implements OnInit {
       }
       return 0;
     });
+    console.log('Filtered invoices:', this.filteredInvoices);
+    this.cdr.detectChanges();
   }
 
   sortInvoices(field: keyof InvoiceDto) {
@@ -198,10 +216,13 @@ export class InvoicesComponent implements OnInit {
   setFilter(event: Event) {
     const target = event.target as HTMLSelectElement;
     this.invoiceTypeFilter = target.value;
+    console.log('Set filter to:', this.invoiceTypeFilter);
+    this.resetFilters();
     this.loadInvoices();
   }
 
   navigateTo(page: string) {
+    console.log('Navigating to:', page);
     const typeMap: { [key: string]: string } = {
       'sales-invoices': 'sales',
       'purchase-invoices': 'purchase',
@@ -213,11 +234,26 @@ export class InvoicesComponent implements OnInit {
 
     if (typeMap[page]) {
       this.invoiceTypeFilter = typeMap[page];
+      this.resetFilters();
       this.loadInvoices();
-      this.router.navigate(['/invoices']);
     } else {
+      this.invoiceTypeFilter = 'all';
+      this.resetFilters();
+      this.loadInvoices();
       this.router.navigate([`/${page}`]);
     }
+  }
+
+  resetFilters() {
+    this.invoiceStatusFilter = '';
+    this.invoiceStartDateFilter = null;
+    this.invoiceEndDateFilter = null;
+    this.invoiceUserFilter = '';
+    console.log('Filters reset');
+  }
+
+  trackByInvoiceId(index: number, invoice: InvoiceDto): number {
+    return invoice.id;
   }
 
   logout() {
