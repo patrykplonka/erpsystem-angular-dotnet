@@ -17,6 +17,9 @@ using iText.Layout.Properties;
 using iText.Layout.Borders;
 using iText.Kernel.Font;
 using iText.IO.Font.Constants;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
@@ -29,24 +32,28 @@ namespace erpsystem.Server.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<InvoiceController> _logger;
         private readonly string _invoicesDirectory;
+        private readonly IConfiguration _configuration;
 
-        public InvoiceController(ApplicationDbContext context, ILogger<InvoiceController> logger)
+        public InvoiceController(ApplicationDbContext context, ILogger<InvoiceController> logger, IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
+            _configuration = configuration;
             _invoicesDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "invoices");
             Directory.CreateDirectory(_invoicesDirectory);
         }
 
         [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<ActionResult<IEnumerable<InvoiceDto>>> GetInvoices(string? invoiceType = null)
         {
-            _logger.LogDebug("GetInvoices called with invoiceType: {InvoiceType}", invoiceType);
+            _logger.LogDebug("GetInvoices called with invoiceType: {InvoiceType}", invoiceType ?? "null");
             var query = _context.Invoices
                 .Where(i => !i.IsDeleted);
 
             if (!string.IsNullOrEmpty(invoiceType))
             {
+                _logger.LogDebug("Filtering invoices by invoiceType: {InvoiceType}", invoiceType);
                 query = query.Where(i => i.InvoiceType == invoiceType);
             }
 
@@ -69,11 +76,12 @@ namespace erpsystem.Server.Controllers
                     CreatedDate = i.CreatedDate,
                     InvoiceType = i.InvoiceType,
                     RelatedInvoiceId = i.RelatedInvoiceId,
-                    AdvanceAmount = i.AdvanceAmount
+                    AdvanceAmount = i.AdvanceAmount,
+                    KSeFId = i.KSeFId
                 })
                 .ToListAsync();
 
-            _logger.LogDebug("Returning {Count} invoices", invoices.Count);
+            _logger.LogDebug("Returning {Count} invoices with types: {Types}", invoices.Count, string.Join(", ", invoices.Select(i => i.InvoiceType).Distinct()));
             return Ok(invoices);
         }
 
@@ -101,7 +109,8 @@ namespace erpsystem.Server.Controllers
                     CreatedDate = i.CreatedDate,
                     InvoiceType = i.InvoiceType,
                     RelatedInvoiceId = i.RelatedInvoiceId,
-                    AdvanceAmount = i.AdvanceAmount
+                    AdvanceAmount = i.AdvanceAmount,
+                    KSeFId = i.KSeFId
                 })
                 .FirstOrDefaultAsync();
 
@@ -150,6 +159,97 @@ namespace erpsystem.Server.Controllers
             var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
             _logger.LogDebug("Returning PDF file for invoice ID: {InvoiceId}", id);
             return File(fileBytes, "application/pdf", "Invoice_" + invoice.InvoiceNumber + ".pdf");
+        }
+
+        [HttpPost("send-to-ksef/{id}")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> SendToKSeF(int id)
+        {
+            _logger.LogDebug("SendToKSeF called for invoice ID: {InvoiceId}", id);
+            var invoice = await _context.Invoices
+                .Include(i => i.Order)
+                .ThenInclude(o => o.OrderItems)
+                .ThenInclude(oi => oi.WarehouseItem)
+                .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+
+            if (invoice == null)
+            {
+                _logger.LogWarning("Invoice with ID {InvoiceId} not found", id);
+                return NotFound($"Faktura o ID {id} nie znaleziona.");
+            }
+
+            if (!string.IsNullOrEmpty(invoice.KSeFId))
+            {
+                _logger.LogWarning("Invoice with ID {InvoiceId} already sent to KSeF with ID {KSeFId}", id, invoice.KSeFId);
+                return BadRequest("Faktura została już wysłana do KSeF.");
+            }
+
+            var xml = GenerateKSeFXml(invoice);
+            var ksefResponse = await SendToKSeFAsync(xml);
+
+            invoice.KSeFId = ksefResponse.KSeFId ?? $"TEST-{id}";
+            await _context.SaveChangesAsync();
+
+            _logger.LogDebug("Invoice ID {InvoiceId} sent to KSeF with KSeFId {KSeFId}", id, invoice.KSeFId);
+            return Ok(new { KSeFId = invoice.KSeFId });
+        }
+
+        private string GenerateKSeFXml(Invoice invoice)
+        {
+            _logger.LogDebug("Generating KSeF XML for invoice: {InvoiceNumber}", invoice.InvoiceNumber);
+            // Uproszczony XML dla testów, pełna implementacja wymaga mapowania wszystkich pól FA(2)
+            var xml = new StringBuilder();
+            xml.AppendLine(@"<?xml version=""1.0"" encoding=""UTF-8""?>");
+            xml.AppendLine(@"<Invoice xmlns=""http://crd.gov.pl/wzor/2021/11/29/FA/2/"">");
+            xml.AppendLine(@"  <Header>");
+            xml.AppendLine($"    <InvoiceNumber>{invoice.InvoiceNumber}</InvoiceNumber>");
+            xml.AppendLine($"    <IssueDate>{invoice.IssueDate:yyyy-MM-dd}</IssueDate>");
+            xml.AppendLine($"    <InvoiceType>{invoice.InvoiceType}</InvoiceType>");
+            xml.AppendLine(@"  </Header>");
+            xml.AppendLine(@"  <Seller>");
+            xml.AppendLine($"    <Name>{invoice.ContractorName}</Name>");
+            xml.AppendLine(@"    <TaxNumber>2222222222</TaxNumber>"); // Fikcyjny NIP testowy
+            xml.AppendLine(@"  </Seller>");
+            xml.AppendLine(@"  <InvoiceLines>");
+
+            var orderItems = invoice.Order?.OrderItems ?? new List<OrderItem>();
+            foreach (var item in orderItems)
+            {
+                xml.AppendLine(@"    <InvoiceLine>");
+                xml.AppendLine($"      <Description>{item.WarehouseItem?.Name ?? "Usługa"}</Description>");
+                xml.AppendLine($"      <Quantity>{item.Quantity}</Quantity>");
+                xml.AppendLine($"      <UnitPrice>{item.UnitPrice}</UnitPrice>");
+                xml.AppendLine($"      <VatRate>{item.VatRate * 100:F0}</VatRate>");
+                xml.AppendLine(@"    </InvoiceLine>");
+            }
+
+            xml.AppendLine(@"  </InvoiceLines>");
+            xml.AppendLine($"  <TotalAmount>{invoice.TotalAmount}</TotalAmount>");
+            xml.AppendLine(@"</Invoice>");
+
+            return xml.ToString();
+        }
+
+        private async Task<KSeFResponse> SendToKSeFAsync(string xml)
+        {
+            _logger.LogDebug("Sending XML to KSeF");
+            var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.ksef-test.mf.gov.pl/api/invoice");
+            request.Headers.Add("Authorization", $"Bearer {_configuration["KSeF:Token"] ?? "test-token"}");
+            request.Content = new StringContent(xml, Encoding.UTF8, "application/xml");
+
+            try
+            {
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var responseContent = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<KSeFResponse>(responseContent) ?? new KSeFResponse { KSeFId = "TEST-RESPONSE" };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to send invoice to KSeF: {Error}", ex.Message);
+                throw;
+            }
         }
 
         private async Task<string> GenerateInvoicePdf(Invoice invoice)
@@ -364,8 +464,14 @@ namespace erpsystem.Server.Controllers
                     .SetFontSize(10));
                 document.Add(new Paragraph($"Status: {invoice.Status}")
                     .SetFont(font)
-                    .SetFontSize(10)
-                    .SetMarginBottom(20));
+                    .SetFontSize(10));
+                if (!string.IsNullOrEmpty(invoice.KSeFId))
+                {
+                    document.Add(new Paragraph($"Numer KSeF: {invoice.KSeFId}")
+                        .SetFont(font)
+                        .SetFontSize(10));
+                }
+                document.Add(new Paragraph().SetMarginBottom(20));
 
                 Table itemsTable = new Table(UnitValue.CreatePercentArray(new float[] { 5, 35, 10, 15, 15, 10, 10 }))
                     .UseAllAvailableWidth()
@@ -444,5 +550,10 @@ namespace erpsystem.Server.Controllers
             _logger.LogDebug("PDF generated successfully for invoice: {InvoiceNumber} at {FilePath}", invoice.InvoiceNumber, filePath);
             return filePath;
         }
+    }
+
+    public class KSeFResponse
+    {
+        public string? KSeFId { get; set; }
     }
 }
