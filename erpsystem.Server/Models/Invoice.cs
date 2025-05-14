@@ -29,5 +29,7 @@ namespace erpsystem.Server.Models
         public decimal? AdvanceAmount { get; set; }
         public bool IsDeleted { get; set; }
 
+        public string? KSeFId { get; set; }
+
     }
 }
