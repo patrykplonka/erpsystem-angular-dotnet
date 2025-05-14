@@ -21,5 +21,7 @@ namespace erpsystem.Server.Models.DTOs
         public required string InvoiceType { get; set; }
         public int? RelatedInvoiceId { get; set; }
         public decimal? AdvanceAmount { get; set; }
+
+        public string? KSeFId { get; set; }
     }
 }
