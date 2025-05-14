@@ -17,7 +17,6 @@ using iText.Layout.Properties;
 using iText.Layout.Borders;
 using iText.Kernel.Font;
 using iText.IO.Font.Constants;
-using iText.Kernel.Colors;
 using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
@@ -25,24 +24,24 @@ namespace erpsystem.Server.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class InvoicesController : ControllerBase
+    public class InvoiceController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly ILogger<InvoicesController> _logger;
+        private readonly ILogger<InvoiceController> _logger;
         private readonly string _invoicesDirectory;
 
-        public InvoicesController(ApplicationDbContext context, ILogger<InvoicesController> logger)
+        public InvoiceController(ApplicationDbContext context, ILogger<InvoiceController> logger)
         {
             _context = context;
             _logger = logger;
-            _invoicesDirectory = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "invoices");
+            _invoicesDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "invoices");
             Directory.CreateDirectory(_invoicesDirectory);
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<InvoiceDto>>> GetInvoices(string? invoiceType = null)
         {
-            _logger.LogInformation("Fetching invoices with type filter: {InvoiceType}", invoiceType);
+            _logger.LogDebug("GetInvoices called with invoiceType: {InvoiceType}", invoiceType);
             var query = _context.Invoices
                 .Where(i => !i.IsDeleted);
 
@@ -74,14 +73,14 @@ namespace erpsystem.Server.Controllers
                 })
                 .ToListAsync();
 
-            _logger.LogInformation("Found {Count} invoices", invoices.Count);
+            _logger.LogDebug("Returning {Count} invoices", invoices.Count);
             return Ok(invoices);
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<InvoiceDto>> GetInvoice(int id)
         {
-            _logger.LogInformation("Fetching invoice with ID: {Id}", id);
+            _logger.LogDebug("GetInvoice called for ID: {InvoiceId}", id);
             var invoice = await _context.Invoices
                 .Where(i => i.Id == id && !i.IsDeleted)
                 .Select(i => new InvoiceDto
@@ -108,7 +107,7 @@ namespace erpsystem.Server.Controllers
 
             if (invoice == null)
             {
-                _logger.LogWarning("Invoice with ID {Id} not found or is deleted", id);
+                _logger.LogWarning("Invoice with ID {InvoiceId} not found", id);
                 return NotFound();
             }
 
@@ -118,45 +117,46 @@ namespace erpsystem.Server.Controllers
         [HttpGet("{id}/download")]
         public async Task<IActionResult> DownloadInvoice(int id)
         {
-            _logger.LogInformation("Attempting to download invoice with ID: {Id}", id);
+            _logger.LogDebug("DownloadInvoice called for ID: {InvoiceId}", id);
             var invoice = await _context.Invoices
                 .Where(i => i.Id == id && !i.IsDeleted)
                 .FirstOrDefaultAsync();
 
             if (invoice == null)
             {
-                _logger.LogWarning("Invoice with ID {Id} not found or is deleted", id);
+                _logger.LogWarning("Invoice with ID {InvoiceId} not found", id);
                 return NotFound("Invoice not found");
             }
 
             string filePath;
-            if (string.IsNullOrEmpty(invoice.FilePath) || !System.IO.File.Exists(System.IO.Path.Combine(_invoicesDirectory, System.IO.Path.GetFileName(invoice.FilePath))))
+            if (string.IsNullOrEmpty(invoice.FilePath) || !System.IO.File.Exists(Path.Combine(_invoicesDirectory, Path.GetFileName(invoice.FilePath))))
             {
-                _logger.LogInformation("Generating PDF for invoice ID {Id} as file does not exist", id);
+                _logger.LogDebug("Generating new PDF for invoice ID: {InvoiceId}", id);
                 filePath = await GenerateInvoicePdf(invoice);
-                invoice.FilePath = System.IO.Path.Combine("invoices", System.IO.Path.GetFileName(filePath));
+                invoice.FilePath = Path.Combine("invoices", Path.GetFileName(filePath));
                 await _context.SaveChangesAsync();
             }
             else
             {
-                filePath = System.IO.Path.Combine(_invoicesDirectory, System.IO.Path.GetFileName(invoice.FilePath));
+                filePath = Path.Combine(_invoicesDirectory, Path.GetFileName(invoice.FilePath));
             }
 
             if (!System.IO.File.Exists(filePath))
             {
-                _logger.LogWarning("Invoice file not found at path: {FilePath}", filePath);
+                _logger.LogError("Invoice file does not exist at path: {FilePath}", filePath);
                 return NotFound("Invoice file does not exist on server");
             }
 
             var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
-            _logger.LogInformation("Successfully retrieved invoice file for ID {Id}", id);
-            return File(fileBytes, "application/pdf", $"Invoice_{invoice.InvoiceNumber}.pdf");
+            _logger.LogDebug("Returning PDF file for invoice ID: {InvoiceId}", id);
+            return File(fileBytes, "application/pdf", "Invoice_" + invoice.InvoiceNumber + ".pdf");
         }
 
         private async Task<string> GenerateInvoicePdf(Invoice invoice)
         {
+            _logger.LogDebug("Generating PDF for invoice: {InvoiceNumber}", invoice.InvoiceNumber);
             var fileName = $"Invoice_{invoice.InvoiceNumber}.pdf";
-            var filePath = System.IO.Path.Combine(_invoicesDirectory, fileName);
+            var filePath = Path.Combine(_invoicesDirectory, fileName);
 
             var contractor = await _context.Contractors
                 .Where(c => c.Id == invoice.ContractorId && !c.IsDeleted)
@@ -173,7 +173,7 @@ namespace erpsystem.Server.Controllers
 
             if (contractor == null)
             {
-                _logger.LogWarning("Contractor with ID {ContractorId} not found for invoice {InvoiceNumber}", invoice.ContractorId, invoice.InvoiceNumber);
+                _logger.LogWarning("Contractor not found for invoice ID: {InvoiceId}, using default data", invoice.Id);
                 contractor = new ContractorDTO { Name = invoice.ContractorName, Address = "Brak danych", TaxId = "Brak NIP" };
             }
 
@@ -195,7 +195,7 @@ namespace erpsystem.Server.Controllers
 
             if (!orderItems.Any())
             {
-                _logger.LogWarning("No order items found for order ID {OrderId} in invoice {InvoiceNumber}", invoice.OrderId, invoice.InvoiceNumber);
+                _logger.LogWarning("No order items found for invoice ID: {InvoiceId}, adding default item", invoice.Id);
                 orderItems.Add(new OrderItemDto
                 {
                     WarehouseItemName = "Przykładowa usługa",
@@ -236,7 +236,7 @@ namespace erpsystem.Server.Controllers
 
                 try
                 {
-                    string logoPath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "logo.png");
+                    string logoPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "logo.png");
                     if (System.IO.File.Exists(logoPath))
                     {
                         Image logo = new Image(ImageDataFactory.Create(logoPath))
@@ -250,9 +250,8 @@ namespace erpsystem.Server.Controllers
                         headerTable.AddCell(new Cell().SetBorder(Border.NO_BORDER));
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    _logger.LogWarning("Failed to load logo: {Error}", ex.Message);
                     headerTable.AddCell(new Cell().SetBorder(Border.NO_BORDER));
                 }
                 document.Add(headerTable);
@@ -265,46 +264,92 @@ namespace erpsystem.Server.Controllers
                     .SetMarginBottom(20));
 
                 Table detailsTable = new Table(UnitValue.CreatePercentArray(new float[] { 50, 50 })).UseAllAvailableWidth();
-                detailsTable.AddCell(new Cell()
-                    .Add(new Paragraph("Sprzedawca:")
-                        .SetFont(boldFont)
-                        .SetFontSize(10))
-                    .Add(new Paragraph("Twoja Firma Sp. z o.o.")
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .Add(new Paragraph("ul. Przykładowa 123")
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .Add(new Paragraph("00-000 Warszawa")
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .Add(new Paragraph("NIP: 123-456-78-90")
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .Add(new Paragraph("Tel: +48 123 456 789")
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .SetBorder(Border.NO_BORDER));
-                detailsTable.AddCell(new Cell()
-                    .Add(new Paragraph("Nabywca:")
-                        .SetFont(boldFont)
-                        .SetFontSize(10))
-                    .Add(new Paragraph(contractor.Name)
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .Add(new Paragraph(contractor.Address)
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .Add(new Paragraph($"NIP: {contractor.TaxId}")
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .Add(new Paragraph($"Tel: {contractor.Phone}")
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .Add(new Paragraph($"Email: {contractor.Email}")
-                        .SetFont(font)
-                        .SetFontSize(10))
-                    .SetBorder(Border.NO_BORDER));
+                if (invoice.InvoiceType == "Purchase")
+                {
+                    detailsTable.AddCell(new Cell()
+                        .Add(new Paragraph("Nabywca:")
+                            .SetFont(boldFont)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("Twoja Firma Sp. z o.o.")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("ul. Przykładowa 123")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("00-000 Warszawa")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("NIP: 123-456-78-90")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("Tel: +48 123 456 789")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .SetBorder(Border.NO_BORDER));
+                    detailsTable.AddCell(new Cell()
+                        .Add(new Paragraph("Sprzedawca:")
+                            .SetFont(boldFont)
+                            .SetFontSize(10))
+                        .Add(new Paragraph(contractor.Name)
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph(contractor.Address)
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph($"NIP: {contractor.TaxId}")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph($"Tel: {contractor.Phone}")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph($"Email: {contractor.Email}")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .SetBorder(Border.NO_BORDER));
+                }
+                else
+                {
+                    detailsTable.AddCell(new Cell()
+                        .Add(new Paragraph("Sprzedawca:")
+                            .SetFont(boldFont)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("Twoja Firma Sp. z o.o.")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("ul. Przykładowa 123")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("00-000 Warszawa")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("NIP: 123-456-78-90")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph("Tel: +48 123 456 789")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .SetBorder(Border.NO_BORDER));
+                    detailsTable.AddCell(new Cell()
+                        .Add(new Paragraph("Nabywca:")
+                            .SetFont(boldFont)
+                            .SetFontSize(10))
+                        .Add(new Paragraph(contractor.Name)
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph(contractor.Address)
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph($"NIP: {contractor.TaxId}")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph($"Tel: {contractor.Phone}")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .Add(new Paragraph($"Email: {contractor.Email}")
+                            .SetFont(font)
+                            .SetFontSize(10))
+                        .SetBorder(Border.NO_BORDER));
+                }
                 document.Add(detailsTable);
 
                 document.Add(new Paragraph($"Data wystawienia: {invoice.IssueDate:dd.MM.yyyy}")
@@ -396,7 +441,7 @@ namespace erpsystem.Server.Controllers
                 document.Close();
             }
 
-            _logger.LogInformation("Generated PDF for invoice {InvoiceNumber} at {FilePath}", invoice.InvoiceNumber, filePath);
+            _logger.LogDebug("PDF generated successfully for invoice: {InvoiceNumber} at {FilePath}", invoice.InvoiceNumber, filePath);
             return filePath;
         }
     }
