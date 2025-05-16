@@ -26,6 +26,8 @@ interface InvoiceDto {
   invoiceType: string;
   relatedInvoiceId?: number;
   advanceAmount?: number;
+  kSeFId?: string;
+  isSendingToKSeF?: boolean; // Added for per-invoice loading state
 }
 
 @Component({
@@ -122,12 +124,63 @@ export class InvoicesComponent implements OnInit {
             dueDate: new Date(invoice.dueDate),
             createdDate: new Date(invoice.createdDate),
             status: this.mapStatusFromApi(invoice.status),
-            invoiceType: this.mapInvoiceTypeFromApi(invoice.invoiceType)
+            invoiceType: this.mapInvoiceTypeFromApi(invoice.invoiceType),
+            isSendingToKSeF: false
           }));
           this.applyFilters();
           this.isLoading = false;
           this.cdr.detectChanges();
           this.errorMessage = null;
+        }
+      });
+  }
+
+  sendToKSeF(invoice: InvoiceDto) {
+    if (invoice.kSeFId) {
+      this.errorMessage = `Faktura ${invoice.invoiceNumber} została już wysłana do KSeF (ID: ${invoice.kSeFId}).`;
+      this.successMessage = null;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    invoice.isSendingToKSeF = true;
+    this.cdr.detectChanges();
+
+    this.http.post<{ kSeFId: string }>(`${this.apiUrl}/send-to-ksef/${invoice.id}`, {}, { headers: this.getHeaders() })
+      .pipe(
+        catchError((error) => {
+          let errorMsg = `Błąd wysyłania faktury ${invoice.invoiceNumber} do KSeF: ${error.status} `;
+          if (error.status === 503) {
+            errorMsg += error.error || 'Nie można połączyć się z KSeF. Sprawdź połączenie internetowe.';
+          } else if (error.status === 404) {
+            errorMsg = `Faktura ${invoice.invoiceNumber} nie znaleziona.`;
+          } else if (error.status === 400) {
+            errorMsg = error.error || `Faktura ${invoice.invoiceNumber} została już wysłana do KSeF.`;
+          } else if (error.status === 401) {
+            errorMsg = 'Brak autoryzacji. Zaloguj się ponownie.';
+            this.authService.logout();
+            this.router.navigate(['login']);
+          } else {
+            errorMsg += error.message;
+          }
+          this.errorMessage = errorMsg;
+          this.successMessage = null;
+          invoice.isSendingToKSeF = false;
+          this.cdr.detectChanges();
+          return throwError(() => new Error(errorMsg));
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          invoice.kSeFId = response.kSeFId;
+          this.successMessage = `Faktura ${invoice.invoiceNumber} wysłana do KSeF (ID: ${response.kSeFId}).`;
+          this.errorMessage = null;
+          invoice.isSendingToKSeF = false;
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          invoice.isSendingToKSeF = false;
+          this.cdr.detectChanges();
         }
       });
   }
@@ -251,9 +304,9 @@ export class InvoicesComponent implements OnInit {
     };
 
     if (typeMap[page]) {
-      this.invoiceTypeFilter = typeMap[page]; // Ustaw filtr przed resetem
-      this.resetFilters(); // Resetuj inne filtry
-      this.loadInvoices(); // Wywołaj ładowanie z poprawnym filtrem
+      this.invoiceTypeFilter = typeMap[page];
+      this.resetFilters();
+      this.loadInvoices();
     } else {
       this.invoiceTypeFilter = 'all';
       this.resetFilters();

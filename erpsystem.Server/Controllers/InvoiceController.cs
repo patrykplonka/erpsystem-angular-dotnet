@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using erpsystem.Server.Data;
 using erpsystem.Server.Models;
 using erpsystem.Server.Models.DTOs;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,6 +21,8 @@ using iText.IO.Font.Constants;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Net.Sockets;
+using System.Net;
 using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
@@ -45,9 +48,14 @@ namespace erpsystem.Server.Controllers
 
         [HttpGet]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public async Task<ActionResult<IEnumerable<InvoiceDto>>> GetInvoices(string? invoiceType = null)
+        public async Task<ActionResult<IEnumerable<InvoiceDto>>> GetInvoices(
+            string? invoiceType = null,
+            string sortField = "InvoiceNumber",
+            string sortDirection = "asc")
         {
-            _logger.LogDebug("GetInvoices called with invoiceType: {InvoiceType}", invoiceType ?? "null");
+            _logger.LogDebug("GetInvoices called with invoiceType: {InvoiceType}, sortField: {SortField}, sortDirection: {SortDirection}",
+                invoiceType ?? "null", sortField, sortDirection);
+
             var query = _context.Invoices
                 .Where(i => !i.IsDeleted);
 
@@ -55,6 +63,23 @@ namespace erpsystem.Server.Controllers
             {
                 _logger.LogDebug("Filtering invoices by invoiceType: {InvoiceType}", invoiceType);
                 query = query.Where(i => i.InvoiceType == invoiceType);
+            }
+
+            var validSortFields = new[] { "InvoiceNumber", "IssueDate", "DueDate", "TotalAmount", "Status", "InvoiceType", "CreatedDate" };
+            if (!validSortFields.Contains(sortField))
+            {
+                _logger.LogWarning("Invalid sortField: {SortField}, defaulting to InvoiceNumber", sortField);
+                sortField = "InvoiceNumber";
+            }
+
+            try
+            {
+                query = ApplySorting(query, sortField, sortDirection.ToLower() == "desc");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error sorting invoices with sortField: {SortField}, error: {Error}", sortField, ex.Message);
+                query = query.OrderBy(i => i.InvoiceNumber);
             }
 
             var invoices = await query
@@ -83,6 +108,29 @@ namespace erpsystem.Server.Controllers
 
             _logger.LogDebug("Returning {Count} invoices with types: {Types}", invoices.Count, string.Join(", ", invoices.Select(i => i.InvoiceType).Distinct()));
             return Ok(invoices);
+        }
+
+        private IQueryable<Invoice> ApplySorting(IQueryable<Invoice> query, string sortField, bool descending)
+        {
+            switch (sortField)
+            {
+                case "InvoiceNumber":
+                    return descending ? query.OrderByDescending(i => i.InvoiceNumber) : query.OrderBy(i => i.InvoiceNumber);
+                case "IssueDate":
+                    return descending ? query.OrderByDescending(i => i.IssueDate) : query.OrderBy(i => i.IssueDate);
+                case "DueDate":
+                    return descending ? query.OrderByDescending(i => i.DueDate) : query.OrderBy(i => i.DueDate);
+                case "TotalAmount":
+                    return descending ? query.OrderByDescending(i => i.TotalAmount) : query.OrderBy(i => i.TotalAmount);
+                case "Status":
+                    return descending ? query.OrderByDescending(i => i.Status) : query.OrderBy(i => i.Status);
+                case "InvoiceType":
+                    return descending ? query.OrderByDescending(i => i.InvoiceType) : query.OrderBy(i => i.InvoiceType);
+                case "CreatedDate":
+                    return descending ? query.OrderByDescending(i => i.CreatedDate) : query.OrderBy(i => i.CreatedDate);
+                default:
+                    return query.OrderBy(i => i.InvoiceNumber);
+            }
         }
 
         [HttpGet("{id}")]
@@ -184,20 +232,32 @@ namespace erpsystem.Server.Controllers
                 return BadRequest("Faktura została już wysłana do KSeF.");
             }
 
-            var xml = GenerateKSeFXml(invoice);
-            var ksefResponse = await SendToKSeFAsync(xml);
+            try
+            {
+                var xml = GenerateKSeFXml(invoice);
+                var ksefResponse = await SendToKSeFAsync(xml, invoice.Id, maxRetries: 3, retryDelayMs: 1000);
 
-            invoice.KSeFId = ksefResponse.KSeFId ?? $"TEST-{id}";
-            await _context.SaveChangesAsync();
+                invoice.KSeFId = ksefResponse.KSeFId ?? $"TEST-{id}";
+                await _context.SaveChangesAsync();
 
-            _logger.LogDebug("Invoice ID {InvoiceId} sent to KSeF with KSeFId {KSeFId}", id, invoice.KSeFId);
-            return Ok(new { KSeFId = invoice.KSeFId });
+                _logger.LogDebug("Invoice ID {InvoiceId} sent to KSeF with KSeFId {KSeFId}", id, invoice.KSeFId);
+                return Ok(new { KSeFId = invoice.KSeFId });
+            }
+            catch (HttpRequestException ex) when (ex.InnerException is SocketException)
+            {
+                _logger.LogError("Failed to connect to KSeF API due to network error: {Error}. Check DNS resolution and network connectivity for '{KSeFUrl}'.", ex.Message, _configuration["KSeF:ApiUrl"]);
+                return StatusCode(503, "Nie można połączyć się z KSeF z powodu problemów z siecią. Sprawdź połączenie internetowe i dostępność API KSeF.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to send invoice to KSeF: {Error}", ex.Message);
+                return StatusCode(500, "Wystąpił błąd podczas wysyłania faktury do KSeF. Spróbuj ponownie później.");
+            }
         }
 
         private string GenerateKSeFXml(Invoice invoice)
         {
             _logger.LogDebug("Generating KSeF XML for invoice: {InvoiceNumber}", invoice.InvoiceNumber);
-            // Uproszczony XML dla testów, pełna implementacja wymaga mapowania wszystkich pól FA(2)
             var xml = new StringBuilder();
             xml.AppendLine(@"<?xml version=""1.0"" encoding=""UTF-8""?>");
             xml.AppendLine(@"<Invoice xmlns=""http://crd.gov.pl/wzor/2021/11/29/FA/2/"">");
@@ -208,7 +268,7 @@ namespace erpsystem.Server.Controllers
             xml.AppendLine(@"  </Header>");
             xml.AppendLine(@"  <Seller>");
             xml.AppendLine($"    <Name>{invoice.ContractorName}</Name>");
-            xml.AppendLine(@"    <TaxNumber>2222222222</TaxNumber>"); // Fikcyjny NIP testowy
+            xml.AppendLine(@"    <TaxNumber>2222222222</TaxNumber>");
             xml.AppendLine(@"  </Seller>");
             xml.AppendLine(@"  <InvoiceLines>");
 
@@ -230,26 +290,54 @@ namespace erpsystem.Server.Controllers
             return xml.ToString();
         }
 
-        private async Task<KSeFResponse> SendToKSeFAsync(string xml)
+        private async Task<KSeFResponse> SendToKSeFAsync(string xml, int invoiceId, int maxRetries, int retryDelayMs)
         {
-            _logger.LogDebug("Sending XML to KSeF");
-            var client = new HttpClient();
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.ksef-test.mf.gov.pl/api/invoice");
+            var ksefUrl = _configuration["KSeF:ApiUrl"] ?? "https://api.ksef-test.mf.gov.pl/api/invoice";
+            _logger.LogDebug("Sending XML to KSeF API at '{KSeFUrl}' for invoice ID: {InvoiceId}", ksefUrl, invoiceId);
+
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                _logger.LogDebug("Simulating KSeF response in Development environment for invoice ID: {InvoiceId}", invoiceId);
+                return new KSeFResponse { KSeFId = $"MOCK-KSEF-{Guid.NewGuid().ToString()}" };
+            }
+
+            using var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Post, ksefUrl);
             request.Headers.Add("Authorization", $"Bearer {_configuration["KSeF:Token"] ?? "test-token"}");
             request.Content = new StringContent(xml, Encoding.UTF8, "application/xml");
 
-            try
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                var response = await client.SendAsync(request);
-                response.EnsureSuccessStatusCode();
-                var responseContent = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<KSeFResponse>(responseContent) ?? new KSeFResponse { KSeFId = "TEST-RESPONSE" };
+                try
+                {
+                    // Log resolved IP for debugging
+                    var hostEntry = await Dns.GetHostEntryAsync(new Uri(ksefUrl).Host);
+                    var ipAddress = hostEntry.AddressList.FirstOrDefault()?.ToString() ?? "Unknown";
+                    _logger.LogDebug("Resolved IP for '{KSeFUrl}' is {IPAddress} (attempt {Attempt}/{MaxRetries})", ksefUrl, ipAddress, attempt, maxRetries);
+
+                    var response = await client.SendAsync(request);
+                    response.EnsureSuccessStatusCode();
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogDebug("KSeF API response received for invoice ID {InvoiceId}: {Response}", invoiceId, responseContent);
+                    return JsonSerializer.Deserialize<KSeFResponse>(responseContent) ?? new KSeFResponse { KSeFId = $"TEST-{invoiceId}" };
+                }
+                catch (HttpRequestException ex) when (ex.InnerException is SocketException)
+                {
+                    _logger.LogWarning("Attempt {Attempt}/{MaxRetries} failed for invoice ID {InvoiceId}: {Error}", attempt, maxRetries, invoiceId, ex.Message);
+                    if (attempt == maxRetries)
+                    {
+                        throw;
+                    }
+                    await Task.Delay(retryDelayMs);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Unexpected error during KSeF request for invoice ID {InvoiceId}: {Error}", invoiceId, ex.Message);
+                    throw;
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError("Failed to send invoice to KSeF: {Error}", ex.Message);
-                throw;
-            }
+
+            throw new HttpRequestException("Failed to connect to KSeF API after maximum retries.");
         }
 
         private async Task<string> GenerateInvoicePdf(Invoice invoice)
