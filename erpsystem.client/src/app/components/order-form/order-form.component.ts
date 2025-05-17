@@ -172,7 +172,7 @@ export class OrderFormComponent implements OnInit {
       this.errorMessage = `Nieprawidłowa ilość. Dostępne: ${selectedItem.quantity}.`;
       return;
     }
-    this.newItem.totalPrice = this.newItem.quantity * this.newItem.unitPrice * (1 + this.newItem.vatRate);
+    this.newItem.totalPrice = this.newItem.quantity * this.newItem.unitPrice;
     this.order.orderItems.push({
       warehouseItemId: itemId,
       warehouseItemName: selectedItem.name,
@@ -190,7 +190,7 @@ export class OrderFormComponent implements OnInit {
   }
 
   getTotalOrderPrice(): number {
-    return this.order.orderItems.reduce((total, item) => total + item.totalPrice, 0);
+    return this.order.orderItems.reduce((total, item) => total + item.totalPrice * (1 + item.vatRate), 0);
   }
 
   getNetOrderPrice(): number {
@@ -212,7 +212,7 @@ export class OrderFormComponent implements OnInit {
     }
     const orderPayload = {
       ...this.order,
-      orderType: this.order.orderType === 'Zakup' ? 'Purchase' : 'Sale',
+      orderType: this.order.orderType,
       status: 'Pending'
     };
     this.http.post(this.apiUrl, orderPayload, { headers: this.getHeaders() }).subscribe({

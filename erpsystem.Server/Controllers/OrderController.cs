@@ -252,12 +252,12 @@ namespace erpsystem.Server.Controllers
                         Quantity = oi.Quantity,
                         UnitPrice = item.Price,
                         VatRate = item.VatRate,
-                        TotalPrice = oi.Quantity * item.Price * (1 + item.VatRate)
+                        TotalPrice = oi.Quantity * item.Price
                     };
                 }).ToList()
             };
 
-            order.TotalAmount = order.OrderItems.Sum(oi => oi.TotalPrice);
+            order.TotalAmount = order.OrderItems.Sum(oi => oi.TotalPrice * (1 + oi.VatRate));
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
@@ -317,7 +317,7 @@ namespace erpsystem.Server.Controllers
                 Status = "Issued",
                 CreatedBy = order.CreatedBy,
                 CreatedDate = DateTime.UtcNow,
-                InvoiceType = order.OrderType == "Purchase" ? "Purchase" : "Sales"
+                InvoiceType = order.OrderType
             };
 
             _context.Invoices.Add(invoice);
@@ -423,11 +423,11 @@ namespace erpsystem.Server.Controllers
                     Quantity = oi.Quantity,
                     UnitPrice = item.Price,
                     VatRate = item.VatRate,
-                    TotalPrice = oi.Quantity * item.Price * (1 + item.VatRate)
+                    TotalPrice = oi.Quantity * item.Price
                 };
             }).ToList();
 
-            order.TotalAmount = order.OrderItems.Sum(oi => oi.TotalPrice);
+            order.TotalAmount = order.OrderItems.Sum(oi => oi.TotalPrice * (1 + oi.VatRate));
 
             var history = new OrderHistory
             {

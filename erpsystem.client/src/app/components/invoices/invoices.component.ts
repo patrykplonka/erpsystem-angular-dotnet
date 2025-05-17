@@ -26,6 +26,8 @@ interface InvoiceDto {
   invoiceType: string;
   relatedInvoiceId?: number;
   advanceAmount?: number;
+  kSeFId?: string;
+  isSendingToKSeF?: boolean;
 }
 
 @Component({
@@ -50,7 +52,7 @@ export class InvoicesComponent implements OnInit {
   invoiceUserFilter = '';
   invoiceTypeFilter: string = 'all';
   isLoading: boolean = false;
-  apiUrl = 'https://localhost:7224/api/invoices';
+  apiUrl = 'https://localhost:7224/api/invoice';
 
   constructor(
     private http: HttpClient,
@@ -66,39 +68,47 @@ export class InvoicesComponent implements OnInit {
   }
 
   private getHeaders(): HttpHeaders {
-    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    if (!token) {
+      this.errorMessage = 'Brak tokenu autoryzacji. Zaloguj się ponownie.';
+      this.authService.logout();
+      this.router.navigate(['login']);
+      return new HttpHeaders();
+    }
     return new HttpHeaders({
-      'Authorization': token ? `Bearer ${token}` : '',
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     });
   }
 
   loadInvoices() {
-    if (this.isLoading) {
-      console.log('Load invoices skipped: already loading');
-      return;
-    }
+    if (this.isLoading) return;
     this.isLoading = true;
-    this.invoices = []; // Reset danych
-    this.filteredInvoices = []; // Reset danych
-    console.log('Loading invoices with invoiceTypeFilter:', this.invoiceTypeFilter);
+    this.invoices = [];
+    this.filteredInvoices = [];
     const url = this.invoiceTypeFilter === 'all'
       ? this.apiUrl
       : `${this.apiUrl}?invoiceType=${this.invoiceTypeFilter}`;
+    console.log('Request URL:', url);
+    console.log('Headers:', this.getHeaders());
 
     this.http.get<InvoiceDto[]>(url, { headers: this.getHeaders() })
       .pipe(
         retry(2),
         catchError((error) => {
           let errorMsg = `Błąd ładowania faktur: ${error.status} ${error.message}`;
+          console.error('Error details:', error);
           if (error.status === 0) {
-            errorMsg = 'Nie można połączyć się z serwerem. Sprawdź, czy backend działa na https://localhost:7224.';
+            errorMsg = 'Brak połączenia z serwerem. Sprawdź, czy backend działa na https://localhost:7224.';
           } else if (error.status === 401) {
-            errorMsg = 'Brak autoryzacji. Sprawdź poprawność tokenu lub zaloguj się ponownie.';
+            errorMsg = 'Brak autoryzacji. Zaloguj się ponownie.';
+            this.authService.logout();
+            this.router.navigate(['login']);
           } else if (error.status === 403) {
             errorMsg = 'Brak uprawnień do wyświetlenia faktur.';
+          } else if (error.status === 404) {
+            errorMsg = 'Endpoint api/invoice nie znaleziony. Sprawdź konfigurację InvoiceController.';
           }
-          console.error('Error details:', error);
           this.errorMessage = errorMsg;
           this.isLoading = false;
           this.cdr.detectChanges();
@@ -113,12 +123,64 @@ export class InvoicesComponent implements OnInit {
             issueDate: new Date(invoice.issueDate),
             dueDate: new Date(invoice.dueDate),
             createdDate: new Date(invoice.createdDate),
-            status: this.mapStatusFromApi(invoice.status)
+            status: this.mapStatusFromApi(invoice.status),
+            invoiceType: this.mapInvoiceTypeFromApi(invoice.invoiceType),
+            isSendingToKSeF: false
           }));
           this.applyFilters();
           this.isLoading = false;
           this.cdr.detectChanges();
           this.errorMessage = null;
+        }
+      });
+  }
+
+  sendToKSeF(invoice: InvoiceDto) {
+    if (invoice.kSeFId) {
+      this.errorMessage = `Faktura ${invoice.invoiceNumber} została już wysłana do KSeF (ID: ${invoice.kSeFId}).`;
+      this.successMessage = null;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    invoice.isSendingToKSeF = true;
+    this.cdr.detectChanges();
+
+    this.http.post<{ kSeFId: string }>(`${this.apiUrl}/send-to-ksef/${invoice.id}`, {}, { headers: this.getHeaders() })
+      .pipe(
+        catchError((error) => {
+          let errorMsg = `Błąd wysyłania faktury ${invoice.invoiceNumber} do KSeF: ${error.status} `;
+          if (error.status === 503) {
+            errorMsg += error.error || 'Nie można połączyć się z KSeF. Sprawdź połączenie internetowe.';
+          } else if (error.status === 404) {
+            errorMsg = `Faktura ${invoice.invoiceNumber} nie znaleziona.`;
+          } else if (error.status === 400) {
+            errorMsg = error.error || `Faktura ${invoice.invoiceNumber} została już wysłana do KSeF.`;
+          } else if (error.status === 401) {
+            errorMsg = 'Brak autoryzacji. Zaloguj się ponownie.';
+            this.authService.logout();
+            this.router.navigate(['login']);
+          } else {
+            errorMsg += error.message;
+          }
+          this.errorMessage = errorMsg;
+          this.successMessage = null;
+          invoice.isSendingToKSeF = false;
+          this.cdr.detectChanges();
+          return throwError(() => new Error(errorMsg));
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          invoice.kSeFId = response.kSeFId;
+          this.successMessage = `Faktura ${invoice.invoiceNumber} wysłana do KSeF (ID: ${response.kSeFId}).`;
+          this.errorMessage = null;
+          invoice.isSendingToKSeF = false;
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          invoice.isSendingToKSeF = false;
+          this.cdr.detectChanges();
         }
       });
   }
@@ -130,13 +192,14 @@ export class InvoicesComponent implements OnInit {
     })
       .pipe(
         catchError((error) => {
-          let errorMsg = `Błąd podczas pobierania faktury ${invoice.invoiceNumber}: ${error.status} ${error.message}`;
+          let errorMsg = `Błąd pobierania faktury ${invoice.invoiceNumber}: ${error.status} ${error.message}`;
           if (error.status === 404) {
-            errorMsg = `Faktura ${invoice.invoiceNumber} nie została znaleziona lub plik PDF nie został wygenerowany.`;
+            errorMsg = `Faktura ${invoice.invoiceNumber} nie znaleziona lub plik PDF nie istnieje.`;
           } else if (error.status === 401) {
             errorMsg = 'Brak autoryzacji. Zaloguj się ponownie.';
+            this.authService.logout();
+            this.router.navigate(['login']);
           }
-          console.error('Download error details:', error);
           this.errorMessage = errorMsg;
           this.successMessage = null;
           return throwError(() => new Error(errorMsg));
@@ -145,10 +208,14 @@ export class InvoicesComponent implements OnInit {
       .subscribe({
         next: (blob) => {
           saveAs(blob, `${invoice.invoiceType}_Invoice_${invoice.invoiceNumber}.pdf`);
-          this.successMessage = `Faktura ${invoice.invoiceNumber} została pobrana.`;
+          this.successMessage = `Faktura ${invoice.invoiceNumber} pobrana.`;
           this.errorMessage = null;
         }
       });
+  }
+
+  navigateToAddInvoice() {
+    this.router.navigate(['/add-invoice'], { queryParams: { type: this.invoiceTypeFilter } });
   }
 
   formatDate(date: Date): string {
@@ -169,8 +236,19 @@ export class InvoicesComponent implements OnInit {
     }
   }
 
+  mapInvoiceTypeFromApi(type: string): string {
+    switch (type) {
+      case 'Sales': return 'Sprzedaż';
+      case 'Purchase': return 'Zakup';
+      case 'Corrective': return 'Korygująca';
+      case 'Proforma': return 'Proforma';
+      case 'Advance': return 'Zaliczkowa';
+      case 'Final': return 'Końcowa';
+      default: return type;
+    }
+  }
+
   applyFilters() {
-    console.log('Applying filters to invoices:', this.invoices);
     this.filteredInvoices = [...this.invoices].filter(i => {
       const matchesStatus = !this.invoiceStatusFilter ||
         this.mapStatusFromApi(i.status).toLowerCase().includes(this.invoiceStatusFilter.toLowerCase());
@@ -199,7 +277,6 @@ export class InvoicesComponent implements OnInit {
       }
       return 0;
     });
-    console.log('Filtered invoices:', this.filteredInvoices);
     this.cdr.detectChanges();
   }
 
@@ -216,20 +293,18 @@ export class InvoicesComponent implements OnInit {
   setFilter(event: Event) {
     const target = event.target as HTMLSelectElement;
     this.invoiceTypeFilter = target.value;
-    console.log('Set filter to:', this.invoiceTypeFilter);
     this.resetFilters();
     this.loadInvoices();
   }
 
   navigateTo(page: string) {
-    console.log('Navigating to:', page);
     const typeMap: { [key: string]: string } = {
-      'sales-invoices': 'sales',
-      'purchase-invoices': 'purchase',
-      'corrective-invoices': 'corrective',
-      'proforma-invoices': 'proforma',
-      'advance-invoices': 'advance',
-      'final-invoices': 'final'
+      'sales-invoices': 'Sales',
+      'purchase-invoices': 'Purchase',
+      'corrective-invoices': 'Corrective',
+      'proforma-invoices': 'Proforma',
+      'advance-invoices': 'Advance',
+      'final-invoices': 'Final'
     };
 
     if (typeMap[page]) {
@@ -249,7 +324,6 @@ export class InvoicesComponent implements OnInit {
     this.invoiceStartDateFilter = null;
     this.invoiceEndDateFilter = null;
     this.invoiceUserFilter = '';
-    console.log('Filters reset');
   }
 
   trackByInvoiceId(index: number, invoice: InvoiceDto): number {

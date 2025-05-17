@@ -29,6 +29,7 @@
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "xlsx": "^0.18.5",
+    "xmlbuilder2": "^3.1.1",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {

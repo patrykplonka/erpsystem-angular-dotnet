@@ -244,3 +244,9 @@ header {
     padding: 16px 20px;
   }
 }
+.loading {
+  color: #1f2a44;
+  font-style: italic;
+  margin: 20px 0;
+  text-align: center;
+}

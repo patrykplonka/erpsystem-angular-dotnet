@@ -27,6 +27,10 @@ namespace erpsystem.Server.Models
         public required string InvoiceType { get; set; } 
         public int? RelatedInvoiceId { get; set; }
         public decimal? AdvanceAmount { get; set; }
-        public bool IsDeleted { get; set; } 
+        public bool IsDeleted { get; set; }
+
+        public Order? Order { get; set; }
+        public string? KSeFId { get; set; }
+
     }
 }

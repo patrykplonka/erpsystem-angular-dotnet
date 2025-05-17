@@ -20,12 +20,12 @@
           <label for="invoiceTypeFilter">Filtruj według typu:</label>
           <select id="invoiceTypeFilter" (change)="setFilter($event)">
             <option value="all">Wszystkie</option>
-            <option value="sales">Sprzedaż</option>
-            <option value="purchase">Zakup</option>
-            <option value="corrective">Korygująca</option>
-            <option value="proforma">Pro Forma</option>
-            <option value="advance">Zaliczkowa</option>
-            <option value="final">Końcowa</option>
+            <option value="Sales">Sprzedaż</option>
+            <option value="Purchase">Zakup</option>
+            <option value="Corrective">Korygująca</option>
+            <option value="Proforma">Proforma</option>
+            <option value="Advance">Zaliczkowa</option>
+            <option value="Final">Końcowa</option>
           </select>
         </div>
         <div class="movements-container">
@@ -36,7 +36,11 @@
             <input [(ngModel)]="invoiceUserFilter" placeholder="Filtruj po użytkowniku" (ngModelChange)="applyFilters()">
           </div>
           <h4>Lista faktur</h4>
-          <table *ngIf="filteredInvoices.length > 0; else noInvoices">
+          <button class="action-button add-button" (click)="navigateToAddInvoice()">
+            Dodaj fakturę {{ mapInvoiceTypeFromApi(invoiceTypeFilter) }}
+          </button>
+          <div *ngIf="isLoading" class="loading">Ładowanie faktur...</div>
+          <table *ngIf="filteredInvoices.length > 0 && !isLoading; else noInvoices">
             <thead>
               <tr>
                 <th (click)="sortInvoices('invoiceNumber')">Numer faktury <span [ngClass]="{'sort-asc': invoiceSortField === 'invoiceNumber' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'invoiceNumber' && invoiceSortDirection === 'desc'}"></span></th>
@@ -50,11 +54,12 @@
                 <th (click)="sortInvoices('totalAmount')">Kwota brutto <span [ngClass]="{'sort-asc': invoiceSortField === 'totalAmount' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'totalAmount' && invoiceSortDirection === 'desc'}"></span></th>
                 <th (click)="sortInvoices('status')">Status <span [ngClass]="{'sort-asc': invoiceSortField === 'status' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'status' && invoiceSortDirection === 'desc'}"></span></th>
                 <th (click)="sortInvoices('createdBy')">Użytkownik <span [ngClass]="{'sort-asc': invoiceSortField === 'createdBy' && invoiceSortDirection === 'asc', 'sort-desc': invoiceSortField === 'createdBy' && invoiceSortDirection === 'desc'}"></span></th>
+                <th>KSeF ID</th>
                 <th>Akcje</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let invoice of filteredInvoices">
+              <tr *ngFor="let invoice of filteredInvoices; trackBy: trackByInvoiceId">
                 <td data-label="Numer faktury">{{ invoice.invoiceNumber }}</td>
                 <td data-label="Typ">{{ invoice.invoiceType }}</td>
                 <td data-label="Zamówienie">{{ invoice.orderId }}</td>
@@ -66,8 +71,12 @@
                 <td data-label="Kwota brutto">{{ invoice.totalAmount | number:'1.2-2' }} PLN</td>
                 <td data-label="Status">{{ invoice.status }}</td>
                 <td data-label="Użytkownik">{{ invoice.createdBy }}</td>
+                <td data-label="KSeF ID">{{ invoice.kSeFId || 'Nie wysłano' }}</td>
                 <td data-label="Akcje">
                   <button class="action-button add-button" (click)="downloadInvoice(invoice)">Pobierz PDF</button>
+                  <button class="action-button add-button" (click)="sendToKSeF(invoice)" [disabled]="!!invoice.kSeFId || invoice.isSendingToKSeF">
+                    {{ invoice.isSendingToKSeF ? 'Wysyłanie...' : 'Wyślij do KSeF' }}
+                  </button>
                 </td>
               </tr>
             </tbody>
