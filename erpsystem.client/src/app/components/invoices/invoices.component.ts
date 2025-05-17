@@ -27,7 +27,7 @@ interface InvoiceDto {
   relatedInvoiceId?: number;
   advanceAmount?: number;
   kSeFId?: string;
-  isSendingToKSeF?: boolean; // Added for per-invoice loading state
+  isSendingToKSeF?: boolean;
 }
 
 @Component({
@@ -212,6 +212,10 @@ export class InvoicesComponent implements OnInit {
           this.errorMessage = null;
         }
       });
+  }
+
+  navigateToAddInvoice() {
+    this.router.navigate(['/add-invoice'], { queryParams: { type: this.invoiceTypeFilter } });
   }
 
   formatDate(date: Date): string {

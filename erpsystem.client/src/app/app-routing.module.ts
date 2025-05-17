@@ -13,6 +13,7 @@ import { AddWarehouseMovementComponent } from './components/add-warehouse-moveme
 import { AddProductFormComponent } from './components/add-product-form/add-product-form-component';
 import { AddContractorComponent } from './components/add-contractor/add-contractor.component';
 import { InvoicesComponent } from './components/invoices/invoices.component';
+import { AddInvoiceComponent } from './components/add-invoice/add-invoice.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -27,6 +28,7 @@ const routes: Routes = [
   { path: 'orders/new', component: OrderFormComponent, canActivate: [AuthGuard] },
   { path: 'orders/edit/:id', component: OrderFormComponent, canActivate: [AuthGuard] },
   { path: 'invoices', component: InvoicesComponent, canActivate: [AuthGuard] },
+  { path: 'add-invoice', component: AddInvoiceComponent, canActivate: [AuthGuard] },
   { path: 'sales-invoices', component: InvoicesComponent, canActivate: [AuthGuard] },
   { path: 'purchase-invoices', component: InvoicesComponent, canActivate: [AuthGuard] },
   { path: 'corrective-invoices', component: InvoicesComponent, canActivate: [AuthGuard] },

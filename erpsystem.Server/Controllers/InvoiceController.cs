@@ -23,6 +23,7 @@ using System.Text;
 using System.Text.Json;
 using System.Net.Sockets;
 using System.Net;
+using Microsoft.AspNetCore.Http;
 using erpsystem.Server.Models.DTOs.erpsystem.Server.Models.DTOs;
 
 namespace erpsystem.Server.Controllers
@@ -44,6 +45,85 @@ namespace erpsystem.Server.Controllers
             _configuration = configuration;
             _invoicesDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "invoices");
             Directory.CreateDirectory(_invoicesDirectory);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateInvoice([FromBody] InvoiceDto invoiceDto)
+        {
+            _logger.LogDebug("CreateInvoice called for invoice number: {InvoiceNumber}", invoiceDto.InvoiceNumber);
+
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid model state for invoice creation: {Errors}", string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
+                return BadRequest(ModelState);
+            }
+
+            // Validate invoice type
+            var validInvoiceTypes = new[] { "Sales", "Purchase", "Corrective", "Proforma", "Advance", "Final" };
+            if (!validInvoiceTypes.Contains(invoiceDto.InvoiceType))
+            {
+                _logger.LogWarning("Invalid invoice type: {InvoiceType}", invoiceDto.InvoiceType);
+                return BadRequest("Nieprawidłowy typ faktury.");
+            }
+
+            // Validate related invoice for Corrective or Final invoices
+            if ((invoiceDto.InvoiceType == "Corrective" || invoiceDto.InvoiceType == "Final") && invoiceDto.RelatedInvoiceId.HasValue)
+            {
+                var relatedInvoice = await _context.Invoices.FindAsync(invoiceDto.RelatedInvoiceId.Value);
+                if (relatedInvoice == null || relatedInvoice.IsDeleted)
+                {
+                    _logger.LogWarning("Related invoice ID {RelatedInvoiceId} not found", invoiceDto.RelatedInvoiceId);
+                    return BadRequest("Powiązana faktura nie istnieje.");
+                }
+            }
+
+            // Validate contractor
+            var contractor = await _context.Contractors
+                .Where(c => c.Id == invoiceDto.ContractorId && !c.IsDeleted)
+                .FirstOrDefaultAsync();
+            if (contractor == null)
+            {
+                _logger.LogWarning("Contractor ID {ContractorId} not found", invoiceDto.ContractorId);
+                return BadRequest("Kontrahent nie istnieje.");
+            }
+
+            var invoice = new Invoice
+            {
+                OrderId = invoiceDto.OrderId,
+                InvoiceNumber = invoiceDto.InvoiceNumber,
+                IssueDate = invoiceDto.IssueDate,
+                DueDate = invoiceDto.DueDate,
+                ContractorId = invoiceDto.ContractorId,
+                ContractorName = contractor.Name,
+                TotalAmount = invoiceDto.TotalAmount,
+                VatAmount = invoiceDto.VatAmount,
+                NetAmount = invoiceDto.NetAmount,
+                Status = invoiceDto.Status,
+                InvoiceType = invoiceDto.InvoiceType,
+                RelatedInvoiceId = invoiceDto.RelatedInvoiceId,
+                AdvanceAmount = invoiceDto.AdvanceAmount,
+                CreatedBy = User.Identity?.Name ?? "Unknown",
+                CreatedDate = DateTime.UtcNow,
+                IsDeleted = false
+            };
+
+            try
+            {
+                _context.Invoices.Add(invoice);
+                await _context.SaveChangesAsync();
+
+                // Generate PDF
+                invoice.FilePath = await GenerateInvoicePdf(invoice);
+                await _context.SaveChangesAsync();
+
+                _logger.LogDebug("Invoice created successfully: {InvoiceNumber}", invoice.InvoiceNumber);
+                return CreatedAtAction(nameof(GetInvoice), new { id = invoice.Id }, invoice);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error creating invoice {InvoiceNumber}: {Error}", invoice.InvoiceNumber, ex.Message);
+                return StatusCode(500, "Wystąpił błąd podczas tworzenia faktury.");
+            }
         }
 
         [HttpGet]
@@ -310,7 +390,6 @@ namespace erpsystem.Server.Controllers
             {
                 try
                 {
-                    // Log resolved IP for debugging
                     var hostEntry = await Dns.GetHostEntryAsync(new Uri(ksefUrl).Host);
                     var ipAddress = hostEntry.AddressList.FirstOrDefault()?.ToString() ?? "Unknown";
                     _logger.LogDebug("Resolved IP for '{KSeFUrl}' is {IPAddress} (attempt {Attempt}/{MaxRetries})", ksefUrl, ipAddress, attempt, maxRetries);

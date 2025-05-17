@@ -1,0 +1,177 @@
+<div class="warehouse-container">
+  <div class="dashboard-container">
+    <app-sidebar (navigate)="navigateTo($event)" (logoutEvent)="logout()"></app-sidebar>
+    <main class="main-content">
+      <header>
+        <div>
+          <h1>Dodaj nową fakturę</h1>
+          <p>Wypełnij formularz, aby dodać nową fakturę</p>
+        </div>
+      </header>
+      <section class="warehouse-section">
+        <nav class="breadcrumb">
+          <a href="/invoices">Faktury</a>
+          <span>></span>
+          <span>Dodaj nową</span>
+        </nav>
+        <div class="messages">
+          <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+          <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
+        <div class="movements-container">
+          <div class="tab-content">
+            <form [formGroup]="invoiceForm" (ngSubmit)="onSubmit()">
+              <div class="form-grid">
+                <div class="form-section contractor-section">
+                  <h3>KONTRAHENT</h3>
+                  <div class="contractor-details">
+                    <div class="form-group">
+                      <label>Kontrahent</label>
+                      <div class="select-wrapper">
+                        <select [(ngModel)]="selectedContractorId" name="contractorId" (ngModelChange)="onContractorChange()" [ngModelOptions]="{standalone: true}" required>
+                          <option value="" disabled>Wybierz kontrahenta</option>
+                          <option *ngFor="let contractor of contractors" [value]="contractor.id">{{ contractor.name }}</option>
+                        </select>
+                        <span class="icon">👤</span>
+                      </div>
+                    </div>
+                    <div class="contractor-info" *ngIf="selectedContractor">
+                      <p><strong>Nazwa:</strong> {{ selectedContractor.name }}</p>
+                      <p><strong>NIP:</strong> {{ selectedContractor.nip || selectedContractor.taxId || 'Brak danych' }}</p>
+                      <p *ngIf="selectedContractor.address"><strong>Adres:</strong> {{ selectedContractor.address }}</p>
+                      <p *ngIf="selectedContractor.email"><strong>Email:</strong> {{ selectedContractor.email }}</p>
+                      <p *ngIf="selectedContractor.phone"><strong>Telefon:</strong> {{ selectedContractor.phone }}</p>
+                    </div>
+                    <div class="contractor-info" *ngIf="!selectedContractor && selectedContractorId">
+                      <p>Brak szczegółów dla wybranego kontrahenta.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-section movement-type-section">
+                  <h3>TYP FAKTURY</h3>
+                  <div class="form-group">
+                    <label>Typ faktury</label>
+                    <div class="select-wrapper">
+                      <select formControlName="invoiceType" required>
+                        <option value="" disabled>Wybierz typ faktury</option>
+                        <option value="Sales">Sprzedaż</option>
+                        <option value="Purchase">Zakup</option>
+                        <option value="Corrective">Korygująca</option>
+                        <option value="Proforma">Proforma</option>
+                        <option value="Advance">Zaliczkowa</option>
+                        <option value="Final">Końcowa</option>
+                      </select>
+                      <span class="icon">📄</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-section date-section">
+                  <h3>DATA</h3>
+                  <div class="form-group">
+                    <label>Data wystawienia</label>
+                    <input type="date" formControlName="issueDate" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Data płatności</label>
+                    <input type="date" formControlName="dueDate" required>
+                  </div>
+                </div>
+                <div class="form-section summary-section">
+                  <h3>RAZEM:</h3>
+                  <div class="summary-row">
+                    <span>Razem</span>
+                    <span>{{ invoiceForm.get('totalAmount')?.value | currency:'PLN' }}</span>
+                  </div>
+                  <div class="summary-row">
+                    <span>VAT</span>
+                    <span>{{ invoiceForm.get('vatAmount')?.value | currency:'PLN' }}</span>
+                  </div>
+                  <div class="summary-row">
+                    <span>Netto</span>
+                    <span>{{ invoiceForm.get('netAmount')?.value | currency:'PLN' }}</span>
+                  </div>
+                  <div class="summary-row">
+                    <span>Rabat</span>
+                    <span>0%</span>
+                  </div>
+                  <p class="summary-note">Dokument w cenach: Netto Zmień na Brutto</p>
+                </div>
+                <div class="form-section invoice-section">
+                  <h3>NUMER FAKTURY</h3>
+                  <div class="form-group">
+                    <label>Numer faktury</label>
+                    <input type="text" formControlName="invoiceNumber" readonly>
+                  </div>
+                </div>
+                <div class="form-section items-section">
+                  <h3>POZYCJE</h3>
+                  <div class="product-selection">
+                    <div class="form-group">
+                      <label>Produkt</label>
+                      <select [(ngModel)]="selectedProduct.productId" [ngModelOptions]="{standalone: true}" (ngModelChange)="onProductChange()" required>
+                        <option value="" disabled>Wybierz produkt</option>
+                        <option *ngFor="let product of products" [value]="product.id">{{ product.name }} ({{ product.code }})</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Kod produktu</label>
+                      <input type="text" [(ngModel)]="selectedProduct.productCode" [ngModelOptions]="{standalone: true}" readonly>
+                    </div>
+                    <div class="form-group">
+                      <label>Cena jednostkowa</label>
+                      <input type="text" [(ngModel)]="selectedProduct.unitPrice" [ngModelOptions]="{standalone: true}" readonly>
+                    </div>
+                    <div class="form-group">
+                      <label>Ilość</label>
+                      <input type="number" [(ngModel)]="selectedProduct.quantity" [ngModelOptions]="{standalone: true}" required min="1">
+                    </div>
+                    <button type="button" class="action-button add-button" (click)="addProductToList()">
+                      <span class="icon">+</span> Dodaj produkt
+                    </button>
+                  </div>
+                  <div class="items-list" *ngIf="items.length > 0">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Produkt</th>
+                          <th>Ilość</th>
+                          <th>Cena jednostkowa</th>
+                          <th>Razem</th>
+                          <th>Akcje</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let item of items.controls; let i = index" [formGroup]="getItemFormGroup(i)">
+                          <td>{{ item.get('productName')?.value }}</td>
+                          <td>{{ item.get('quantity')?.value }}</td>
+                          <td>{{ item.get('unitPrice')?.value | currency:'PLN' }}</td>
+                          <td>{{ item.get('totalPrice')?.value | currency:'PLN' }}</td>
+                          <td>
+                            <button type="button" class="action-button delete-button" (click)="removeItem(i)">Usuń</button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="form-section description-section">
+                  <h3>OPIS</h3>
+                  <div class="form-group">
+                    <label>Dodaj informację, która będzie umieszczona na dokumencie</label>
+                    <textarea formControlName="description"></textarea>
+                  </div>
+                </div>
+              </div>
+              <div class="form-buttons">
+                <button type="submit" class="action-button add-button" [disabled]="invoiceForm.invalid || isLoading">
+                  {{ isLoading ? 'Zapisywanie...' : 'Zapisz fakturę' }}
+                </button>
+                <button type="button" class="action-button cancel-button" (click)="cancel()">Anuluj</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

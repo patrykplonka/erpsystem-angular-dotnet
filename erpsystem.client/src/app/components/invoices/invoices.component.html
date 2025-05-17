@@ -36,6 +36,9 @@
             <input [(ngModel)]="invoiceUserFilter" placeholder="Filtruj po użytkowniku" (ngModelChange)="applyFilters()">
           </div>
           <h4>Lista faktur</h4>
+          <button class="action-button add-button" (click)="navigateToAddInvoice()">
+            Dodaj fakturę {{ mapInvoiceTypeFromApi(invoiceTypeFilter) }}
+          </button>
           <div *ngIf="isLoading" class="loading">Ładowanie faktur...</div>
           <table *ngIf="filteredInvoices.length > 0 && !isLoading; else noInvoices">
             <thead>
