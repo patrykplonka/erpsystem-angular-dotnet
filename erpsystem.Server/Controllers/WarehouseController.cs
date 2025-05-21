@@ -3,10 +3,10 @@ using erpsystem.Server.Models;
 using erpsystem.Server.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -40,7 +40,7 @@ public class WarehouseController : ControllerBase
                 Name = item.Name,
                 Code = item.Code,
                 Quantity = item.Quantity,
-                UnitPrice = item.Price,
+                UnitPrice = item.Price, // Mapowanie na UnitPrice
                 Category = item.Category,
                 Location = item.Location,
                 Warehouse = item.Warehouse,
@@ -53,6 +53,15 @@ public class WarehouseController : ControllerBase
                 PurchaseCost = item.PurchaseCost,
                 VatRate = item.VatRate
             }).ToList();
+
+            // Debug logowanie wartości Price
+            foreach (var item in items)
+            {
+                if (item.Price == 0)
+                {
+                    Console.WriteLine($"Warning: Item {item.Name} (ID: {item.Id}) has Price = 0.");
+                }
+            }
 
             var cacheOptions = new MemoryCacheEntryOptions
             {
@@ -543,7 +552,7 @@ public class WarehouseController : ControllerBase
                     Operation = l.Operation,
                     ItemId = l.ItemId,
                     ItemName = l.ItemName,
-                    Timestamp = l.Timestamp, // Keep as DateTime
+                    Timestamp = l.Timestamp,
                     Details = l.Details
                 })
                 .ToList();
