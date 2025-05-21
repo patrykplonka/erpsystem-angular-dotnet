@@ -58,7 +58,6 @@ namespace erpsystem.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Validate invoice type
             var validInvoiceTypes = new[] { "Sales", "Purchase", "Corrective", "Proforma", "Advance", "Final" };
             if (!validInvoiceTypes.Contains(invoiceDto.InvoiceType))
             {
@@ -66,7 +65,6 @@ namespace erpsystem.Server.Controllers
                 return BadRequest("Nieprawidłowy typ faktury.");
             }
 
-            // Validate related invoice for Corrective or Final invoices
             if ((invoiceDto.InvoiceType == "Corrective" || invoiceDto.InvoiceType == "Final") && invoiceDto.RelatedInvoiceId.HasValue)
             {
                 var relatedInvoice = await _context.Invoices.FindAsync(invoiceDto.RelatedInvoiceId.Value);
@@ -77,7 +75,6 @@ namespace erpsystem.Server.Controllers
                 }
             }
 
-            // Validate contractor
             var contractor = await _context.Contractors
                 .Where(c => c.Id == invoiceDto.ContractorId && !c.IsDeleted)
                 .FirstOrDefaultAsync();
@@ -91,8 +88,8 @@ namespace erpsystem.Server.Controllers
             {
                 OrderId = invoiceDto.OrderId,
                 InvoiceNumber = invoiceDto.InvoiceNumber,
-                IssueDate = invoiceDto.IssueDate,
-                DueDate = invoiceDto.DueDate,
+                IssueDate = invoiceDto.IssueDate.ToUniversalTime(),
+                DueDate = invoiceDto.DueDate.ToUniversalTime(),
                 ContractorId = invoiceDto.ContractorId,
                 ContractorName = contractor.Name,
                 TotalAmount = invoiceDto.TotalAmount,
@@ -107,12 +104,16 @@ namespace erpsystem.Server.Controllers
                 IsDeleted = false
             };
 
+            if (invoiceDto.items?.Any() ?? false)
+            {
+                _logger.LogDebug("Received items: {Items}", string.Join(", ", invoiceDto.items.Select(i => i.productName)));
+            }
+
             try
             {
                 _context.Invoices.Add(invoice);
                 await _context.SaveChangesAsync();
 
-                // Generate PDF
                 invoice.FilePath = await GenerateInvoicePdf(invoice);
                 await _context.SaveChangesAsync();
 

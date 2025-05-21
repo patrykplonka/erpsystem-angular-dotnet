@@ -15,14 +15,23 @@ namespace erpsystem.Server.Models.DTOs
         public decimal VatAmount { get; set; }
         public decimal NetAmount { get; set; }
         public required string Status { get; set; }
-        public string? FilePath { get; set; } 
+        public string? FilePath { get; set; }
         public required string CreatedBy { get; set; }
         public DateTime CreatedDate { get; set; }
         public required string InvoiceType { get; set; }
         public int? RelatedInvoiceId { get; set; }
         public decimal? AdvanceAmount { get; set; }
         public Order? Order { get; set; }
-
         public string? KSeFId { get; set; }
+        public List<InvoiceItemDto>? items { get; set; } 
+    }
+
+    public class InvoiceItemDto
+    {
+        public int productId { get; set; }
+        public string productName { get; set; }
+        public int quantity { get; set; }
+        public decimal unitPrice { get; set; }
+        public decimal totalPrice { get; set; }
     }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray, FormsModule } from '@angular/forms';
@@ -10,8 +10,8 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 interface InvoiceDto {
   id: number;
   invoiceNumber: string;
-  issueDate: Date;
-  dueDate: Date;
+  issueDate: string;
+  dueDate: string;
   contractorId: number;
   contractorName: string;
   totalAmount: number;
@@ -46,7 +46,7 @@ interface ContractorDto {
 interface ProductDto {
   id: number;
   name: string;
-  price: number;
+  unitPrice: number;
   code?: string;
 }
 
@@ -85,13 +85,14 @@ export class AddInvoiceComponent implements OnInit {
     private http: HttpClient,
     private authService: AuthService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {
     this.invoiceForm = this.fb.group({
       invoiceNumber: ['', [Validators.required, Validators.pattern(/^[A-Z0-9\-\/]+$/)]],
       issueDate: ['', Validators.required],
       dueDate: ['', Validators.required],
-      contractorId: [''], // Usunięto Validators.required, bo zarządzamy przez ngModel
+      contractorId: [''],
       totalAmount: [0, [Validators.required, Validators.min(0)]],
       vatAmount: [0, [Validators.required, Validators.min(0)]],
       netAmount: [0, [Validators.required, Validators.min(0)]],
@@ -188,7 +189,6 @@ export class AddInvoiceComponent implements OnInit {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const datePart = `${year}${month}${day}`;
-    // Dla uproszczenia ustawiamy numer faktury na 1; w praktyce należałoby pobrać z API liczbę faktur z danego dnia
     const invoiceNumber = `${prefix}/${datePart}/1`;
     this.invoiceForm.patchValue({ invoiceNumber });
   }
@@ -211,7 +211,7 @@ export class AddInvoiceComponent implements OnInit {
           }
           this.errorMessage = `Błąd ładowania kontrahentów: ${errorDetails}`;
           this.isLoading = false;
-          return throwError(() => new Error(this.errorMessage ?? 'Nieznany błąd'));
+          return throwError(() => new Error(this.errorMessage ?? ''));
         })
       )
       .subscribe({
@@ -244,7 +244,7 @@ export class AddInvoiceComponent implements OnInit {
           }
           this.errorMessage = `Błąd ładowania produktów: ${errorDetails}`;
           this.isLoading = false;
-          return throwError(() => new Error(this.errorMessage ?? 'Nieznany błąd'));
+          return throwError(() => new Error(this.errorMessage ?? ''));
         })
       )
       .subscribe({
@@ -252,6 +252,7 @@ export class AddInvoiceComponent implements OnInit {
           console.log('Products loaded:', data);
           this.products = data;
           this.isLoading = false;
+          this.cdr.detectChanges();
         }
       });
   }
@@ -265,7 +266,7 @@ export class AddInvoiceComponent implements OnInit {
           console.error('Error loading related invoices:', error);
           this.errorMessage = `Błąd ładowania powiązanych faktur: ${error.status} ${error.statusText}`;
           this.isLoading = false;
-          return throwError(() => new Error(this.errorMessage ?? 'Nieznany błąd'));
+          return throwError(() => new Error(this.errorMessage ?? ''));
         })
       )
       .subscribe({
@@ -288,27 +289,31 @@ export class AddInvoiceComponent implements OnInit {
     }
 
     this.isLoading = true;
+
     const invoiceData: InvoiceDto = {
       ...this.invoiceForm.value,
-      issueDate: new Date(this.invoiceForm.value.issueDate),
-      dueDate: new Date(this.invoiceForm.value.dueDate),
+      issueDate: new Date(this.invoiceForm.value.issueDate).toISOString().split('T')[0],
+      dueDate: new Date(this.invoiceForm.value.dueDate).toISOString().split('T')[0],
       contractorId: this.selectedContractorId,
       contractorName: this.contractors.find(c => c.id === this.selectedContractorId)?.name || '',
       id: 0,
       items: this.items.value
     };
 
+    console.log('Invoice data being sent:', invoiceData);
+
     this.http.post(this.apiUrl, invoiceData, { headers: this.getHeaders() })
       .pipe(
         catchError((error) => {
           console.error('Error adding invoice:', error);
-          this.errorMessage = `Błąd podczas dodawania faktury: ${error.status} ${error.message}`;
+          const errorDetails = error.error?.message || error.message || 'Nieznany błąd';
+          this.errorMessage = `Błąd podczas dodawania faktury: ${error.status} ${errorDetails}`;
           if (error.status === 401) {
             this.authService.logout();
             this.router.navigate(['login']);
           }
           this.isLoading = false;
-          return throwError(() => new Error(this.errorMessage ?? 'Nieznany błąd'));
+          return throwError(() => new Error(this.errorMessage ?? ''));
         })
       )
       .subscribe({
@@ -350,6 +355,7 @@ export class AddInvoiceComponent implements OnInit {
 
   onContractorChange() {
     this.selectedContractor = this.contractors.find(c => c.id === this.selectedContractorId) || null;
+    this.cdr.detectChanges();
   }
 
   onProductChange() {
@@ -358,32 +364,41 @@ export class AddInvoiceComponent implements OnInit {
     if (product) {
       this.selectedProduct.productName = product.name;
       this.selectedProduct.productCode = product.code || '';
-      this.selectedProduct.unitPrice = product.price; // Poprawiono przypisanie ceny
+      this.selectedProduct.unitPrice = product.unitPrice || 0;
+      console.log('Selected product:', this.selectedProduct);
     } else {
       this.selectedProduct.productName = '';
       this.selectedProduct.productCode = '';
       this.selectedProduct.unitPrice = 0;
     }
+    this.cdr.detectChanges();
   }
 
   addProductToList() {
-    if (this.selectedProduct.productId && this.selectedProduct.quantity > 0) {
-      this.addItem(
-        this.selectedProduct.productId,
-        this.selectedProduct.productName,
-        this.selectedProduct.quantity,
-        this.selectedProduct.unitPrice
-      );
-      this.selectedProduct = {
-        productId: 0,
-        productName: '',
-        productCode: '',
-        unitPrice: 0,
-        quantity: 0
-      };
-      this.successMessage = 'Produkt dodano do listy.';
-    } else {
-      this.errorMessage = 'Wybierz produkt i podaj ilość.';
+    if (this.selectedProduct.productId <= 0) {
+      this.errorMessage = 'Wybierz produkt.';
+      return;
     }
+    if (this.selectedProduct.quantity <= 0) {
+      this.errorMessage = 'Podaj ilość większą od zera.';
+      return;
+    }
+
+    this.addItem(
+      this.selectedProduct.productId,
+      this.selectedProduct.productName,
+      this.selectedProduct.quantity,
+      this.selectedProduct.unitPrice
+    );
+    this.selectedProduct = {
+      productId: 0,
+      productName: '',
+      productCode: '',
+      unitPrice: 0,
+      quantity: 0
+    };
+    this.successMessage = 'Produkt dodano do listy.';
+    this.errorMessage = null;
+    this.cdr.detectChanges();
   }
 }
